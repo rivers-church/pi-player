@@ -59,14 +59,14 @@ Create a file called `pi-player.service` with the following contents:
 ```
 [Unit]
 Description=Pi Player
-ConditionPathExists=/home/pi/go/src/github/17xande/pi-player
+ConditionPathExists=/home/pi/go/src/github.com/17xande/pi-player
 ConditionPathExists=/media/visuals/Kidszone
 # network must be ready AND the visuals folder must be mounted.
 # add the mount service to this line
 After=network.target media-visuals.mount
 
 [Service]
-Type=Simple
+Type=simple
 User=piplayerservice
 Group=piplayerservice
 LimitNOFILE=1024
