@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title>Controller</title>
+  <title>{{.location}} Controller</title>
   <link rel="stylesheet" href="/assets/css/milligram.css">
   <link rel="stylesheet" href="/assets/css/control.css">
   <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Roboto+Slab">
@@ -12,8 +12,8 @@
 <body>
   <div class="container">
     <div id="divControls">
-      <h1>Controls</h1>
-      <p>Currently playing: <span id="spCurrent"></span></p>
+      <h1>{{.location}} Controls</h1>
+      <p>Currently playing: <span id="spCurrent">{{if .playlist.Current}}{{.playlist.Current.Name}}{{else}}Nothing{{end}}</span></p>
       <button data-command="pauseResume">Play/Pause</button>
       <button data-command="quit">Stop</button>
       <button data-command="seekBack30">Rewind</button>

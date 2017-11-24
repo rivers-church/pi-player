@@ -106,6 +106,8 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 		if err != nil && err.Error() != "exit status 3" {
 			return err
 		}
+
+		p.playlist.Current = nil
 	}
 
 	if ext == ".mp4" {
@@ -250,9 +252,9 @@ func (p *Player) ServeHTTP(w http.ResponseWriter, h *http.Request) {
 			return
 		}
 
-		p.playlist.current = p.playlist.Items[i]
+		p.playlist.Current = p.playlist.Items[i]
 
-		m := &resMessage{Success: true, Event: "videoStarted", Message: p.playlist.current.Name()}
+		m := &resMessage{Success: true, Event: "videoStarted", Message: p.playlist.Current.Name()}
 		json.NewEncoder(w).Encode(m)
 		return
 	}
@@ -269,7 +271,7 @@ func (p *Player) ServeHTTP(w http.ResponseWriter, h *http.Request) {
 		m := &resMessage{
 			Success: true,
 			Event:   "videoStarted",
-			Message: p.playlist.current.Name(),
+			Message: p.playlist.Current.Name(),
 		}
 		json.NewEncoder(w).Encode(m)
 		return
@@ -287,7 +289,7 @@ func (p *Player) ServeHTTP(w http.ResponseWriter, h *http.Request) {
 		m := &resMessage{
 			Success: true,
 			Event:   "videoStarted",
-			Message: p.playlist.current.Name(),
+			Message: p.playlist.Current.Name(),
 		}
 		json.NewEncoder(w).Encode(m)
 		return
@@ -325,29 +327,38 @@ func (p *Player) ServeHTTP(w http.ResponseWriter, h *http.Request) {
 func (p *Player) handleControl(w http.ResponseWriter, r *http.Request) {
 	err := p.playlist.fromFolder(p.conf.Directory)
 
-	if p.api.debug {
-		log.Println("files in playlist:")
-		for _, file := range p.playlist.Items {
-			log.Println(file.Name())
-		}
-	}
-
 	if err != nil {
 		log.Println("Error tring to read files from directory: ", err)
+		t := template.Must(template.ParseFiles("templates/error.html"))
+		err := t.Execute(w, err)
+		if err != nil {
+			log.Println("Error trying to render error page. #fail.", err)
+		}
+		return
 	}
 
 	tempControl := templateHandler{
 		filename: "control.html",
 		data: map[string]interface{}{
+			"location":  p.conf.Location,
 			"directory": p.conf.Directory,
 			"playlist":  p.playlist,
 			"error":     err,
 		},
 	}
 
+	if p.api.debug {
+		log.Println("files in playlist:")
+		for _, file := range p.playlist.Items {
+			log.Println(file.Name())
+		}
+	}
 	tempControl.templ = template.Must(template.ParseFiles(filepath.Join("templates", tempControl.filename)))
 
-	tempControl.templ.Execute(w, tempControl.data)
+	err = tempControl.templ.Execute(w, tempControl.data)
+	if err != nil {
+		log.Println("Error rendering control page: ", err)
+	}
 }
 
 func (p *Player) handleViewer(w http.ResponseWriter, r *http.Request) {
@@ -369,7 +380,7 @@ func (p *Player) next() error {
 	err := p.Start(n.Name(), time.Duration(0))
 
 	if err == nil {
-		p.playlist.current = n
+		p.playlist.Current = n
 	}
 
 	return err
@@ -380,7 +391,7 @@ func (p *Player) previous() error {
 	err := p.Start(n.Name(), time.Duration(0))
 
 	if err == nil {
-		p.playlist.current = n
+		p.playlist.Current = n
 	}
 
 	return err

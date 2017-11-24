@@ -10,7 +10,7 @@ import (
 type playlist struct {
 	Name    string
 	Items   []os.FileInfo
-	current os.FileInfo
+	Current os.FileInfo
 }
 
 func (p *playlist) fromFolder(folderPath string) error {
@@ -45,7 +45,7 @@ func (p *playlist) getIndex(fileName string) int {
 }
 
 func (p *playlist) getNext() os.FileInfo {
-	i := p.getIndex(p.current.Name())
+	i := p.getIndex(p.Current.Name())
 	if i == -1 {
 		return nil
 	}
@@ -57,7 +57,7 @@ func (p *playlist) getNext() os.FileInfo {
 }
 
 func (p *playlist) getPrevious() os.FileInfo {
-	i := p.getIndex(p.current.Name())
+	i := p.getIndex(p.Current.Name())
 	if i == -1 {
 		return nil
 	}

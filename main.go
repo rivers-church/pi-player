@@ -58,6 +58,7 @@ func main() {
 
 type config struct {
 	Directory string
+	Location  string
 }
 
 type templateHandler struct {
@@ -78,7 +79,10 @@ func (t *templateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// 	"Host": r.Host,
 	// }
 
-	t.templ.Execute(w, t.data)
+	err := t.templ.Execute(w, t.data)
+	if err != nil {
+		log.Println("Error trying to render page: ", t.filename, err)
+	}
 }
 
 // Handles requests to the index page as well as any other requests
