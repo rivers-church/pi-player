@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"io"
 	"log"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -320,8 +322,16 @@ func (p *Player) ServeHTTP(w http.ResponseWriter, h *http.Request) {
 }
 
 // Scan the folder for new files every time the page reloads
-func (p *Player) handleControl() http.Handler {
+func (p *Player) handleControl(w http.ResponseWriter, r *http.Request) {
 	err := p.playlist.fromFolder(p.conf.Directory)
+
+	if p.api.debug {
+		log.Println("files in playlist:")
+		for _, file := range p.playlist.Items {
+			log.Println(file.Name())
+		}
+	}
+
 	if err != nil {
 		log.Println("Error tring to read files from directory: ", err)
 	}
@@ -335,7 +345,9 @@ func (p *Player) handleControl() http.Handler {
 		},
 	}
 
-	return &tempControl
+	tempControl.templ = template.Must(template.ParseFiles(filepath.Join("templates", tempControl.filename)))
+
+	tempControl.templ.Execute(w, tempControl.data)
 }
 
 func (p *Player) handleViewer(w http.ResponseWriter, r *http.Request) {

@@ -14,13 +14,16 @@ type playlist struct {
 }
 
 func (p *playlist) fromFolder(folderPath string) error {
+	// remove all items from the current playlist if there are any
+	p.Items = []os.FileInfo{}
+
 	// read files from a certain folder into a playlist
 	files, err := ioutil.ReadDir(folderPath)
 	if err != nil {
 		return errors.New("can't read folder for videos: " + err.Error())
 	}
 
-	// filter out all files except for .mp4s
+	// filter out all files except for supported ones
 	for _, file := range files {
 		e := path.Ext(file.Name())
 		if e == ".mp4" || e == ".jpg" || e == ".jpeg" || e == ".png" || e == ".html" {
