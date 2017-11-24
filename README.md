@@ -78,15 +78,15 @@ RestartSec=10
 #StartLimitIntervalSec=60
 StartLimitInterval=60
 
-WorkingDirectory=/home/pi/go/src/github/17xande/pi-player
-ExecStart=/home/pi/go/src/github/17xande/pi-player/pi-player
+WorkingDirectory=/home/pi/go/src/github.com/17xande/pi-player
+ExecStart=/home/pi/go/src/github.com/17xande/pi-player/pi-player
 
 # Make sure log directory exists
 PermissionsStartOnly=true
 ExecStartPre=/bin/mkdir -p /var/log/pi-player
 # syslog doesn’t exist by default in the Pi, so this line can be left out
 #ExecStartPre=/bin/chown syslog:adm /var/log/pi-player
-ExecStartPre=/bin/chmod 755 /var/log/pi-player
+#ExecStartPre=/bin/chmod 755 /var/log/pi-player
 StandardOutput=syslog
 StandardError=syslog
 SyslogIdentifier=pi-player
@@ -100,6 +100,9 @@ Create a user that will run the program:
 cd /tmp
 sudo useradd piplayerservice -s /sbin/nologin -M
 ```
+
+Add the user to the video group so that they can play videos:
+`usermod -a -G video piplayerservice`
 
 Move the `pi-player.service` file to the correct location and make it executable:
 ```bash
@@ -176,7 +179,7 @@ Description=X server
 After=pi-player.service
 
 [Service]
-Type=Simple
+Type=simple
 Restart=on-failure
 RestartSec=10
 StartLimitInterval=60
