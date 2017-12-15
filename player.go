@@ -113,8 +113,7 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 	if ext == ".mp4" {
 		p.command = exec.Command("omxplayer", "-b", "-l", pos, path.Join(p.conf.Directory, fileName))
 		// check if video must be looped
-		loop := fileName[len(fileName)-8:len(fileName)-4] == "LOOP"
-		if loop {
+		if len(fileName) > 8 && fileName[len(fileName)-8:len(fileName)-4] == "LOOP" {
 			p.command.Args = append(p.command.Args, "--loop")
 		}
 		p.pipeIn, err = p.command.StdinPipe()
