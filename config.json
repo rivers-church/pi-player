@@ -1,4 +1,9 @@
 {
   "location": "Rock Stars",
-  "directory": "/Volumes/visuals/Kidszone/Rock Stars"
+  "directory": "/Volumes/visuals/Kidszone/Rock Stars",
+  "remote": {
+    "name": "HBGIC Technology Co., Ltd. USB Keyboard Mouse",
+    "vendor": "0x2252",
+    "product": "0x1037"
+  }
 }

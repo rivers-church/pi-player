@@ -35,10 +35,17 @@ func main() {
 
 	if *debug {
 		log.Println("Config file -> Directory: ", conf)
+		log.Println("initializing remote")
 	}
 
+	remotes := getRemotes(conf)
+
 	a := apiHandler{debug: *debug, test: *test}
-	p := Player{api: &a, conf: conf}
+	p := Player{api: &a, conf: conf, remotes: &remotes}
+
+	for _, remote := range p.remotes {
+		go p.remoteListen(remote)
+	}
 
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("./assets"))))
 	http.Handle("/content/", http.StripPrefix("/content/", http.FileServer(http.Dir(conf.Directory))))
@@ -59,6 +66,13 @@ func main() {
 type config struct {
 	Directory string
 	Location  string
+	Remote    remote
+}
+
+type remote struct {
+	Name    string
+	Vendor  uint16
+	Product uint16
 }
 
 type templateHandler struct {
@@ -162,4 +176,21 @@ func (a *apiHandler) handle(p *Player) http.HandlerFunc {
 		json.NewEncoder(w).Encode(m)
 		log.Println(m.Message)
 	}
+}
+
+func getRemotes(conf config) []evdev.InputDevice {
+	devices := []evdev.InputDevice{}
+	d, err := evdev.ListInputDevices("/dev/input/event*")
+	if err != nil {
+		log.Error("Error trying to get remote:", err)
+		return
+	}
+
+	// only listen to the devices specified in the config file
+	for _, device := range d {
+		if device.Name() == conf.Remote.Name {
+			append(devices, device)
+		}
+	}
+	return devices
 }

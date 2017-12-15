@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/gvalkov/golang-evdev"
 	cdp "github.com/knq/chromedp"
 )
 
@@ -32,6 +33,7 @@ type Player struct {
 	quitting bool
 	quit     chan error
 	browser  Browser
+	remotes  *[]evdev.InputDevice
 }
 
 // Browser represents the chromium-browser process that is used to display web pages and still images to the screen
@@ -444,5 +446,49 @@ func (c *controller) read() {
 		// ignore socket messages for now.
 		// TODO: handle socket messages.
 		log.Println("socket message received: ", msg)
+	}
+}
+
+func (p *Player) remoteListen(device *evdev.InputDevice) {
+	errCount := 0
+	keyDirections := []string{"UP", "DOWN", "HOLD"}
+	commands := map[string]string{
+		"KEY_HOME":         nil,
+		"KEY_INFO":         nil,
+		"KEY_UP":           nil,
+		"KEY_DOWN":         nil,
+		"KEY_LEFT":         "chapterPrevious",
+		"KEY_RIGHT":        "chapterNext",
+		"KEY_ENTER":        nil,
+		"KEY_BACK":         nil,
+		"KEY_CONTEXT_MENU": nil,
+		"KEY_PLAYPAUSE":    "pauseResume",
+		"KEY_STOP":         "quit",
+		"KEY_REWIND":       "rewind",
+		"KEY_FASTFORWARD":  "fastForward",
+	}
+	for {
+		events, err := device.Read()
+		if err != nil {
+			log.Error("Error trying to read device event:", err)
+			errCount++
+			if errCount > 10 {
+				log.Error("Too many errors trying to read the device, breaking out")
+				break
+			}
+		}
+		for _, event := range events {
+			if event.Type == evdev.EVKEY {
+				value, ok := evdev.KEY[code]
+				if ok {
+					if c, ok := commands[value]; ok {
+						err := p.SendCommand(c)
+						if err != nil {
+							log.Error("Error sending command from remote event:", err)
+						}
+					}
+				}
+			}
+		}
 	}
 }
