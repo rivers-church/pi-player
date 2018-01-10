@@ -15,8 +15,58 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/gvalkov/golang-evdev"
+  packages = ["."]
+  revision = "87c03aa1a370124ec5a5fac733a629e0f9acd9a6"
+
+[[projects]]
+  branch = "master"
   name = "github.com/knq/chromedp"
-  packages = [".","cdp","cdp/accessibility","cdp/animation","cdp/applicationcache","cdp/audits","cdp/browser","cdp/cachestorage","cdp/cdputil","cdp/css","cdp/database","cdp/debugger","cdp/dom","cdp/domdebugger","cdp/domsnapshot","cdp/domstorage","cdp/emulation","cdp/headlessexperimental","cdp/heapprofiler","cdp/indexeddb","cdp/input","cdp/inspector","cdp/io","cdp/layertree","cdp/log","cdp/memory","cdp/network","cdp/overlay","cdp/page","cdp/performance","cdp/profiler","cdp/runtime","cdp/schema","cdp/security","cdp/serviceworker","cdp/storage","cdp/systeminfo","cdp/target","cdp/tethering","cdp/tracing","client","kb","runner"]
+  packages = [
+    ".",
+    "cdp",
+    "cdp/accessibility",
+    "cdp/animation",
+    "cdp/applicationcache",
+    "cdp/audits",
+    "cdp/browser",
+    "cdp/cachestorage",
+    "cdp/cdputil",
+    "cdp/css",
+    "cdp/database",
+    "cdp/debugger",
+    "cdp/dom",
+    "cdp/domdebugger",
+    "cdp/domsnapshot",
+    "cdp/domstorage",
+    "cdp/emulation",
+    "cdp/headlessexperimental",
+    "cdp/heapprofiler",
+    "cdp/indexeddb",
+    "cdp/input",
+    "cdp/inspector",
+    "cdp/io",
+    "cdp/layertree",
+    "cdp/log",
+    "cdp/memory",
+    "cdp/network",
+    "cdp/overlay",
+    "cdp/page",
+    "cdp/performance",
+    "cdp/profiler",
+    "cdp/runtime",
+    "cdp/schema",
+    "cdp/security",
+    "cdp/serviceworker",
+    "cdp/storage",
+    "cdp/systeminfo",
+    "cdp/target",
+    "cdp/tethering",
+    "cdp/tracing",
+    "client",
+    "kb",
+    "runner"
+  ]
   revision = "289f0eeb04e434b3e7f200acf34ea7b7a1d2dd79"
 
 [[projects]]
@@ -28,18 +78,27 @@
 [[projects]]
   branch = "master"
   name = "github.com/mailru/easyjson"
-  packages = [".","buffer","jlexer","jwriter"]
+  packages = [
+    ".",
+    "buffer",
+    "jlexer",
+    "jwriter"
+  ]
   revision = "5f62e4f3afa2f576dc86531b7df4d966b19ef8f8"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/image"
-  packages = ["bmp","tiff","tiff/lzw"]
+  packages = [
+    "bmp",
+    "tiff",
+    "tiff/lzw"
+  ]
   revision = "f7e31b4ea2e3413ab91b4e7d2dc83e5f8d19a44c"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ea8b12c5554d16131ac2a2f7880a1865b1460eff0455a1b4f3d058da86179158"
+  inputs-digest = "a23c66f48872f331fae68df4522bed8e38a9abddd0620b89a13744fe55fbfa01"
   solver-name = "gps-cdcl"
   solver-version = 1
