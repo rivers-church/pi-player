@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"path/filepath"
 	"sync"
+
+	evdev "github.com/gvalkov/golang-evdev"
 )
 
 func main() {
@@ -41,9 +43,9 @@ func main() {
 	remotes := getRemotes(conf)
 
 	a := apiHandler{debug: *debug, test: *test}
-	p := Player{api: &a, conf: conf, remotes: &remotes}
+	p := Player{api: &a, conf: conf, remotes: remotes}
 
-	for _, remote := range p.remotes {
+	for _, remote := range remotes {
 		go p.remoteListen(remote)
 	}
 
@@ -178,18 +180,18 @@ func (a *apiHandler) handle(p *Player) http.HandlerFunc {
 	}
 }
 
-func getRemotes(conf config) []evdev.InputDevice {
-	devices := []evdev.InputDevice{}
+func getRemotes(conf config) []*evdev.InputDevice {
+	var devices []*evdev.InputDevice
 	d, err := evdev.ListInputDevices("/dev/input/event*")
 	if err != nil {
-		log.Error("Error trying to get remote:", err)
-		return
+		log.Println("Error trying to get remote:", err)
+		return nil
 	}
 
 	// only listen to the devices specified in the config file
 	for _, device := range d {
-		if device.Name() == conf.Remote.Name {
-			append(devices, device)
+		if device.Name == conf.Remote.Name {
+			devices = append(devices, device)
 		}
 	}
 	return devices

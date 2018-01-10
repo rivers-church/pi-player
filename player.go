@@ -33,7 +33,7 @@ type Player struct {
 	quitting bool
 	quit     chan error
 	browser  Browser
-	remotes  *[]evdev.InputDevice
+	remotes  []*evdev.InputDevice
 }
 
 // Browser represents the chromium-browser process that is used to display web pages and still images to the screen
@@ -451,17 +451,17 @@ func (c *controller) read() {
 
 func (p *Player) remoteListen(device *evdev.InputDevice) {
 	errCount := 0
-	keyDirections := []string{"UP", "DOWN", "HOLD"}
+	// keyDirections := []string{"UP", "DOWN", "HOLD"}
 	commands := map[string]string{
-		"KEY_HOME":         nil,
-		"KEY_INFO":         nil,
-		"KEY_UP":           nil,
-		"KEY_DOWN":         nil,
+		"KEY_HOME":         "",
+		"KEY_INFO":         "",
+		"KEY_UP":           "",
+		"KEY_DOWN":         "",
 		"KEY_LEFT":         "chapterPrevious",
 		"KEY_RIGHT":        "chapterNext",
-		"KEY_ENTER":        nil,
-		"KEY_BACK":         nil,
-		"KEY_CONTEXT_MENU": nil,
+		"KEY_ENTER":        "",
+		"KEY_BACK":         "",
+		"KEY_CONTEXT_MENU": "",
 		"KEY_PLAYPAUSE":    "pauseResume",
 		"KEY_STOP":         "quit",
 		"KEY_REWIND":       "rewind",
@@ -470,21 +470,22 @@ func (p *Player) remoteListen(device *evdev.InputDevice) {
 	for {
 		events, err := device.Read()
 		if err != nil {
-			log.Error("Error trying to read device event:", err)
+			log.Println("Error trying to read device event:", err)
 			errCount++
 			if errCount > 10 {
-				log.Error("Too many errors trying to read the device, breaking out")
+				log.Println("Too many errors trying to read the device, breaking out")
 				break
 			}
 		}
 		for _, event := range events {
-			if event.Type == evdev.EVKEY {
+			code := int(event.Code)
+			if event.Type == evdev.EV_KEY {
 				value, ok := evdev.KEY[code]
 				if ok {
 					if c, ok := commands[value]; ok {
 						err := p.SendCommand(c)
 						if err != nil {
-							log.Error("Error sending command from remote event:", err)
+							log.Println("Error sending command from remote event:", err)
 						}
 					}
 				}
