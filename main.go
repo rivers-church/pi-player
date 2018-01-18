@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"sync"
+	"time"
 
 	evdev "github.com/gvalkov/golang-evdev"
 )
@@ -62,6 +63,18 @@ func main() {
 	err = http.ListenAndServe(*addr, nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
+	}
+
+	// Start the first item in the playlist
+	err = p.playlist.fromFolder(p.conf.Directory)
+	if err != nil {
+		log.Println("Error trying to read files from directory.\n", err)
+	}
+
+	if len(p.playlist.Items) == 0 {
+		log.Println("No items in current directory.")
+	} else {
+		p.Start(p.playlist.Items[0].Name(), time.Duration(0))
 	}
 }
 

@@ -174,7 +174,9 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 			p.browser.command.Env = []string{"DISPLAY=:0.0"}
 
 			p.browser.command.Stdin = os.Stdin
-			p.browser.command.Stdout = os.Stdout
+			if p.api.debug {
+				p.browser.command.Stdout = os.Stdout
+			}
 			p.browser.command.Stderr = os.Stderr
 			err = p.browser.command.Start()
 			p.browser.running = true
@@ -466,15 +468,15 @@ func (p *Player) remoteListen(device *evdev.InputDevice) {
 		"KEY_INFO":         "",
 		"KEY_UP":           "",
 		"KEY_DOWN":         "",
-		"KEY_LEFT":         "chapterPrevious",
-		"KEY_RIGHT":        "chapterNext",
+		"KEY_LEFT":         "",
+		"KEY_RIGHT":        "",
 		"KEY_ENTER":        "",
 		"KEY_BACK":         "",
 		"KEY_CONTEXT_MENU": "",
 		"KEY_PLAYPAUSE":    "pauseResume",
 		"KEY_STOP":         "quit",
-		"KEY_REWIND":       "seekBack600",
-		"KEY_FASTFORWARD":  "seekForward600",
+		"KEY_REWIND":       "seekBack30",
+		"KEY_FASTFORWARD":  "seekForward30",
 	}
 	directions := []string{"UP", "DOWN", "HOLD"}
 
