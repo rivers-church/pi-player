@@ -16,8 +16,8 @@ import (
 
 func main() {
 	addr := flag.String("addr", ":8080", "The addr of the application.")
-	test := flag.Bool("test", false, "use macOs quicklook to test on a Mac")
-	debug := flag.Bool("debug", false, "print extra information for debugging")
+	test := flag.String("test", "", "send \"mac\" or \"linux\" to test the code on mac or linux.")
+	debug := flag.Bool("debug", false, "print extra information for debugging.")
 	flag.Parse()
 
 	if *debug {
@@ -121,7 +121,7 @@ func handlerHome(w http.ResponseWriter, r *http.Request) {
 
 type apiHandler struct {
 	debug   bool
-	test    bool
+	test    string
 	message reqMessage
 }
 

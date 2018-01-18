@@ -85,7 +85,7 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 	pos := fmt.Sprintf("%02d:%02d:%02d", int(position.Hours()), int(position.Minutes())%60, int(position.Seconds())%60)
 	ext := path.Ext(fileName)
 
-	if p.api.test {
+	if p.api.test == "mac" {
 		if p.running {
 			p.command.Process.Kill()
 			p.running = false
@@ -96,6 +96,12 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 		p.running = true
 
 		return err
+	} else if p.api.test == "linux" {
+		if p.running {
+			p.command.Process.Kill()
+			p.running = false
+		}
+		log.Println("pretending that the video is running on linux")
 	}
 
 	// if omxplayer is already running, stop it
@@ -467,6 +473,8 @@ func (p *Player) remoteListen(device *evdev.InputDevice) {
 		"KEY_REWIND":       "rewind",
 		"KEY_FASTFORWARD":  "fastForward",
 	}
+	directions := []string{"UP", "DOWN", "HOLD"}
+
 	for {
 		events, err := device.Read()
 		if err != nil {
@@ -481,11 +489,20 @@ func (p *Player) remoteListen(device *evdev.InputDevice) {
 			code := int(event.Code)
 			if event.Type == evdev.EV_KEY {
 				value, ok := evdev.KEY[code]
-				if ok {
+				if ok && directions[event.Value] == "DOWN" {
+					if p.api.debug {
+						log.Println("Key:", value, directions[event.Value])
+					}
 					if c, ok := commands[value]; ok {
-						err := p.SendCommand(c)
-						if err != nil {
-							log.Println("Error sending command from remote event:", err)
+						if p.api.debug {
+							log.Println("command used:", c)
+						}
+						// don't send the command if we're only testing. This will only work on the Pi's
+						if p.api.test == "" {
+							err := p.SendCommand(c)
+							if err != nil {
+								log.Println("Error sending command from remote event:", err)
+							}
 						}
 					}
 				}
