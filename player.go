@@ -204,7 +204,8 @@ func (p *Player) SendCommand(command string) error {
 	var err error
 	if p.api.debug {
 		fmt.Println("cmd:", cmd)
-	} else {
+	}
+	if p.api.test == "" {
 		b := []byte(cmd)
 		if cmd == "q" {
 			p.quitting = true
