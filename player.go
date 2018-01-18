@@ -129,7 +129,9 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 			return err
 		}
 
-		p.command.Stdout = os.Stdout
+		if p.api.debug {
+			p.command.Stdout = os.Stdout
+		}
 		p.command.Stderr = os.Stderr
 
 		err := p.command.Start()
