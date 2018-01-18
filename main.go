@@ -74,7 +74,13 @@ func main() {
 	if len(p.playlist.Items) == 0 {
 		log.Println("No items in current directory.")
 	} else {
-		p.Start(p.playlist.Items[0].Name(), time.Duration(0))
+		if p.api.debug {
+			log.Println("trying to start first item in playlist:", p.playlist.Items[0].Name())
+		}
+		err := p.Start(p.playlist.Items[0].Name(), time.Duration(0))
+		if err != nil {
+			log.Println("Error trying to start first item in playlist.\n", err)
+		}
 	}
 }
 
