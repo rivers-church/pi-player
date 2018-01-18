@@ -497,12 +497,12 @@ func (p *Player) remoteListen(device *evdev.InputDevice) {
 			}
 
 			value, ok := evdev.KEY[code]
-			if p.api.debug {
-				log.Println("Key:", value, directions[event.Value])
-			}
-			// ignore KEY_UP and KEY_HOLD
+			// ignore UP and HOLD
 			if !ok || directions[event.Value] != "DOWN" {
 				continue
+			}
+			if p.api.debug {
+				log.Println("Key:", value, directions[event.Value])
 			}
 
 			if value == "KEY_UP" {
@@ -522,12 +522,12 @@ func (p *Player) remoteListen(device *evdev.InputDevice) {
 			}
 
 			c, ok := commands[value]
-			if p.api.debug {
-				log.Println("command used:", c)
-			}
 			// ignore empty commands, they are not supported yet
 			if !ok || c == "" {
 				continue
+			}
+			if p.api.debug {
+				log.Println("command used:", c)
 			}
 
 			// don't send the command if we're only testing. This will only work on the Pi's
