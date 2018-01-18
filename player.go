@@ -503,6 +503,22 @@ func (p *Player) remoteListen(device *evdev.InputDevice) {
 				continue
 			}
 
+			if value == "KEY_UP" {
+				err := p.previous()
+				if err != nil {
+					log.Println("Error trying to go to previous item from remote.\n", err)
+				}
+				continue
+			}
+
+			if value == "KEY_DOWN" {
+				err := p.next()
+				if err != nil {
+					log.Println("Error trying to go to next item from remote.\n", err)
+				}
+				continue
+			}
+
 			c, ok := commands[value]
 			if p.api.debug {
 				log.Println("command used:", c)
