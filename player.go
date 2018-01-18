@@ -501,7 +501,7 @@ func (p *Player) remoteListen(device *evdev.InputDevice) {
 				log.Println("Key:", value, directions[event.Value])
 			}
 			// ignore KEY_UP and KEY_HOLD
-			if !ok && directions[event.Value] != "DOWN" {
+			if !ok || directions[event.Value] != "DOWN" {
 				continue
 			}
 
