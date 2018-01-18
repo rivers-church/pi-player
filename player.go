@@ -462,7 +462,6 @@ func (c *controller) read() {
 
 func (p *Player) remoteListen(device *evdev.InputDevice) {
 	errCount := 0
-	// keyDirections := []string{"UP", "DOWN", "HOLD"}
 	commands := map[string]string{
 		"KEY_HOME":         "",
 		"KEY_INFO":         "",

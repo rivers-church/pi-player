@@ -2,10 +2,66 @@
 
 
 [[projects]]
+  branch = "master"
+  name = "github.com/chromedp/cdproto"
+  packages = [
+    ".",
+    "accessibility",
+    "animation",
+    "applicationcache",
+    "audits",
+    "browser",
+    "cachestorage",
+    "cdp",
+    "css",
+    "database",
+    "debugger",
+    "deviceorientation",
+    "dom",
+    "domdebugger",
+    "domsnapshot",
+    "domstorage",
+    "emulation",
+    "headlessexperimental",
+    "heapprofiler",
+    "indexeddb",
+    "input",
+    "inspector",
+    "io",
+    "layertree",
+    "log",
+    "memory",
+    "network",
+    "overlay",
+    "page",
+    "performance",
+    "profiler",
+    "runtime",
+    "security",
+    "serviceworker",
+    "storage",
+    "systeminfo",
+    "target",
+    "tethering",
+    "tracing"
+  ]
+  revision = "d22461ed177955db5fe09cf532385b4125a659ea"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/chromedp/chromedp"
+  packages = [
+    "client",
+    "kb",
+    "runner"
+  ]
+  revision = "46a6388474e20ef92c34290f62602e9fa18c9e95"
+
+[[projects]]
   name = "github.com/disintegration/imaging"
   packages = ["."]
-  revision = "dd50a3ee9985ccd313a2f03c398fcaedc96dc707"
-  version = "v1.2.4"
+  revision = "1884593a19ddc6f2ea050403430d02c1d0fc1283"
+  version = "v1.3.0"
 
 [[projects]]
   name = "github.com/gorilla/websocket"
@@ -22,58 +78,20 @@
 [[projects]]
   branch = "master"
   name = "github.com/knq/chromedp"
-  packages = [
-    ".",
-    "cdp",
-    "cdp/accessibility",
-    "cdp/animation",
-    "cdp/applicationcache",
-    "cdp/audits",
-    "cdp/browser",
-    "cdp/cachestorage",
-    "cdp/cdputil",
-    "cdp/css",
-    "cdp/database",
-    "cdp/debugger",
-    "cdp/dom",
-    "cdp/domdebugger",
-    "cdp/domsnapshot",
-    "cdp/domstorage",
-    "cdp/emulation",
-    "cdp/headlessexperimental",
-    "cdp/heapprofiler",
-    "cdp/indexeddb",
-    "cdp/input",
-    "cdp/inspector",
-    "cdp/io",
-    "cdp/layertree",
-    "cdp/log",
-    "cdp/memory",
-    "cdp/network",
-    "cdp/overlay",
-    "cdp/page",
-    "cdp/performance",
-    "cdp/profiler",
-    "cdp/runtime",
-    "cdp/schema",
-    "cdp/security",
-    "cdp/serviceworker",
-    "cdp/storage",
-    "cdp/systeminfo",
-    "cdp/target",
-    "cdp/tethering",
-    "cdp/tracing",
-    "client",
-    "kb",
-    "runner"
-  ]
-  revision = "289f0eeb04e434b3e7f200acf34ea7b7a1d2dd79"
+  packages = ["."]
+  revision = "46a6388474e20ef92c34290f62602e9fa18c9e95"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/knq/snaker"
+  packages = ["."]
+  revision = "3b39b7d38b659cf4f16986c62359955695b78a5c"
 
 [[projects]]
   branch = "master"
   name = "github.com/knq/sysutil"
   packages = ["."]
-  revision = "53c4155f11f69acc282e07ed0b9df3fab4874eb1"
+  revision = "840643935d35cb81c833b4c142357dc9d519e390"
 
 [[projects]]
   branch = "master"
@@ -84,7 +102,7 @@
     "jlexer",
     "jwriter"
   ]
-  revision = "5f62e4f3afa2f576dc86531b7df4d966b19ef8f8"
+  revision = "32fa128f234d041f196a9f3e0fea5ac9772c08e1"
 
 [[projects]]
   branch = "master"
@@ -94,7 +112,7 @@
     "tiff",
     "tiff/lzw"
   ]
-  revision = "f7e31b4ea2e3413ab91b4e7d2dc83e5f8d19a44c"
+  revision = "12117c17ca67ffa1ce22e9409f3b0b0a93ac08c7"
 
 [solve-meta]
   analyzer-name = "dep"
