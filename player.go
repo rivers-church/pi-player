@@ -499,10 +499,15 @@ func (p *Player) remoteListen(device *evdev.InputDevice) {
 						}
 						// don't send the command if we're only testing. This will only work on the Pi's
 						if p.api.test == "" {
+							if p.api.debug {
+								log.Println("not testing, sending command...")
+							}
 							err := p.SendCommand(c)
 							if err != nil {
 								log.Println("Error sending command from remote event:", err)
 							}
+						} else if p.api.debug {
+							log.Println("only testing, nothing was actuall sent.")
 						}
 					}
 				}
