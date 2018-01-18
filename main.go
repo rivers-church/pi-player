@@ -59,12 +59,6 @@ func main() {
 	http.HandleFunc("/", handlerHome)
 	// http.HandleFunc("/command", handlerCommand(&p))
 
-	log.Printf("Listening on port %s\n", *addr)
-	err = http.ListenAndServe(*addr, nil)
-	if err != nil {
-		log.Fatal("ListenAndServe: ", err)
-	}
-
 	// Start the first item in the playlist
 	err = p.playlist.fromFolder(p.conf.Directory)
 	if err != nil {
@@ -82,6 +76,13 @@ func main() {
 			log.Println("Error trying to start first item in playlist.\n", err)
 		}
 	}
+
+	log.Printf("Listening on port %s\n", *addr)
+	err = http.ListenAndServe(*addr, nil)
+	if err != nil {
+		log.Fatal("ListenAndServe: ", err)
+	}
+
 }
 
 type config struct {

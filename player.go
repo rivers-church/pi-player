@@ -507,7 +507,7 @@ func (p *Player) remoteListen(device *evdev.InputDevice) {
 				log.Println("Key:", value, directions[event.Value])
 			}
 
-			if value == "KEY_UP" {
+			if value == "KEY_LEFT" {
 				err := p.previous()
 				if err != nil {
 					log.Println("Error trying to go to previous item from remote.\n", err)
@@ -515,7 +515,7 @@ func (p *Player) remoteListen(device *evdev.InputDevice) {
 				continue
 			}
 
-			if value == "KEY_DOWN" {
+			if value == "KEY_RIGHT" {
 				err := p.next()
 				if err != nil {
 					log.Println("Error trying to go to next item from remote.\n", err)
