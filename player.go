@@ -471,8 +471,8 @@ func (p *Player) remoteListen(device *evdev.InputDevice) {
 		"KEY_CONTEXT_MENU": "",
 		"KEY_PLAYPAUSE":    "pauseResume",
 		"KEY_STOP":         "quit",
-		"KEY_REWIND":       "rewind",
-		"KEY_FASTFORWARD":  "fastForward",
+		"KEY_REWIND":       "seekBack600",
+		"KEY_FASTFORWARD":  "seekForward600",
 	}
 	directions := []string{"UP", "DOWN", "HOLD"}
 
@@ -488,30 +488,42 @@ func (p *Player) remoteListen(device *evdev.InputDevice) {
 		}
 		for _, event := range events {
 			code := int(event.Code)
-			if event.Type == evdev.EV_KEY {
-				value, ok := evdev.KEY[code]
-				if ok && directions[event.Value] == "DOWN" {
-					if p.api.debug {
-						log.Println("Key:", value, directions[event.Value])
-					}
-					if c, ok := commands[value]; ok {
-						if p.api.debug {
-							log.Println("command used:", c)
-						}
-						// don't send the command if we're only testing. This will only work on the Pi's
-						if p.api.test == "" {
-							if p.api.debug {
-								log.Println("not testing, sending command...")
-							}
-							err := p.SendCommand(c)
-							if err != nil {
-								log.Println("Error sending command from remote event:", err)
-							}
-						} else if p.api.debug {
-							log.Println("only testing, nothing was actuall sent.")
-						}
-					}
-				}
+
+			// ignore any events that are not key presses
+			if event.Type != evdev.EV_KEY {
+				continue
+			}
+
+			value, ok := evdev.KEY[code]
+			if p.api.debug {
+				log.Println("Key:", value, directions[event.Value])
+			}
+			// ignore KEY_UP and KEY_HOLD
+			if !ok && directions[event.Value] != "DOWN" {
+				continue
+			}
+
+			c, ok := commands[value]
+			if p.api.debug {
+				log.Println("command used:", c)
+			}
+			// ignore empty commands, they are not supported yet
+			if !ok || c == "" {
+				continue
+			}
+
+			// don't send the command if we're only testing. This will only work on the Pi's
+			if p.api.test != "" {
+				log.Println("only testing, nothing was actuall sent.")
+				continue
+			}
+
+			if p.api.debug {
+				log.Println("not testing, sending command...")
+			}
+			err := p.SendCommand(c)
+			if err != nil {
+				log.Println("Error sending command from remote event:", err)
 			}
 		}
 	}
