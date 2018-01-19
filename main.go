@@ -26,11 +26,11 @@ func main() {
 	}
 
 	data, err := ioutil.ReadFile("config.json")
-	var conf config
 	if err != nil {
 		log.Fatal("Error reading config file: ", err)
 	}
 
+	var conf config
 	err = json.Unmarshal(data, &conf)
 	if err != nil {
 		log.Fatal("Error unmarshalling config file: ", err)
@@ -41,13 +41,15 @@ func main() {
 		log.Println("initializing remote")
 	}
 
-	remotes := getRemotes(conf)
-
 	a := apiHandler{debug: *debug, test: *test}
-	p := Player{api: &a, conf: conf, remotes: remotes}
+	p := Player{api: &a, conf: conf}
 
-	for _, remote := range remotes {
-		go p.remoteListen(remote)
+	if remotes, err := getRemotes(conf); err != nil {
+		log.Println("Error trying to get remotes.\n", err)
+		for _, remote := range remotes {
+			go p.remoteListen(remote)
+		}
+		p.remotes = remotes
 	}
 
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("./assets"))))
@@ -200,12 +202,11 @@ func (a *apiHandler) handle(p *Player) http.HandlerFunc {
 	}
 }
 
-func getRemotes(conf config) []*evdev.InputDevice {
+func getRemotes(conf config) ([]*evdev.InputDevice, error) {
 	var devices []*evdev.InputDevice
 	d, err := evdev.ListInputDevices("/dev/input/event*")
 	if err != nil {
-		log.Println("Error trying to get remote:", err)
-		return nil
+		return nil, err
 	}
 
 	// only listen to the devices specified in the config file
@@ -214,5 +215,5 @@ func getRemotes(conf config) []*evdev.InputDevice {
 			devices = append(devices, device)
 		}
 	}
-	return devices
+	return devices, nil
 }
