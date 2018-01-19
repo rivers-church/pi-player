@@ -101,7 +101,12 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 			p.command.Process.Kill()
 			p.running = false
 		}
-		log.Println("pretending that the video is running on linux")
+		log.Println("running the video on default linux player")
+		p.command = exec.Command("xdg-open", path.Join(p.conf.Directory, fileName))
+		p.command.Start()
+		p.running = true
+
+		return err
 	}
 
 	// if omxplayer is already running, stop it
@@ -170,7 +175,10 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 				"--remote-debugging-port=9222",
 				"http://localhost:8080/viewer?img=" + url.QueryEscape(fileName),
 			}
-			p.browser.command = exec.Command("chromium-browser", f...)
+
+			browser := "chromium-browser"
+
+			p.browser.command = exec.Command(browser, f...)
 			p.browser.command.Env = []string{"DISPLAY=:0.0"}
 
 			p.browser.command.Stdin = os.Stdin

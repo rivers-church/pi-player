@@ -46,6 +46,7 @@ func main() {
 
 	if remotes, err := getRemotes(conf); err != nil {
 		log.Println("Error trying to get remotes.\n", err)
+	} else {
 		for _, remote := range remotes {
 			go p.remoteListen(remote)
 		}
