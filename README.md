@@ -101,8 +101,8 @@ cd /tmp
 sudo useradd piplayerservice -s /sbin/nologin -M
 ```
 
-Add the user to the video group so that they can play videos:
-`usermod -a -G video piplayerservice`
+Add the user to the video group so that they can play videos, and to the input group so that they can read the USB remote events:
+`usermod -a -G video,input piplayerservice`
 
 Move the `pi-player.service` file to the correct location and make it executable:
 ```bash

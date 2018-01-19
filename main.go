@@ -76,6 +76,8 @@ func main() {
 		err := p.Start(p.playlist.Items[0].Name(), time.Duration(0))
 		if err != nil {
 			log.Println("Error trying to start first item in playlist.\n", err)
+		} else {
+			p.playlist.Current = p.playlist.Items[0]
 		}
 	}
 
@@ -192,13 +194,21 @@ func (a *apiHandler) handle(p *Player) http.HandlerFunc {
 			return
 		}
 
+		if a.message.Component == "playlist" {
+			p.playlist.handleApi(p.api, w, r)
+			return
+		}
+
 		// return a generic success message for debugging
 		m := &resMessage{
 			Success: true,
 			Message: fmt.Sprintf("Message Received:\ncomponent: %s\nmethod: %s\narguments: %v\n", a.message.Component, a.message.Method, a.message.Arguments),
 		}
 		json.NewEncoder(w).Encode(m)
-		log.Println(m.Message)
+
+		if p.api.debug {
+			log.Println(m.Message)
+		}
 	}
 }
 
