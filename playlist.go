@@ -13,6 +13,30 @@ type playlist struct {
 	Current os.FileInfo
 }
 
+// Handles requests to the playlist api
+func (p *playlist) handleApi(a apiHandler, w http.ResponseWriter, h *http.Request) {
+	var m *resMessage
+	if api.messsage.Method == "getCurrent" {
+		if p.Current != nil {
+			m = {
+				Success: true,
+				Event: "current",
+				Message: p.Current.Name(),
+			}
+		} else {
+			m = {
+				Success: true,
+				Event: "noCurrent",
+			}
+		}
+	}
+	
+	if a.debug {
+		log.Println("sending current item.\n", m)
+	}
+	json.NewEncoder(w).Encode(m)
+}
+
 func (p *playlist) fromFolder(folderPath string) error {
 	// remove all items from the current playlist if there are any
 	p.Items = []os.FileInfo{}
