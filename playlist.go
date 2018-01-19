@@ -1,8 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"io/ioutil"
+	"log"
+	"net/http"
 	"os"
 	"path"
 )
@@ -14,24 +17,24 @@ type playlist struct {
 }
 
 // Handles requests to the playlist api
-func (p *playlist) handleApi(a apiHandler, w http.ResponseWriter, h *http.Request) {
+func (p *playlist) handleAPI(api *apiHandler, w http.ResponseWriter, h *http.Request) {
 	var m *resMessage
-	if api.messsage.Method == "getCurrent" {
+	if api.message.Method == "getCurrent" {
 		if p.Current != nil {
-			m = {
+			m = &resMessage{
 				Success: true,
-				Event: "current",
+				Event:   "current",
 				Message: p.Current.Name(),
 			}
 		} else {
-			m = {
+			m = &resMessage{
 				Success: true,
-				Event: "noCurrent",
+				Event:   "noCurrent",
 			}
 		}
 	}
-	
-	if a.debug {
+
+	if api.debug {
 		log.Println("sending current item.\n", m)
 	}
 	json.NewEncoder(w).Encode(m)

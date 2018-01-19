@@ -195,7 +195,7 @@ func (a *apiHandler) handle(p *Player) http.HandlerFunc {
 		}
 
 		if a.message.Component == "playlist" {
-			p.playlist.handleApi(p.api, w, r)
+			p.playlist.handleAPI(p.api, w, r)
 			return
 		}
 
