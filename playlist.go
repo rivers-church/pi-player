@@ -32,6 +32,12 @@ func (p *playlist) handleAPI(api *apiHandler, w http.ResponseWriter, h *http.Req
 				Event:   "noCurrent",
 			}
 		}
+	} else if api.message.Method == "getItems" {
+		m = &resMessage{
+			Success: true,
+			Event:   "items",
+			Message: p.itemNames(),
+		}
 	}
 
 	if api.debug {
@@ -93,4 +99,14 @@ func (p *playlist) getPrevious() os.FileInfo {
 	}
 
 	return p.Items[i-1]
+}
+
+func (p *playlist) itemNames() []string {
+	var res []string
+
+	for _, item := range p.Items {
+		res = append(res, item.Name())
+	}
+
+	return res
 }
