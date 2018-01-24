@@ -205,7 +205,7 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 				return err
 			}
 
-			v := "background-image: url(/content/" + url.QueryEscape(fileName) + ")"
+			v := "background-image: url(\"/content/" + url.QueryEscape(fileName) + "\")"
 			err = c.Run(ctxt, cdp.SetAttributeValue("#container", "style", v, cdp.ByID))
 
 			return err
