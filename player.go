@@ -193,13 +193,13 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 			ctxt, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			var o cdp.Option
+			var c *cdp.CDP
 
 			if p.api.debug {
-				o = cdp.WithLog(log.Printf)
+				c, err = cdp.New(ctxt, cdp.WithLog(log.Printf))
+			} else {
+				c, err = cdp.New(ctxt)
 			}
-
-			c, err := cdp.New(ctxt, o)
 
 			if err != nil {
 				return err
