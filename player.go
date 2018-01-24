@@ -193,13 +193,22 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 			ctxt, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			c, err := cdp.New(ctxt, cdp.WithLog(log.Printf))
+			var o cdp.Option
+
+			if p.api.debug {
+				o = cdp.WithLog(log.Printf)
+			}
+
+			c, err := cdp.New(ctxt, o)
+
 			if err != nil {
 				return err
 			}
 
-			u := "localhost:8080/viewer?img=" + url.QueryEscape(fileName)
-			err = c.Run(ctxt, cdp.Navigate(u))
+			v := "background-image: url(/content/" + url.QueryEscape(fileName) + ")"
+			err = c.Run(ctxt, cdp.SetAttributeValue("#container", "style", v, cdp.ByID))
+
+			return err
 		}
 	}
 
