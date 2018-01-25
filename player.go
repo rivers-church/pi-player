@@ -9,7 +9,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"os/exec"
 	"path"
@@ -40,6 +39,9 @@ type Player struct {
 type Browser struct {
 	command *exec.Cmd
 	running bool
+	cdp     *cdp.CDP
+	ctxt    *context.Context
+	cancel  context.CancelFunc
 }
 
 // controller has the websocket connection to the control page
@@ -84,30 +86,6 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 
 	pos := fmt.Sprintf("%02d:%02d:%02d", int(position.Hours()), int(position.Minutes())%60, int(position.Seconds())%60)
 	ext := path.Ext(fileName)
-
-	if p.api.test == "mac" {
-		if p.running {
-			p.command.Process.Kill()
-			p.running = false
-		}
-		log.Println("running quick look with file...")
-		p.command = exec.Command("qlmanage", "-p", path.Join(p.conf.Directory, fileName))
-		p.command.Start()
-		p.running = true
-
-		return err
-	} else if p.api.test == "linux" {
-		if p.running {
-			p.command.Process.Kill()
-			p.running = false
-		}
-		log.Println("running the video on default linux player")
-		p.command = exec.Command("xdg-open", path.Join(p.conf.Directory, fileName))
-		p.command.Start()
-		p.running = true
-
-		return err
-	}
 
 	// if omxplayer is already running, stop it
 	if p.running {
@@ -161,55 +139,93 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 				}
 			}
 		}()
-
 	} else if ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".html" {
 		if !p.browser.running {
-			f := []string{
-				"--window-size=1920,1080",
-				"--window-position=0,0",
-				"--kiosk",
-				"--incognito",
-				"--disable-infobars",
-				"--noerrdialogs",
-				"--no-first-run",
-				"--remote-debugging-port=9222",
-				"http://localhost:8080/viewer?img=" + url.QueryEscape(fileName),
+			log.Println("Error: Browser should be running by now. Trying to start it again")
+			if err := p.startBrowser(); err != nil {
+				return errors.New("Could not start browser again\n" + err.Error())
 			}
-
-			browser := "chromium-browser"
-
-			p.browser.command = exec.Command(browser, f...)
-			p.browser.command.Env = []string{"DISPLAY=:0.0"}
-
-			p.browser.command.Stdin = os.Stdin
-			if p.api.debug {
-				p.browser.command.Stdout = os.Stdout
-			}
-			p.browser.command.Stderr = os.Stderr
-			err = p.browser.command.Start()
-			p.browser.running = true
-
-		} else {
-			ctxt, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
-			var c *cdp.CDP
-
-			if p.api.debug {
-				c, err = cdp.New(ctxt, cdp.WithLog(log.Printf))
-			} else {
-				c, err = cdp.New(ctxt)
-			}
-
-			if err != nil {
-				return err
-			}
-
-			v := "background-image: url(\"/content/" + url.QueryEscape(fileName) + "\")"
-			err = c.Run(ctxt, cdp.SetAttributeValue("#container", "style", v, cdp.ByID))
-
-			return err
 		}
+
+		v := "background-image: url('/content/" + fileName + "')"
+		err = p.browser.cdp.Run(*p.browser.ctxt, cdp.SetAttributeValue("#container", "style", v, cdp.ByID))
+		// p.browser.cancel()
+	}
+
+	return err
+}
+
+func (p *Player) startBrowser() error {
+	if p.browser.running {
+		return errors.New("Error: Browser already running, cannot start another instance")
+	}
+
+	flags := []string{
+		"--window-size=1920,1080",
+		"--window-position=0,0",
+		"--kiosk",
+		"--incognito",
+		"--disable-infobars",
+		"--noerrdialogs",
+		"--no-first-run",
+		"--remote-debugging-port=9222",
+		"http://localhost:8080/viewer",
+	}
+
+	browser := "chromium-browser"
+
+	if p.api.test == "linux" {
+		flags = []string{
+			"--incognito",
+			"--remote-debugging-port=9222",
+			"http://localhost:8080/viewer",
+		}
+
+		browser = "google-chrome"
+	}
+
+	p.browser.command = exec.Command(browser, flags...)
+	if p.api.test == "" {
+		p.browser.command.Env = []string{"DISPLAY=:0.0"}
+	}
+
+	p.browser.command.Stdin = os.Stdin
+	if p.api.debug {
+		p.browser.command.Stdout = os.Stdout
+	}
+	p.browser.command.Stderr = os.Stderr
+	if err := p.browser.command.Start(); err != nil {
+		return err
+	}
+	p.browser.running = true
+
+	ctxt, cancel := context.WithCancel(context.Background())
+	p.browser.ctxt = &ctxt
+	p.browser.cancel = cancel
+	// not sure if this is appropriate here. Not sure if context is
+	// absolutely needed actually. I'm not gracefully terminating things
+	// defer cancel()
+	var err error
+
+	// start the Chrome Debugging Protocol thang
+	// We have to wait for chrome to start running first,
+	// so we the whole program has to take a little nap.
+	// TODO: figure out a better way to do this. Perhaps put the initial
+	// start of the first item in it's own goroutine that waits
+	// till chrome starts outputting stuff?
+	if p.api.debug {
+		log.Println("taking a little nap to allow chrome to start nicely")
+	}
+	time.Sleep(7 * time.Second)
+
+	if p.api.debug {
+		p.browser.cdp, err = cdp.New(ctxt, cdp.WithLog(log.Printf))
+	} else {
+		p.browser.cdp, err = cdp.New(ctxt)
+	}
+
+	if err != nil {
+		err = errors.New("Error trying to start cdp:\n" + err.Error())
 	}
 
 	return err

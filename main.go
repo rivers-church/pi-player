@@ -62,25 +62,34 @@ func main() {
 	http.HandleFunc("/", handlerHome)
 	// http.HandleFunc("/command", handlerCommand(&p))
 
-	// Start the first item in the playlist
-	err = p.playlist.fromFolder(p.conf.Directory)
-	if err != nil {
-		log.Println("Error trying to read files from directory.\n", err)
-	}
+	// Start the browser
+	// We have to start it async because the code has
+	// to carry on, so that the server comes online.
+	go func() {
+		if err := p.startBrowser(); err != nil {
+			log.Println("Error trying to start the browser:\n", err)
+			p.browser.running = false
+		}
 
-	if len(p.playlist.Items) == 0 {
-		log.Println("No items in current directory.")
-	} else {
-		if p.api.debug {
-			log.Println("trying to start first item in playlist:", p.playlist.Items[0].Name())
-		}
-		err := p.Start(p.playlist.Items[0].Name(), time.Duration(0))
+		err = p.playlist.fromFolder(p.conf.Directory)
 		if err != nil {
-			log.Println("Error trying to start first item in playlist.\n", err)
-		} else {
-			p.playlist.Current = p.playlist.Items[0]
+			log.Println("Error trying to read files from directory.\n", err)
 		}
-	}
+
+		if len(p.playlist.Items) == 0 {
+			log.Println("No items in current directory.")
+		} else {
+			if p.api.debug {
+				log.Println("trying to start first item in playlist:", p.playlist.Items[0].Name())
+			}
+			err := p.Start(p.playlist.Items[0].Name(), time.Duration(0))
+			if err != nil {
+				log.Println("Error trying to start first item in playlist.\n", err)
+			} else {
+				p.playlist.Current = p.playlist.Items[0]
+			}
+		}
+	}()
 
 	log.Printf("Listening on port %s\n", *addr)
 	err = http.ListenAndServe(*addr, nil)
