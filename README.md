@@ -6,20 +6,11 @@ A simple remotely controlled video and image player for Raspberry Pi.
 The setup guide below is overly complicated and probably has many faults. It will be simplified in the future.
 
 ## Raspberry Pi OS Setup
-**OS: [Raspbian Stretch](https://www.raspberrypi.org/downloads/raspbian/) with desktop**
-
-We need the desktop version because it comes with a stable build of the Chromium Web Browser and it’s relevant dependencies. It’s easier to install this version of Raspbian and remove unwanted packages than to try and install and run Chromium in the Lite version of Raspbian.
-Based on [this setup guide](https://obrienlabs.net/setup-raspberry-pi-kiosk-chromium/), and [this one](https://fabianlee.org/2017/05/21/golang-running-a-go-binary-as-a-systemd-service-on-ubuntu-16-04/) too.
+**OS: [Raspbian Stretch Lite](https://www.raspberrypi.org/downloads/raspbian/)**
 
 ### Initial Setup:
-Uninstall unnecessary apps:
-```bash
-sudo apt remove --purge wolfram-engine scratch nuscratch sonic-pi idle3 smartsim penguinspuzzle java-common minecraft-pi python-minecraftpi python3-minecraftpi
-```
 Update OS: `sudo apt update && sudo apt upgrade -y`  
 Set relevant system settings with `sudo raspi-config`
-
-`Hostname Boot Options > Desktop/CLI > Console Autologin`
 
 Wait for network connection on boot to allow the Pi to automatically mount a network location before logging in  
 `Boot Options > Wait for Network at Boot > Yes`
@@ -27,11 +18,15 @@ Wait for network connection on boot to allow the Pi to automatically mount a net
 `Boot Options > Spash Screen > No`  
 `Localisation Options > A bunch of stuff here.`
 
+Install additional packages:
+`sudo apt install git vim chromium-browser libgtk-3-0 xorg`
+
 ### Setup network location mount on boot:
 Create a directory for the mount:
 `sudo mkdir /media/visuals`  
 Add the following entry to the `/etc/fstab` file (use tabs to separate each section):  
 `//host/path /media/visuals  cifs    username=user,password=pass,iocharset=utf8,sec=ntlm   0       0`
+**Note:** replace spaces with */040*
 Reboot the Pi: `sudo reboot`  
 Check that your folder is mounted at boot: `ls /media/visuals`
 
@@ -43,12 +38,12 @@ Take note of that mount service for later.
 
 [Install GO](https://golang.org/doc/install)  
 Get the pi-player project: `go get github.com/17xande/pi-player`
-Update the settings in the `config.json` file:
+Update the *location* and *directory* settings in the `config.json` file. Leave the remote options as they are:
 
 ```json
 {
   "location": "Foyer",
-  "directory": "/Volumes/visuals/foyer"
+  "directory": "/media/visuals/foyer"
 }
 ```
 
@@ -73,7 +68,7 @@ LimitNOFILE=1024
 
 Restart=on-failure
 RestartSec=10
-# There’s a but in the current implementation of systemd in the raspberry 
+# There’s a bug in the current implementation of systemd in the raspberry 
 # pi, so for now use StartLimitInterval instead of StartLimitIntervalSec
 #StartLimitIntervalSec=60
 StartLimitInterval=60
