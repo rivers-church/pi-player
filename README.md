@@ -179,7 +179,7 @@ Restart=on-failure
 RestartSec=10
 StartLimitInterval=60
 
-ExecStart=/usr/bin/X
+ExecStart=/usr/bin/X -nocursor
 # run unclutter with no delay to remove the cursor from the screen
 # for some reason this isn’t working so I’ve commented out for now.
 #ExecStartPre=/usr/bin/unclutter -idle 0
