@@ -117,6 +117,10 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 		}
 		p.command.Stderr = os.Stderr
 
+		if err := p.setBrowserBG(""); err != nil {
+			log.Println("Error trying to set browser background to black before player video:\n", err)
+		}
+
 		err := p.command.Start()
 		if err != nil {
 			return err
@@ -149,10 +153,16 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 			}
 		}
 
-		v := "background-image: url('/content/" + fileName + "')"
-		err = p.browser.cdp.Run(*p.browser.ctxt, cdp.SetAttributeValue("#container", "style", v, cdp.ByID))
-		// p.browser.cancel()
+		err = p.setBrowserBG(fileName)
 	}
+
+	return err
+}
+
+func (p *Player) setBrowserBG(url string) error {
+	v := "background-image: url('/content/" + url + "')"
+	err := p.browser.cdp.Run(*p.browser.ctxt, cdp.SetAttributeValue("#container", "style", v, cdp.ByID))
+	// p.browser.cancel()
 
 	return err
 }
