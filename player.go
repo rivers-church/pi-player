@@ -128,16 +128,16 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 			// Cmd.Wait() blocks till the process is finished
 			err := p.command.Wait()
 			p.running = false
-			if p.quitting {
+			if p.quitting && p.quit != nil {
 				p.quit <- err
 				close(p.quit)
-				p.quitting = false
 			} else { // if the process was not quit midway, and ended naturally, go to the next item.
 				err := p.next()
 				if err != nil {
 					log.Printf("Error trying to go to next item after current item finished: %v\n", err)
 				}
 			}
+			p.quitting = false
 		}()
 	} else if ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".html" {
 		if !p.browser.running {
@@ -247,13 +247,15 @@ func (p *Player) SendCommand(command string) error {
 	if p.api.debug {
 		fmt.Println("cmd:", cmd)
 	}
-	if p.api.test == "" {
-		b := []byte(cmd)
-		if cmd == "q" {
-			p.quitting = true
-		}
-		_, err = p.pipeIn.Write(b)
+	if p.api.test == "mac" {
+		return nil
 	}
+
+	b := []byte(cmd)
+	if cmd == "q" {
+		p.quitting = true
+	}
+	_, err = p.pipeIn.Write(b)
 
 	if err != nil {
 		err = fmt.Errorf("sendCommand: %v", err)
@@ -571,7 +573,7 @@ func (p *Player) remoteListen(device *evdev.InputDevice) {
 
 			// don't send the command if we're only testing. This will only work on the Pi's
 			if p.api.test != "" {
-				log.Println("only testing, nothing was actuall sent.")
+				log.Println("only testing, nothing was actually sent.")
 				continue
 			}
 

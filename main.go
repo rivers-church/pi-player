@@ -164,7 +164,7 @@ func (a *apiHandler) handle(p *Player) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		// handle POST requests
+		// ignore anything that's not a POST request
 		if r.Method != "POST" {
 			m := &resMessage{Success: false, Message: "Invalid request method: " + r.Method}
 			log.Println(m.Message)
@@ -172,7 +172,7 @@ func (a *apiHandler) handle(p *Player) http.HandlerFunc {
 			return
 		}
 
-		// handle only application/json requests
+		// ignore anything that's not a application/json request
 		ct := r.Header.Get("Content-Type")
 		if ct != "application/json" {
 			m := &resMessage{Success: false, Message: "Invalid Content-Type: " + ct}
