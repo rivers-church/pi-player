@@ -128,16 +128,18 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 			// Cmd.Wait() blocks till the process is finished
 			err := p.command.Wait()
 			p.running = false
-			if p.quitting && p.quit != nil {
-				p.quit <- err
-				close(p.quit)
+			if p.quitting {
+				if p.quit != nil {
+					p.quit <- err
+					close(p.quit)
+				}
+				p.quitting = false
 			} else { // if the process was not quit midway, and ended naturally, go to the next item.
 				err := p.next()
 				if err != nil {
 					log.Printf("Error trying to go to next item after current item finished: %v\n", err)
 				}
 			}
-			p.quitting = false
 		}()
 	} else if ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".html" {
 		if !p.browser.running {
