@@ -233,6 +233,11 @@ func (p *Player) startBrowser() error {
 
 // SendCommand sends a command to the omxplayer process
 func (p *Player) SendCommand(command string) error {
+	if !p.running {
+		// ignore the input because no process is running
+		return nil
+	}
+
 	cmd, ok := commandList[command]
 	if !ok {
 		return errors.New("Command not found: " + command)
