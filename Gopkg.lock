@@ -3,6 +3,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/17xande/keylogger"
+  packages = ["."]
+  revision = "6f2da3d4687949dd16585c9d2246cffeb6e10ad5"
+
+[[projects]]
+  branch = "master"
   name = "github.com/chromedp/cdproto"
   packages = [
     ".",
@@ -71,12 +77,6 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/gvalkov/golang-evdev"
-  packages = ["."]
-  revision = "87c03aa1a370124ec5a5fac733a629e0f9acd9a6"
-
-[[projects]]
-  branch = "master"
   name = "github.com/knq/chromedp"
   packages = ["."]
   revision = "46a6388474e20ef92c34290f62602e9fa18c9e95"
@@ -117,6 +117,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a23c66f48872f331fae68df4522bed8e38a9abddd0620b89a13744fe55fbfa01"
+  inputs-digest = "e9da87592cdf335610fe3df4940166faaae75924e7af4b54fec377da6d7c7cd5"
   solver-name = "gps-cdcl"
   solver-version = 1

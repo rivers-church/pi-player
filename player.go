@@ -15,24 +15,24 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/17xande/keylogger"
 	"github.com/gorilla/websocket"
-	"github.com/gvalkov/golang-evdev"
 	cdp "github.com/knq/chromedp"
 )
 
 // Player is the object that renders images to the screen through omxplayer or chromium-browser
 type Player struct {
-	api      *apiHandler
-	command  *exec.Cmd
-	pipeIn   io.WriteCloser
-	playlist playlist
-	conf     config
-	control  controller
-	running  bool
-	quitting bool
-	quit     chan error
-	browser  Browser
-	remotes  []*evdev.InputDevice
+	api       *apiHandler
+	command   *exec.Cmd
+	pipeIn    io.WriteCloser
+	playlist  playlist
+	conf      config
+	control   controller
+	running   bool
+	quitting  bool
+	quit      chan error
+	browser   Browser
+	keylogger *keylogger.KeyLogger
 }
 
 // Browser represents the chromium-browser process that is used to display web pages and still images to the screen
@@ -73,6 +73,22 @@ var commandList = map[string]string{
 	"seekForward30":   "\x1b[C",
 	"seekBack600":     "\x1b[B",
 	"seekForward600":  "\x1b[A",
+}
+
+var remoteCommands = map[string]string{
+	"KEY_HOME":         "",
+	"KEY_INFO":         "",
+	"KEY_UP":           "",
+	"KEY_DOWN":         "",
+	"KEY_LEFT":         "",
+	"KEY_RIGHT":        "",
+	"KEY_ENTER":        "",
+	"KEY_BACK":         "",
+	"KEY_CONTEXT_MENU": "",
+	"KEY_PLAYPAUSE":    "pauseResume",
+	"KEY_STOP":         "quit",
+	"KEY_REWIND":       "seekBack30",
+	"KEY_FASTFORWARD":  "seekForward30",
 }
 
 // Start the file that will be played to the screen, it decides which underlying program to use
@@ -512,90 +528,56 @@ func (c *controller) read() {
 	}
 }
 
-func (p *Player) remoteListen(device *evdev.InputDevice) {
-	errCount := 0
-	commands := map[string]string{
-		"KEY_HOME":         "",
-		"KEY_INFO":         "",
-		"KEY_UP":           "",
-		"KEY_DOWN":         "",
-		"KEY_LEFT":         "",
-		"KEY_RIGHT":        "",
-		"KEY_ENTER":        "",
-		"KEY_BACK":         "",
-		"KEY_CONTEXT_MENU": "",
-		"KEY_PLAYPAUSE":    "pauseResume",
-		"KEY_STOP":         "quit",
-		"KEY_REWIND":       "seekBack30",
-		"KEY_FASTFORWARD":  "seekForward30",
-	}
+func (p *Player) remoteListen(ie keylogger.InputEvent) {
 	directions := []string{"UP", "DOWN", "HOLD"}
 
-	for {
-		events, err := device.Read()
+	// ignore events that are not EV_KEY events that are KEY_DOWN presses
+	if ie.Type != keylogger.EventTypes["EV_KEY"] || directions[ie.Value] != "DOWN" {
+		return
+	}
+
+	key := ie.KeyString()
+
+	if p.api.debug {
+		log.Println("Key:", key, directions[ie.Value])
+	}
+
+	if key == "KEY_LEFT" {
+		err := p.previous()
 		if err != nil {
-			log.Println("Error trying to read device event:", err)
-			errCount++
-			if errCount > 10 {
-				log.Println("Too many errors trying to read the device, breaking out")
-				break
-			}
+			log.Println("Error trying to go to previous item from remote.\n", err)
 		}
-		for _, event := range events {
-			code := int(event.Code)
+		return
+	}
 
-			// ignore any events that are not key presses
-			if event.Type != evdev.EV_KEY {
-				continue
-			}
-
-			value, ok := evdev.KEY[code]
-			// ignore UP and HOLD
-			if !ok || directions[event.Value] != "DOWN" {
-				continue
-			}
-			if p.api.debug {
-				log.Println("Key:", value, directions[event.Value])
-			}
-
-			if value == "KEY_LEFT" {
-				err := p.previous()
-				if err != nil {
-					log.Println("Error trying to go to previous item from remote.\n", err)
-				}
-				continue
-			}
-
-			if value == "KEY_RIGHT" {
-				err := p.next()
-				if err != nil {
-					log.Println("Error trying to go to next item from remote.\n", err)
-				}
-				continue
-			}
-
-			c, ok := commands[value]
-			// ignore empty commands, they are not supported yet
-			if !ok || c == "" {
-				continue
-			}
-			if p.api.debug {
-				log.Println("command used:", c)
-			}
-
-			// don't send the command if we're only testing. This will only work on the Pi's
-			if p.api.test != "" {
-				log.Println("only testing, nothing was actually sent.")
-				continue
-			}
-
-			if p.api.debug {
-				log.Println("not testing, sending command...")
-			}
-			err := p.SendCommand(c)
-			if err != nil {
-				log.Println("Error sending command from remote event:", err)
-			}
+	if key == "KEY_RIGHT" {
+		err := p.next()
+		if err != nil {
+			log.Println("Error trying to go to next item from remote.\n", err)
 		}
+		return
+	}
+
+	c, ok := remoteCommands[key]
+	// ignore empty commands, they are not supported yet
+	if !ok || c == "" {
+		return
+	}
+	if p.api.debug {
+		log.Println("command used:", c)
+	}
+
+	// don't send the command if we're only testing. This will only work on the Pi's
+	if p.api.test != "" {
+		log.Println("only testing, nothing was actually sent.")
+		return
+	}
+
+	if p.api.debug {
+		log.Println("not testing, sending command...")
+	}
+	err := p.SendCommand(c)
+	if err != nil {
+		log.Println("Error sending command from remote event:", err)
 	}
 }

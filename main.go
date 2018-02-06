@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	evdev "github.com/gvalkov/golang-evdev"
+	"github.com/17xande/keylogger"
 )
 
 func main() {
@@ -44,14 +44,8 @@ func main() {
 	a := apiHandler{debug: *debug, test: *test}
 	p := Player{api: &a, conf: conf}
 
-	if remotes, err := getRemotes(conf); err != nil {
-		log.Println("Error trying to get remotes.\n", err)
-	} else {
-		for _, remote := range remotes {
-			go p.remoteListen(remote)
-		}
-		p.remotes = remotes
-	}
+	p.keylogger = keylogger.NewKeyLogger(conf.Remote.Name)
+	p.keylogger.Read(p.remoteListen)
 
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("./assets"))))
 	http.Handle("/content/", http.StripPrefix("/content/", http.FileServer(http.Dir(conf.Directory))))
@@ -60,7 +54,6 @@ func main() {
 	http.HandleFunc("/control/ws", p.control.handlerWebsocket)
 	http.HandleFunc("/api", a.handle(&p))
 	http.HandleFunc("/", handlerHome)
-	// http.HandleFunc("/command", handlerCommand(&p))
 
 	// Start the browser
 	// We have to start it async because the code has
@@ -220,20 +213,4 @@ func (a *apiHandler) handle(p *Player) http.HandlerFunc {
 			log.Println(m.Message)
 		}
 	}
-}
-
-func getRemotes(conf config) ([]*evdev.InputDevice, error) {
-	var devices []*evdev.InputDevice
-	d, err := evdev.ListInputDevices("/dev/input/event*")
-	if err != nil {
-		return nil, err
-	}
-
-	// only listen to the devices specified in the config file
-	for _, device := range d {
-		if device.Name == conf.Remote.Name {
-			devices = append(devices, device)
-		}
-	}
-	return devices, nil
 }
