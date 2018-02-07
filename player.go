@@ -128,14 +128,20 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 			return err
 		}
 
+		if err := p.setBrowserBG(""); err != nil {
+			log.Println("Error trying to set browser background to black before player video:\n", err)
+		}
+
+		if p.api.test == "mac" {
+			p.command = exec.Command("qlmanage", "-p", path.Join(p.conf.Directory, fileName))
+		} else if p.api.test == "linux" {
+			p.command = exec.Command("xdg-open", path.Join(p.conf.Directory, fileName))
+		}
+
 		if p.api.debug {
 			p.command.Stdout = os.Stdout
 		}
 		p.command.Stderr = os.Stderr
-
-		if err := p.setBrowserBG(""); err != nil {
-			log.Println("Error trying to set browser background to black before player video:\n", err)
-		}
 
 		err := p.command.Start()
 		if err != nil {
@@ -210,6 +216,14 @@ func (p *Player) startBrowser() error {
 		}
 
 		browser = "google-chrome"
+	} else if p.api.test == "mac" {
+		flags = []string{
+			"--incognito",
+			"--remote-debugging-port=9222",
+			"http://localhost:8080/viewer",
+		}
+
+		browser = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 	}
 
 	p.browser.command = exec.Command(browser, flags...)

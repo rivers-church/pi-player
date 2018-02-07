@@ -59,6 +59,10 @@ func main() {
 	// We have to start it async because the code has
 	// to carry on, so that the server comes online.
 	go func() {
+		if p.api.debug {
+			log.Println("Starting browser on first run...")
+		}
+
 		if err := p.startBrowser(); err != nil {
 			log.Println("Error trying to start the browser:\n", err)
 			p.browser.running = false
@@ -80,6 +84,10 @@ func main() {
 				log.Println("Error trying to start first item in playlist.\n", err)
 			} else {
 				p.playlist.Current = p.playlist.Items[0]
+			}
+
+			if p.api.debug {
+				log.Println("first item should have started successfuly.")
 			}
 		}
 	}()
@@ -143,6 +151,11 @@ func handlerHome(w http.ResponseWriter, r *http.Request) {
 	}
 
 	t := templateHandler{filename: "index.html"}
+	t.ServeHTTP(w, r)
+}
+
+func handlerSettings(w http.ResponseWriter, r *http.Request) {
+	t := templateHandler{filename: "settings.html"}
 	t.ServeHTTP(w, r)
 }
 
