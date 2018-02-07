@@ -25,15 +25,9 @@ func main() {
 		log.Println("Debug mode enabled")
 	}
 
-	data, err := ioutil.ReadFile("config.json")
-	if err != nil {
-		log.Fatal("Error reading config file: ", err)
-	}
-
 	var conf config
-	err = json.Unmarshal(data, &conf)
-	if err != nil {
-		log.Fatal("Error unmarshalling config file: ", err)
+	if err := conf.load(""); err != nil {
+		log.Fatal("Error loading config.", err)
 	}
 
 	if *debug {
@@ -50,6 +44,7 @@ func main() {
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("./assets"))))
 	http.Handle("/content/", http.StripPrefix("/content/", http.FileServer(http.Dir(conf.Directory))))
 	http.HandleFunc("/control", p.handleControl)
+	http.HandleFunc("/settings", p.handleSettings)
 	http.HandleFunc("/viewer", p.handleViewer)
 	http.HandleFunc("/control/ws", p.control.handlerWebsocket)
 	http.HandleFunc("/api", a.handle(&p))
@@ -68,7 +63,7 @@ func main() {
 			p.browser.running = false
 		}
 
-		err = p.playlist.fromFolder(p.conf.Directory)
+		err := p.playlist.fromFolder(p.conf.Directory)
 		if err != nil {
 			log.Println("Error trying to read files from directory.\n", err)
 		}
@@ -93,7 +88,7 @@ func main() {
 	}()
 
 	log.Printf("Listening on port %s\n", *addr)
-	err = http.ListenAndServe(*addr, nil)
+	err := http.ListenAndServe(*addr, nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
@@ -117,6 +112,32 @@ type templateHandler struct {
 	filename string
 	templ    *template.Template
 	data     map[string]interface{}
+}
+
+func (conf *config) load(path string) error {
+	if path == "" {
+		path = "config.json"
+	}
+
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	return json.Unmarshal(data, &conf)
+}
+
+func (conf *config) save(path string) error {
+	if path == "" {
+		path = "config.json"
+	}
+
+	jconf, err := json.MarshalIndent(conf, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(path, jconf, 0600)
 }
 
 // ServeHTTP handles HTTP requests for the templates
@@ -151,11 +172,6 @@ func handlerHome(w http.ResponseWriter, r *http.Request) {
 	}
 
 	t := templateHandler{filename: "index.html"}
-	t.ServeHTTP(w, r)
-}
-
-func handlerSettings(w http.ResponseWriter, r *http.Request) {
-	t := templateHandler{filename: "settings.html"}
 	t.ServeHTTP(w, r)
 }
 

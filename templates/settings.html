@@ -12,12 +12,13 @@
 <body>
   <div class="container">
     <div id="divSettings">
-      <h1>{{.location}} Setings</h1>
-      <form action="" id="frmSettings">
+      <h1>{{.location}} Settings</h1>
+      <form action="/settings" method="POST" id="frmSettings">
         <label for="txtLocation">Location</label>
-        <input type="text" id="txtLocation" value="{{.location}}">
+        <input type="text" id="txtLocation" name="location" value="{{.location}}">
         <label for="txtDirectory">Directory</label>
-        <input type="text" id="txtDirectory" value="{{.directory}}">
+        <input type="text" id="txtDirectory" name="directory" value="{{.directory}}">
+        <button type="submit">Save</button>
       </form>
     </div>
   </div>

@@ -455,6 +455,48 @@ func (p *Player) handleControl(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (p *Player) handleSettings(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+
+		tempControl := templateHandler{
+			filename: "settings.html",
+			data: map[string]interface{}{
+				"location":  p.conf.Location,
+				"directory": p.conf.Directory,
+			},
+		}
+		tempControl.ServeHTTP(w, r)
+		return
+	} else if r.Method != "POST" {
+		log.Println("Unsuported request type for Settings page:", r.Method)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		log.Println("Error trying to parse form in settings page.\n", err)
+	}
+	location := r.PostFormValue("location")
+	directory := r.PostFormValue("directory")
+
+	if p.api.debug {
+		log.Printf("Received settings post: location: %s, directory: %s\n", location, directory)
+	}
+
+	if directory != "" {
+		p.conf.Directory = directory
+	}
+
+	if location != "" {
+		p.conf.Location = location
+	}
+
+	if err := p.conf.save(""); err != nil {
+		log.Println("error trying to save config:", err)
+	}
+
+	http.Redirect(w, r, "/control", http.StatusSeeOther)
+}
+
 func (p *Player) handleViewer(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
