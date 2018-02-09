@@ -1,4 +1,4 @@
-package main
+package piPlayer
 
 import (
 	"context"
@@ -12,7 +12,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"path/filepath"
 	"time"
 
 	"github.com/17xande/keylogger"
@@ -22,11 +21,11 @@ import (
 
 // Player is the object that renders images to the screen through omxplayer or chromium-browser
 type Player struct {
-	api       *apiHandler
+	api       *APIHandler
 	command   *exec.Cmd
 	pipeIn    io.WriteCloser
 	playlist  playlist
-	conf      config
+	conf      Config
 	control   controller
 	running   bool
 	quitting  bool
@@ -89,6 +88,48 @@ var remoteCommands = map[string]string{
 	"KEY_STOP":         "quit",
 	"KEY_REWIND":       "seekBack30",
 	"KEY_FASTFORWARD":  "seekForward30",
+}
+
+// NewPlayer creates a new Player
+func NewPlayer(api *APIHandler, conf Config, keylogger *keylogger.KeyLogger) Player {
+	p := Player{api: api, conf: conf, keylogger: keylogger}
+	keylogger.Read(p.remoteListen)
+	return p
+}
+
+// FirstRun starts the browser on a black screen and gets things going
+func (p *Player) FirstRun() {
+	if p.api.debug {
+		log.Println("Starting browser on first run...")
+	}
+
+	if err := p.startBrowser(); err != nil {
+		log.Println("Error trying to start the browser:\n", err)
+		p.browser.running = false
+	}
+
+	err := p.playlist.fromFolder(p.conf.Directory)
+	if err != nil {
+		log.Println("Error trying to read files from directory.\n", err)
+	}
+
+	if len(p.playlist.Items) == 0 {
+		log.Println("No items in current directory.")
+	} else {
+		if p.api.debug {
+			log.Println("trying to start first item in playlist:", p.playlist.Items[0].Name())
+		}
+		err := p.Start(p.playlist.Items[0].Name(), time.Duration(0))
+		if err != nil {
+			log.Println("Error trying to start first item in playlist.\n", err)
+		} else {
+			p.playlist.Current = p.playlist.Items[0]
+		}
+
+		if p.api.debug {
+			log.Println("first item should have started successfuly.")
+		}
+	}
 }
 
 // Start the file that will be played to the screen, it decides which underlying program to use
@@ -417,8 +458,8 @@ func (p *Player) ServeHTTP(w http.ResponseWriter, h *http.Request) {
 	return
 }
 
-// Scan the folder for new files every time the page reloads
-func (p *Player) handleControl(w http.ResponseWriter, r *http.Request) {
+// HandleControl Scan the folder for new files every time the page reloads and display contents
+func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 	err := p.playlist.fromFolder(p.conf.Directory)
 
 	if err != nil {
@@ -431,7 +472,7 @@ func (p *Player) handleControl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tempControl := templateHandler{
+	tempControl := TemplateHandler{
 		filename: "control.html",
 		data: map[string]interface{}{
 			"location":  p.conf.Location,
@@ -447,18 +488,14 @@ func (p *Player) handleControl(w http.ResponseWriter, r *http.Request) {
 			log.Println(file.Name())
 		}
 	}
-	tempControl.templ = template.Must(template.ParseFiles(filepath.Join("templates", tempControl.filename)))
-
-	err = tempControl.templ.Execute(w, tempControl.data)
-	if err != nil {
-		log.Println("Error rendering control page: ", err)
-	}
+	tempControl.ServeHTTP(w, r)
 }
 
-func (p *Player) handleSettings(w http.ResponseWriter, r *http.Request) {
+// HandleSettings handles requests to the settings page
+func (p *Player) HandleSettings(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 
-		tempControl := templateHandler{
+		tempControl := TemplateHandler{
 			filename: "settings.html",
 			data: map[string]interface{}{
 				"location":  p.conf.Location,
@@ -490,17 +527,18 @@ func (p *Player) handleSettings(w http.ResponseWriter, r *http.Request) {
 		p.conf.Location = location
 	}
 
-	if err := p.conf.save(""); err != nil {
+	if err := p.conf.Save(""); err != nil {
 		log.Println("error trying to save config:", err)
 	}
 
 	http.Redirect(w, r, "/control", http.StatusSeeOther)
 }
 
-func (p *Player) handleViewer(w http.ResponseWriter, r *http.Request) {
+// HandleViewer handles requests to the image viewer page
+func (p *Player) HandleViewer(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
-	th := templateHandler{
+	th := TemplateHandler{
 		filename: "viewer.html",
 		data: map[string]interface{}{
 			"img": "/content/" + q.Get("img"),

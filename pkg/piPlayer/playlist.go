@@ -1,4 +1,4 @@
-package main
+package piPlayer
 
 import (
 	"encoding/json"
@@ -17,7 +17,7 @@ type playlist struct {
 }
 
 // Handles requests to the playlist api
-func (p *playlist) handleAPI(api *apiHandler, w http.ResponseWriter, h *http.Request) {
+func (p *playlist) handleAPI(api *APIHandler, w http.ResponseWriter, h *http.Request) {
 	var m *resMessage
 	if api.message.Method == "getCurrent" {
 		if p.Current != nil {

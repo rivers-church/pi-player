@@ -1,4 +1,4 @@
-package main
+package piPlayer
 
 // reqMessage defines structure of request messages for json api
 type reqMessage struct {
