@@ -91,10 +91,22 @@ var remoteCommands = map[string]string{
 }
 
 // NewPlayer creates a new Player
-func NewPlayer(api *APIHandler, conf Config, keylogger *keylogger.KeyLogger) Player {
+func NewPlayer(api *APIHandler, conf Config, keylogger *keylogger.KeyLogger) *Player {
 	p := Player{api: api, conf: conf, keylogger: keylogger}
-	keylogger.Read(p.remoteListen)
-	return p
+	if api.debug {
+		log.Println("initializing remote")
+	}
+
+	chans, err := keylogger.Read()
+	if err != nil {
+		log.Println("error trying to read the remote files: ", err)
+	}
+
+	for _, ie := range chans {
+		go p.remoteRead(ie)
+	}
+
+	return &p
 }
 
 // FirstRun starts the browser on a black screen and gets things going
@@ -115,21 +127,22 @@ func (p *Player) FirstRun() {
 
 	if len(p.playlist.Items) == 0 {
 		log.Println("No items in current directory.")
-	} else {
-		if p.api.debug {
-			log.Println("trying to start first item in playlist:", p.playlist.Items[0].Name())
-		}
-		err := p.Start(p.playlist.Items[0].Name(), time.Duration(0))
-		if err != nil {
-			log.Println("Error trying to start first item in playlist.\n", err)
-		} else {
-			p.playlist.Current = p.playlist.Items[0]
-		}
-
-		if p.api.debug {
-			log.Println("first item should have started successfuly.")
-		}
+		return
 	}
+
+	if p.api.debug {
+		log.Println("trying to start first item in playlist:", p.playlist.Items[0].Name())
+	}
+	if err := p.Start(p.playlist.Items[0].Name(), time.Duration(0)); err != nil {
+		log.Println("Error trying to start first item in playlist.\n", err)
+		return
+	}
+	p.playlist.Current = p.playlist.Items[0]
+
+	if p.api.debug {
+		log.Println("first item should have started successfuly.")
+	}
+
 }
 
 // Start the file that will be played to the screen, it decides which underlying program to use
@@ -299,7 +312,12 @@ func (p *Player) startBrowser() error {
 	if p.api.debug {
 		log.Println("taking a little nap to allow chrome to start nicely")
 	}
-	time.Sleep(7 * time.Second)
+
+	if p.api.test == "linux" {
+		time.Sleep(15 * time.Second)
+	} else {
+		time.Sleep(7 * time.Second)
+	}
 
 	if p.api.debug {
 		p.browser.cdp, err = cdp.New(ctxt, cdp.WithLog(log.Printf))
@@ -550,8 +568,16 @@ func (p *Player) HandleViewer(w http.ResponseWriter, r *http.Request) {
 
 // next starts the next item in the playlist
 func (p *Player) next() error {
-	n := p.playlist.getNext()
-	err := p.Start(n.Name(), time.Duration(0))
+	n, err := p.playlist.getNext()
+	if err != nil {
+		return errors.New("can't go to next item:\n" + err.Error())
+	}
+
+	if p.api.debug {
+		log.Println("going to next item: ", n.Name())
+	}
+
+	err = p.Start(n.Name(), time.Duration(0))
 
 	if err == nil {
 		p.playlist.Current = n
@@ -561,8 +587,16 @@ func (p *Player) next() error {
 }
 
 func (p *Player) previous() error {
-	n := p.playlist.getPrevious()
-	err := p.Start(n.Name(), time.Duration(0))
+	n, err := p.playlist.getPrevious()
+	if err != nil {
+		return errors.New("can't go to previous item:\n" + err.Error())
+	}
+
+	if p.api.debug {
+		log.Println("going to previous item: ", n.Name())
+	}
+
+	err = p.Start(n.Name(), time.Duration(0))
 
 	if err == nil {
 		p.playlist.Current = n
@@ -622,56 +656,64 @@ func (c *controller) read() {
 	}
 }
 
-func (p *Player) remoteListen(ie keylogger.InputEvent) {
+func (p *Player) remoteRead(cie chan keylogger.InputEvent) {
 	directions := []string{"UP", "DOWN", "HOLD"}
-
-	// ignore events that are not EV_KEY events that are KEY_DOWN presses
-	if ie.Type != keylogger.EventTypes["EV_KEY"] || directions[ie.Value] != "DOWN" {
-		return
-	}
-
-	key := ie.KeyString()
+	var ie keylogger.InputEvent
 
 	if p.api.debug {
-		log.Println("Key:", key, directions[ie.Value])
+		log.Println("starting remote read for this device")
 	}
 
-	if key == "KEY_LEFT" {
-		err := p.previous()
-		if err != nil {
-			log.Println("Error trying to go to previous item from remote.\n", err)
+	for {
+		ie = <-cie
+		// ignore events that are not EV_KEY events that are KEY_DOWN presses
+		if ie.Type != keylogger.EventTypes["EV_KEY"] || directions[ie.Value] != "DOWN" {
+			continue
 		}
-		return
-	}
 
-	if key == "KEY_RIGHT" {
-		err := p.next()
-		if err != nil {
-			log.Println("Error trying to go to next item from remote.\n", err)
+		key := ie.KeyString()
+
+		if p.api.debug {
+			log.Println("Key:", key, directions[ie.Value])
 		}
-		return
-	}
 
-	c, ok := remoteCommands[key]
-	// ignore empty commands, they are not supported yet
-	if !ok || c == "" {
-		return
-	}
-	if p.api.debug {
-		log.Println("command used:", c)
-	}
+		if key == "KEY_LEFT" {
+			err := p.previous()
+			if err != nil {
+				log.Println("Error trying to go to previous item from remote.\n", err)
+			}
+			continue
+		}
 
-	// don't send the command if we're only testing. This will only work on the Pi's
-	if p.api.test != "" {
-		log.Println("only testing, nothing was actually sent.")
-		return
-	}
+		if key == "KEY_RIGHT" {
+			err := p.next()
+			if err != nil {
+				log.Println("Error trying to go to next item from remote.\n", err)
+			}
+			continue
+		}
 
-	if p.api.debug {
-		log.Println("not testing, sending command...")
-	}
-	err := p.SendCommand(c)
-	if err != nil {
-		log.Println("Error sending command from remote event:", err)
+		c, ok := remoteCommands[key]
+		// ignore empty commands, they are not supported yet
+		if !ok || c == "" {
+			continue
+		}
+		if p.api.debug {
+			log.Println("command used:", c)
+		}
+
+		// don't send the command if we're only testing. This will only work on the Pi's
+		if p.api.test != "" {
+			log.Println("only testing, nothing was actually sent.")
+			continue
+		}
+
+		if p.api.debug {
+			log.Println("not testing, sending command...")
+		}
+		err := p.SendCommand(c)
+		if err != nil {
+			log.Println("Error sending command from remote event:", err)
+		}
 	}
 }

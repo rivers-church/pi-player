@@ -5,7 +5,7 @@
   branch = "master"
   name = "github.com/17xande/keylogger"
   packages = ["."]
-  revision = "6f2da3d4687949dd16585c9d2246cffeb6e10ad5"
+  revision = "6b55ef64dc9b45f20515b23d89a072226924d41a"
 
 [[projects]]
   branch = "master"
@@ -51,7 +51,7 @@
     "tethering",
     "tracing"
   ]
-  revision = "d22461ed177955db5fe09cf532385b4125a659ea"
+  revision = "f100dc013e8818dcb609fa058c3a6dae6d1310d0"
 
 [[projects]]
   branch = "master"

@@ -77,28 +77,36 @@ func (p *playlist) getIndex(fileName string) int {
 	return -1
 }
 
-func (p *playlist) getNext() os.FileInfo {
+func (p *playlist) getNext() (os.FileInfo, error) {
+	if p.Current == nil {
+		return nil, errors.New("no current item, can't get next")
+	}
+
 	i := p.getIndex(p.Current.Name())
 	if i == -1 {
-		return nil
+		return nil, errors.New("can't find index of this item: " + p.Current.Name())
 	}
 	if i+1 > len(p.Items)-1 {
-		return p.Items[0]
+		return p.Items[0], nil
 	}
 
-	return p.Items[i+1]
+	return p.Items[i+1], nil
 }
 
-func (p *playlist) getPrevious() os.FileInfo {
-	i := p.getIndex(p.Current.Name())
-	if i == -1 {
-		return nil
-	}
-	if i-1 < 0 {
-		return p.Items[len(p.Items)-1]
+func (p *playlist) getPrevious() (os.FileInfo, error) {
+	if p.Current == nil {
+		return nil, errors.New("no current item, can't get previous")
 	}
 
-	return p.Items[i-1]
+	i := p.getIndex(p.Current.Name())
+	if i == -1 {
+		return nil, errors.New("can't find index of this item: " + p.Current.Name())
+	}
+	if i-1 < 0 {
+		return p.Items[len(p.Items)-1], nil
+	}
+
+	return p.Items[i-1], nil
 }
 
 func (p *playlist) itemNames() []string {

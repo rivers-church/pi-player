@@ -26,7 +26,6 @@ func main() {
 
 	if *debug {
 		log.Println("Config file -> Directory: ", conf)
-		log.Println("initializing remote")
 	}
 
 	a := piplayer.NewAPIHandler(debug, test)
@@ -39,7 +38,7 @@ func main() {
 	http.HandleFunc("/settings", p.HandleSettings)
 	http.HandleFunc("/viewer", p.HandleViewer)
 	// http.HandleFunc("/control/ws", p.control.handlerWebsocket)
-	http.HandleFunc("/api", a.Handle(&p))
+	http.HandleFunc("/api", a.Handle(p))
 	http.HandleFunc("/", handlerHome)
 
 	// Start the browser

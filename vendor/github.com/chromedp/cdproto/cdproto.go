@@ -165,6 +165,7 @@ const (
 	CommandDOMSetNodeValue                                 = dom.CommandSetNodeValue
 	CommandDOMSetOuterHTML                                 = dom.CommandSetOuterHTML
 	CommandDOMUndo                                         = dom.CommandUndo
+	CommandDOMGetFrameOwner                                = dom.CommandGetFrameOwner
 	EventDOMAttributeModified                              = "DOM.attributeModified"
 	EventDOMAttributeRemoved                               = "DOM.attributeRemoved"
 	EventDOMCharacterDataModified                          = "DOM.characterDataModified"
@@ -302,6 +303,7 @@ const (
 	CommandInspectorEnable                                 = inspector.CommandEnable
 	EventInspectorDetached                                 = "Inspector.detached"
 	EventInspectorTargetCrashed                            = "Inspector.targetCrashed"
+	EventInspectorTargetReloadedAfterCrash                 = "Inspector.targetReloadedAfterCrash"
 	CommandLayerTreeCompositingReasons                     = layertree.CommandCompositingReasons
 	CommandLayerTreeDisable                                = layertree.CommandDisable
 	CommandLayerTreeEnable                                 = layertree.CommandEnable
@@ -323,6 +325,10 @@ const (
 	CommandMemoryPrepareForLeakDetection                   = memory.CommandPrepareForLeakDetection
 	CommandMemorySetPressureNotificationsSuppressed        = memory.CommandSetPressureNotificationsSuppressed
 	CommandMemorySimulatePressureNotification              = memory.CommandSimulatePressureNotification
+	CommandMemoryStartSampling                             = memory.CommandStartSampling
+	CommandMemoryStopSampling                              = memory.CommandStopSampling
+	CommandMemoryGetAllTimeSamplingProfile                 = memory.CommandGetAllTimeSamplingProfile
+	CommandMemoryGetSamplingProfile                        = memory.CommandGetSamplingProfile
 	CommandNetworkClearBrowserCache                        = network.CommandClearBrowserCache
 	CommandNetworkClearBrowserCookies                      = network.CommandClearBrowserCookies
 	CommandNetworkContinueInterceptedRequest               = network.CommandContinueInterceptedRequest
@@ -509,7 +515,6 @@ const (
 	CommandTargetGetTargetInfo                             = target.CommandGetTargetInfo
 	CommandTargetGetTargets                                = target.CommandGetTargets
 	CommandTargetSendMessageToTarget                       = target.CommandSendMessageToTarget
-	CommandTargetSetAttachToFrames                         = target.CommandSetAttachToFrames
 	CommandTargetSetAutoAttach                             = target.CommandSetAutoAttach
 	CommandTargetSetDiscoverTargets                        = target.CommandSetDiscoverTargets
 	CommandTargetSetRemoteLocations                        = target.CommandSetRemoteLocations
@@ -848,6 +853,9 @@ func UnmarshalMessage(msg *Message) (interface{}, error) {
 
 	case CommandDOMUndo:
 		return emptyVal, nil
+
+	case CommandDOMGetFrameOwner:
+		v = new(dom.GetFrameOwnerReturns)
 
 	case EventDOMAttributeModified:
 		v = new(dom.EventAttributeModified)
@@ -1260,6 +1268,9 @@ func UnmarshalMessage(msg *Message) (interface{}, error) {
 	case EventInspectorTargetCrashed:
 		v = new(inspector.EventTargetCrashed)
 
+	case EventInspectorTargetReloadedAfterCrash:
+		v = new(inspector.EventTargetReloadedAfterCrash)
+
 	case CommandLayerTreeCompositingReasons:
 		v = new(layertree.CompositingReasonsReturns)
 
@@ -1322,6 +1333,18 @@ func UnmarshalMessage(msg *Message) (interface{}, error) {
 
 	case CommandMemorySimulatePressureNotification:
 		return emptyVal, nil
+
+	case CommandMemoryStartSampling:
+		return emptyVal, nil
+
+	case CommandMemoryStopSampling:
+		return emptyVal, nil
+
+	case CommandMemoryGetAllTimeSamplingProfile:
+		v = new(memory.GetAllTimeSamplingProfileReturns)
+
+	case CommandMemoryGetSamplingProfile:
+		v = new(memory.GetSamplingProfileReturns)
 
 	case CommandNetworkClearBrowserCache:
 		return emptyVal, nil
@@ -1879,9 +1902,6 @@ func UnmarshalMessage(msg *Message) (interface{}, error) {
 		v = new(target.GetTargetsReturns)
 
 	case CommandTargetSendMessageToTarget:
-		return emptyVal, nil
-
-	case CommandTargetSetAttachToFrames:
 		return emptyVal, nil
 
 	case CommandTargetSetAutoAttach:
