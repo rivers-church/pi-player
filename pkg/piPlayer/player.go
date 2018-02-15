@@ -172,7 +172,7 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 	}
 
 	if ext == ".mp4" {
-		p.command = exec.Command("omxplayer", "-b", "-l", pos, path.Join(p.conf.Directory, fileName))
+		p.command = exec.Command("omxplayer", "-b", "-l", pos, "-o", p.conf.AudioOutput, path.Join(p.conf.Directory, fileName))
 		// check if video must be looped
 		if len(fileName) > 8 && fileName[len(fileName)-8:len(fileName)-4] == "LOOP" {
 			p.command.Args = append(p.command.Args, "--loop")
@@ -258,10 +258,6 @@ func (p *Player) startBrowser() error {
 		"--no-first-run",
 		"--remote-debugging-port=9222",
 		"http://localhost:8080/viewer",
-	}
-
-	if p.conf.AudioOutput != "" {
-		flags = append(flags, "-o", p.conf.AudioOutput)
 	}
 
 	browser := "chromium-browser"
