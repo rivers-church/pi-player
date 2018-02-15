@@ -516,8 +516,9 @@ func (p *Player) HandleSettings(w http.ResponseWriter, r *http.Request) {
 		tempControl := TemplateHandler{
 			filename: "settings.html",
 			data: map[string]interface{}{
-				"location":  p.conf.Location,
-				"directory": p.conf.Directory,
+				"location":    p.conf.Location,
+				"directory":   p.conf.Directory,
+				"audioOutput": p.conf.AudioOutput,
 			},
 		}
 		tempControl.ServeHTTP(w, r)
@@ -527,11 +528,13 @@ func (p *Player) HandleSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// process POST request
 	if err := r.ParseForm(); err != nil {
 		log.Println("Error trying to parse form in settings page.\n", err)
 	}
 	location := r.PostFormValue("location")
 	directory := r.PostFormValue("directory")
+	audioOutput := r.PostFormValue("audioOutput")
 
 	if p.api.debug {
 		log.Printf("Received settings post: location: %s, directory: %s\n", location, directory)
@@ -543,6 +546,10 @@ func (p *Player) HandleSettings(w http.ResponseWriter, r *http.Request) {
 
 	if location != "" {
 		p.conf.Location = location
+	}
+
+	if audioOutput != "" {
+		p.conf.AudioOutput = audioOutput
 	}
 
 	if err := p.conf.Save(""); err != nil {

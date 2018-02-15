@@ -18,7 +18,15 @@
         <input type="text" id="txtLocation" name="location" value="{{.location}}">
         <label for="txtDirectory">Directory</label>
         <input type="text" id="txtDirectory" name="directory" value="{{.directory}}">
+        <h3>Audio Output</h3>
+        <label for="radAudioOutput1">HDMI
+          <input type="radio" id="radAudioOutput1" name="audioOutput" value="hdmi" {{if eq .audioOutput "hdmi"}}checked{{end}}>
+        </label>
+        <label for="radAudioOutput1">Audio Jack
+          <input type="radio" id="radAudioOutput2" name="audioOutput" value="jack" {{if eq .audioOutput "jack"}}checked{{end}}>
+        </label>
         <button type="submit">Save</button>
+        <a href="/control">Controls</a>
       </form>
     </div>
   </div>

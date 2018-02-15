@@ -1,9 +1,10 @@
 {
-  "location": "Mac Test",
-  "directory": "/media/visuals/Kidszone/Rock Stars",
-  "remote": {
-    "name": "\"HBGIC Technology Co., Ltd. USB Keyboard Mouse\"",
-    "vendor": 8786,
-    "product": 4151
+  "Directory": "/volumes/visuals/Kidszone/Rock Stars",
+  "Location": "Mac Test",
+  "AudioOutput": "jack",
+  "Remote": {
+    "Name": "\"HBGIC Technology Co., Ltd. USB Keyboard Mouse\"",
+    "Vendor": 8786,
+    "Product": 4151
   }
 }

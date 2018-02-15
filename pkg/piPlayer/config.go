@@ -7,9 +7,10 @@ import (
 
 // Config holds the configuration of the pi-player
 type Config struct {
-	Directory string
-	Location  string
-	Remote    remote
+	Directory   string
+	Location    string
+	AudioOutput string
+	Remote      remote
 }
 
 // Load reads the config file and unmarshalls it to the config struct
