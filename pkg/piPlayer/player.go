@@ -260,6 +260,10 @@ func (p *Player) startBrowser() error {
 		"http://localhost:8080/viewer",
 	}
 
+	if p.conf.AudioOutput != "" {
+		flags = append(flags, "-o", p.conf.AudioOutput)
+	}
+
 	browser := "chromium-browser"
 
 	if p.api.test == "linux" {
