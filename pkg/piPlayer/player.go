@@ -167,6 +167,7 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 		if err != nil && err.Error() != "exit status 3" {
 			return err
 		}
+		close(p.quit)
 	}
 
 	if ext == ".mp4" {
@@ -207,10 +208,7 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 			err := p.command.Wait()
 			p.running = false
 			if p.quitting {
-				if p.quit != nil {
-					p.quit <- err
-					close(p.quit)
-				}
+				p.quit <- err
 				p.quitting = false
 			} else { // if the process was not quit midway, and ended naturally, go to the next item.
 				err := p.next()
@@ -355,9 +353,6 @@ func (p *Player) SendCommand(command string) error {
 	}
 
 	b := []byte(cmd)
-	if command == "quit" {
-		p.quitting = true
-	}
 	_, err = p.pipeIn.Write(b)
 
 	if err != nil {
@@ -719,6 +714,14 @@ func (p *Player) remoteRead(cie chan keylogger.InputEvent) {
 
 		if p.api.debug {
 			log.Println("not testing, sending command...")
+		}
+		if c == "q" {
+			p.quitting = true
+			p.quit = make(chan error)
+			err := <-p.quit
+			if err != nil {
+				log.Println("Error trying to stop video from remote")
+			}
 		}
 		err := p.SendCommand(c)
 		if err != nil {
