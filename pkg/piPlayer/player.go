@@ -208,14 +208,15 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 			err := p.command.Wait()
 			p.running = false
 			if p.quitting {
-				p.quit <- err
 				p.quitting = false
-			} else { // if the process was not quit midway, and ended naturally, go to the next item.
-				err := p.next()
-				if err != nil {
-					log.Printf("Error trying to go to next item after current item finished: %v\n", err)
-				}
+				p.quit <- err
+				return
 			}
+			// if the process was not quit midway, and ended naturally, go to the next item.
+			if err := p.next(); err != nil {
+				log.Printf("Error trying to go to next item after current item finished: %v\n", err)
+			}
+
 		}()
 	} else if ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".html" {
 		if !p.browser.running {
