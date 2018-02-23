@@ -85,7 +85,7 @@ var remoteCommands = map[string]string{
 	"KEY_BACK":         "",
 	"KEY_CONTEXT_MENU": "",
 	"KEY_PLAYPAUSE":    "pauseResume",
-	"KEY_STOP":         "quit",
+	"KEY_STOP":         "", //"quit",
 	"KEY_REWIND":       "seekBack30",
 	"KEY_FASTFORWARD":  "seekForward30",
 }
