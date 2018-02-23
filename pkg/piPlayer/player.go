@@ -167,8 +167,6 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 		if err != nil && err.Error() != "exit status 3" {
 			return err
 		}
-
-		p.playlist.Current = nil
 	}
 
 	if ext == ".mp4" {
@@ -334,11 +332,6 @@ func (p *Player) startBrowser() error {
 
 // SendCommand sends a command to the omxplayer process
 func (p *Player) SendCommand(command string) error {
-	if !p.running {
-		// ignore the input because no process is running
-		return nil
-	}
-
 	cmd, ok := commandList[command]
 	if !ok {
 		return errors.New("Command not found: " + command)
@@ -352,8 +345,17 @@ func (p *Player) SendCommand(command string) error {
 		return nil
 	}
 
+	// if the player isn't running ignore the comand, unless it is a play-pause
+	// then start the current item again.
+	if !p.running {
+		if command == "pauseResume" {
+			return p.Start(p.playlist.Current.Name(), 0)
+		}
+		return nil
+	}
+
 	b := []byte(cmd)
-	if cmd == "q" {
+	if command == "quit" {
 		p.quitting = true
 	}
 	_, err = p.pipeIn.Write(b)

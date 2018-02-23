@@ -16,3 +16,4 @@ run-mac:
 run-linux:
 	go build -o $(BINARY_NAME) $(CMD_MAIN)
 	./$(BINARY_NAME) --debug --test linux
+	
