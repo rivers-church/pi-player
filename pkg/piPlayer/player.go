@@ -215,7 +215,7 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 				p.quit <- err
 				return
 			}
-			if p.api.debug() {
+			if p.api.debug {
 				log.Println("player wasn't quitting, go to next item")
 			}
 			// if the process was not quit midway, and ended naturally, go to the next item.
