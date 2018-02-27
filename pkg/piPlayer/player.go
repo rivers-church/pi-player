@@ -722,7 +722,10 @@ func (p *Player) remoteRead(cie chan keylogger.InputEvent) {
 		if p.api.debug {
 			log.Println("not testing, sending command...")
 		}
-		if c == "q" {
+		if c == "quit" {
+			if p.api.debug {
+				log.Println("setting p.quitting to true because of stop pressed")
+			}
 			p.quitting = true
 			p.quit = make(chan error)
 		}
@@ -730,7 +733,7 @@ func (p *Player) remoteRead(cie chan keylogger.InputEvent) {
 		if err != nil {
 			log.Println("Error sending command from remote event:", err)
 		}
-		if c == "q" {
+		if c == "quit" {
 			err := <-p.quit
 			if err != nil {
 				log.Println("Error trying to stop video from remote")
