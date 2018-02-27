@@ -11,6 +11,7 @@ type Config struct {
 	Location    string
 	AudioOutput string
 	Remote      remote
+	Debug       bool
 }
 
 // Load reads the config file and unmarshalls it to the config struct

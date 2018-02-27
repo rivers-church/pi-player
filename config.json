@@ -2,6 +2,7 @@
   "Directory": "/media/visuals/Kidszone/Rock Stars",
   "Location": "Mac Test",
   "AudioOutput": "both",
+  "Debug": true,
   "Remote": {
     "Name": "\"HBGIC Technology Co., Ltd. USB Keyboard Mouse\"",
     "Vendor": 8786,

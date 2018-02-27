@@ -15,20 +15,19 @@ func main() {
 	debug := flag.Bool("debug", false, "print extra information for debugging.")
 	flag.Parse()
 
-	if *debug {
-		log.Println("Debug mode enabled")
-	}
-
 	var conf piplayer.Config
 	if err := conf.Load(""); err != nil {
 		log.Fatal("Error loading config.", err)
 	}
 
-	if *debug {
+	dbg := *debug || conf.Debug
+
+	if dbg {
+		log.Println("Debug mode enabled")
 		log.Println("Config file -> Directory: ", conf)
 	}
 
-	a := piplayer.NewAPIHandler(debug, test)
+	a := piplayer.NewAPIHandler(dbg, test)
 	kl := keylogger.NewKeyLogger(conf.Remote.Name)
 	p := piplayer.NewPlayer(&a, conf, kl)
 

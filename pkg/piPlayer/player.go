@@ -208,9 +208,15 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 			err := p.command.Wait()
 			p.running = false
 			if p.quitting {
+				if p.api.debug {
+					log.Println("quitting the player")
+				}
 				p.quitting = false
 				p.quit <- err
 				return
+			}
+			if p.api.debug() {
+				log.Println("player wasn't quitting, go to next item")
 			}
 			// if the process was not quit midway, and ended naturally, go to the next item.
 			if err := p.next(); err != nil {

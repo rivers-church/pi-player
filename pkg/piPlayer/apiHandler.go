@@ -15,8 +15,8 @@ type APIHandler struct {
 }
 
 // NewAPIHandler creates a new APIHandler
-func NewAPIHandler(debug *bool, test *string) APIHandler {
-	return APIHandler{debug: *debug, test: *test}
+func NewAPIHandler(debug bool, test *string) APIHandler {
+	return APIHandler{debug: debug, test: *test}
 }
 
 // Handle handles all calls to the API
