@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Login - {{.location}}</title>
+  <link rel="stylesheet" href="/assets/css/milligram.css">
+  <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Roboto+Slab">
+</head>
+<body>
+  <div class="container">
+    <div id="flashMessage">
+      <span>{{.flashMessage}}</span>
+    </div>
+    <div id="divLogin">
+      <h1>{{.location}} Login</h1>
+      <form action="/login" method="POST" id="frmLogin">
+        <label for="txtUsername">Username</label>
+        <input type="text" id="txtUsername" name="username" autofocus>
+        <label for="txtPassword">Password</label>
+        <input type="password" id="txtPassword" name="password">
+        <button type="submit">Login</button>
+      </form>
+    </div>
+  </div>
+  <script> // script here </script>
+</body>
+</html>

@@ -111,6 +111,10 @@ func NewPlayer(api *APIHandler, conf Config, keylogger *keylogger.KeyLogger) *Pl
 
 // FirstRun starts the browser on a black screen and gets things going
 func (p *Player) FirstRun() {
+	if p.api.test == "web" {
+		return
+	}
+
 	if p.api.debug {
 		log.Println("Starting browser on first run...")
 	}
@@ -181,14 +185,18 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 			return err
 		}
 
-		if err := p.setBrowserBG(""); err != nil {
-			log.Println("Error trying to set browser background to black before player video:\n", err)
+		if p.api.test != "web" {
+			if err := p.setBrowserBG(""); err != nil {
+				log.Println("Error trying to set browser background to black before player video:\n", err)
+			}
 		}
 
 		if p.api.test == "mac" {
 			p.command = exec.Command("qlmanage", "-p", path.Join(p.conf.Directory, fileName))
 		} else if p.api.test == "linux" {
 			p.command = exec.Command("xdg-open", path.Join(p.conf.Directory, fileName))
+		} else if p.api.test == "web" {
+			p.command = exec.Command("echo", path.Join(p.conf.Directory, fileName))
 		}
 
 		if p.api.debug {
@@ -225,6 +233,10 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 
 		}()
 	} else if ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".html" {
+		if p.api.test == "web" {
+			log.Println("ignore request to display image.")
+			return nil
+		}
 		if !p.browser.running {
 			log.Println("Error: Browser should be running by now. Trying to start it again")
 			if err := p.startBrowser(); err != nil {
@@ -482,7 +494,18 @@ func (p *Player) ServeHTTP(w http.ResponseWriter, h *http.Request) {
 
 // HandleControl Scan the folder for new files every time the page reloads and display contents
 func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
-	err := p.playlist.fromFolder(p.conf.Directory)
+	_, loggedIn, err := CheckLogin(w, r)
+	if err != nil {
+		log.Println("error trying to retrieve session on login page:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !loggedIn {
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
+
+	err = p.playlist.fromFolder(p.conf.Directory)
 
 	if err != nil {
 		log.Println("Error tring to read files from directory: ", err)
@@ -511,56 +534,6 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	tempControl.ServeHTTP(w, r)
-}
-
-// HandleSettings handles requests to the settings page
-func (p *Player) HandleSettings(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-
-		tempControl := TemplateHandler{
-			filename: "settings.html",
-			data: map[string]interface{}{
-				"location":    p.conf.Location,
-				"directory":   p.conf.Directory,
-				"audioOutput": p.conf.AudioOutput,
-			},
-		}
-		tempControl.ServeHTTP(w, r)
-		return
-	} else if r.Method != "POST" {
-		log.Println("Unsuported request type for Settings page:", r.Method)
-		return
-	}
-
-	// process POST request
-	if err := r.ParseForm(); err != nil {
-		log.Println("Error trying to parse form in settings page.\n", err)
-	}
-	location := r.PostFormValue("location")
-	directory := r.PostFormValue("directory")
-	audioOutput := r.PostFormValue("audioOutput")
-
-	if p.api.debug {
-		log.Printf("Received settings post: location: %s, directory: %s\n", location, directory)
-	}
-
-	if directory != "" {
-		p.conf.Directory = directory
-	}
-
-	if location != "" {
-		p.conf.Location = location
-	}
-
-	if audioOutput != "" {
-		p.conf.AudioOutput = audioOutput
-	}
-
-	if err := p.conf.Save(""); err != nil {
-		log.Println("error trying to save config:", err)
-	}
-
-	http.Redirect(w, r, "/control", http.StatusSeeOther)
 }
 
 // HandleViewer handles requests to the image viewer page

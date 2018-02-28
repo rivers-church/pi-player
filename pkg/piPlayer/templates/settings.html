@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>{{.location}} Settings</title>
   <link rel="stylesheet" href="/assets/css/milligram.css">
@@ -18,6 +18,12 @@
         <input type="text" id="txtLocation" name="location" value="{{.location}}">
         <label for="txtDirectory">Directory</label>
         <input type="text" id="txtDirectory" name="directory" value="{{.directory}}">
+        <label for="txtUsername">Username</label>
+        <input type="text" id="txtUsername" name="username" value="{{.username}}">
+        <label for="txtPassword">Password</label>
+        <input type="password" id="txtPassword" name="password">
+        <label for="cbxDebug">Debug</label>
+        <input type="checkbox" id="cbxDebug" name="debug" {{if .debug}}checked{{end}}>
         <h3>Audio Output</h3>
         <label for="radAudioOutput1">HDMI
           <input type="radio" id="radAudioOutput1" name="audioOutput" value="hdmi" {{if eq .audioOutput "hdmi"}}checked{{end}}>
