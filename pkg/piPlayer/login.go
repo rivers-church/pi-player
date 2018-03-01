@@ -99,7 +99,9 @@ func LoginHandler(conf *Config) http.HandlerFunc {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			conf.Save("")
+			if err := conf.Save(""); err != nil {
+				log.Println("error trying to save config file:", err)
+			}
 		}
 
 		if username == conf.Login.Username && checkHash(password, conf.Login.Password) {
