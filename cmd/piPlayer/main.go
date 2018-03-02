@@ -34,6 +34,7 @@ func main() {
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("pkg/piPlayer/assets"))))
 	http.Handle("/content/", http.StripPrefix("/content/", http.FileServer(http.Dir(conf.Directory))))
 	http.HandleFunc("/login", piplayer.LoginHandler(&conf))
+	http.HandleFunc("/logout", piplayer.LogoutHandler)
 	http.HandleFunc("/control", p.HandleControl)
 	http.HandleFunc("/settings", conf.HandleSettings)
 	http.HandleFunc("/viewer", p.HandleViewer)

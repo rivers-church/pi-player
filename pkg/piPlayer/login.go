@@ -123,3 +123,18 @@ func LoginHandler(conf *Config) http.HandlerFunc {
 		return
 	}
 }
+
+// LogoutHandler logs a user out and redirects them to the login page
+func LogoutHandler(w http.ResponseWriter, r *http.Request) {
+	session, err := store.Get(r, "piplayer-session")
+	if err != nil {
+		log.Println("error trying to get session in logout page")
+	}
+
+	session.Options.MaxAge = -1
+	if err := session.Save(r, w); err != nil {
+		log.Println("error trying to set MaxAge on session to logout")
+	}
+
+	http.Redirect(w, r, "/login", http.StatusFound)
+}

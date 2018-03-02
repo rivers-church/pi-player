@@ -105,8 +105,13 @@ func (conf *Config) HandleSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if username != "" && password != "" {
-		conf.Login.Username = username
-		conf.Login.Password = password
+		var err error
+		if password, err = hash(password); err != nil {
+			log.Println("error trying to encrypt password for saving", err)
+		} else {
+			conf.Login.Username = username
+			conf.Login.Password = password
+		}
 	}
 
 	conf.Debug = debug == "on"
