@@ -473,12 +473,25 @@ func (p *Player) ServeHTTP(w http.ResponseWriter, h *http.Request) {
 			return
 		}
 
+		if cmd == "quit" {
+			p.quitting = true
+			p.quit = make(chan error)
+		}
+
 		err := p.SendCommand(cmd)
 		if err != nil {
 			m := &resMessage{Success: false, Message: "Error trying to execute command: " + err.Error()}
 			log.Println(m.Message)
 			json.NewEncoder(w).Encode(m)
 			return
+		}
+
+		if cmd == "quit" {
+			err := <-p.quit
+			if err != nil {
+				log.Println("error tring to stop video from web interface")
+			}
+			close(p.quit)
 		}
 
 		m := &resMessage{Success: true, Message: "Command sent and executed"}
