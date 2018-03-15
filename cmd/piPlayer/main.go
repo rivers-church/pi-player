@@ -29,7 +29,7 @@ func main() {
 
 	a := piplayer.NewAPIHandler(dbg, test)
 	kl := keylogger.NewKeyLogger(conf.Remote.Name)
-	p := piplayer.NewPlayer(&a, conf, kl)
+	p := piplayer.NewPlayer(&a, &conf, kl)
 
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("pkg/piPlayer/assets"))))
 	http.Handle("/content/", http.StripPrefix("/content/", http.FileServer(http.Dir(conf.Directory))))

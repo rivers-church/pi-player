@@ -25,7 +25,7 @@ type Player struct {
 	command   *exec.Cmd
 	pipeIn    io.WriteCloser
 	playlist  playlist
-	conf      Config
+	conf      *Config
 	control   controller
 	running   bool
 	quitting  bool
@@ -91,7 +91,7 @@ var remoteCommands = map[string]string{
 }
 
 // NewPlayer creates a new Player
-func NewPlayer(api *APIHandler, conf Config, keylogger *keylogger.KeyLogger) *Player {
+func NewPlayer(api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *Player {
 	p := Player{api: api, conf: conf, keylogger: keylogger}
 	if api.debug {
 		log.Println("initializing remote")
