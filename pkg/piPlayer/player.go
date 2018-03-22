@@ -141,7 +141,7 @@ func (p *Player) FirstRun() {
 		log.Println("Error trying to start first item in playlist.\n", err)
 		return
 	}
-	p.playlist.Current = p.playlist.Items[0]
+	p.playlist.Current = &p.playlist.Items[0]
 
 	if p.api.debug {
 		log.Println("first item should have started successfuly.")
@@ -421,7 +421,7 @@ func (p *Player) ServeHTTP(w http.ResponseWriter, h *http.Request) {
 			return
 		}
 
-		p.playlist.Current = p.playlist.Items[i]
+		p.playlist.Current = &p.playlist.Items[i]
 
 		m := &resMessage{Success: true, Event: "videoStarted", Message: p.playlist.Current.Name()}
 		json.NewEncoder(w).Encode(m)
@@ -542,9 +542,11 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 
 	if p.api.debug {
 		log.Println("files in playlist:")
-		for _, file := range p.playlist.Items {
-			log.Println(file.Name())
+		for _, item := range p.playlist.Items {
+			log.Printf("visual: %s\taudio: %#v", item.Visual.Name(), item.Audio)
 		}
+
+		log.Printf("%#v", p.playlist.Items)
 	}
 	tempControl.ServeHTTP(w, r)
 }

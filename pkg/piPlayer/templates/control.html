@@ -35,7 +35,12 @@
       <h2>Playlist</h2>
       <table id="tblPlaylist">
         {{range .playlist.Items}}
-          <tr><td>{{.Name}}</td></tr>
+          <tr>
+            <td>{{.Name}}</td>
+            <td>{{if .Audio}}
+              <i class="fas fa-music"></i>
+            {{end}}</td>
+          </tr>
         {{end}}
       </table>
     </div>

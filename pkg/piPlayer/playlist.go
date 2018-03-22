@@ -6,14 +6,13 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 	"path"
 )
 
 type playlist struct {
 	Name    string
-	Items   []os.FileInfo
-	Current os.FileInfo
+	Items   []Item
+	Current *Item
 }
 
 // Handles requests to the playlist api
@@ -48,19 +47,35 @@ func (p *playlist) handleAPI(api *APIHandler, w http.ResponseWriter, h *http.Req
 
 func (p *playlist) fromFolder(folderPath string) error {
 	// remove all items from the current playlist if there are any
-	p.Items = []os.FileInfo{}
+	p.Items = []Item{}
 
 	// read files from a certain folder into a playlist
 	files, err := ioutil.ReadDir(folderPath)
 	if err != nil {
-		return errors.New("can't read folder for videos: " + err.Error())
+		return errors.New("can't read folder for items: " + err.Error())
 	}
 
 	// filter out all files except for supported ones
 	for _, file := range files {
 		e := path.Ext(file.Name())
 		if e == ".mp4" || e == ".jpg" || e == ".jpeg" || e == ".png" || e == ".html" {
-			p.Items = append(p.Items, file)
+			p.Items = append(p.Items, Item{Visual: file})
+		}
+	}
+
+	// scan for .mp3 files to see if any need to be attached to image files
+	for _, file := range files {
+		e := path.Ext(file.Name())
+		if e == ".mp3" {
+			audioNoExt := file.Name()[0 : len(file.Name())-len(e)]
+			for i, item := range p.Items {
+				visual := item.Visual.Name()
+				visualNoExt := visual[0 : len(visual)-len(path.Ext(visual))]
+				if audioNoExt == visualNoExt {
+					p.Items[i].Audio = file
+					break
+				}
+			}
 		}
 	}
 
@@ -77,7 +92,7 @@ func (p *playlist) getIndex(fileName string) int {
 	return -1
 }
 
-func (p *playlist) getNext() (os.FileInfo, error) {
+func (p *playlist) getNext() (*Item, error) {
 	if p.Current == nil {
 		return nil, errors.New("no current item, can't get next")
 	}
@@ -87,13 +102,13 @@ func (p *playlist) getNext() (os.FileInfo, error) {
 		return nil, errors.New("can't find index of this item: " + p.Current.Name())
 	}
 	if i+1 > len(p.Items)-1 {
-		return p.Items[0], nil
+		return &p.Items[0], nil
 	}
 
-	return p.Items[i+1], nil
+	return &p.Items[i+1], nil
 }
 
-func (p *playlist) getPrevious() (os.FileInfo, error) {
+func (p *playlist) getPrevious() (*Item, error) {
 	if p.Current == nil {
 		return nil, errors.New("no current item, can't get previous")
 	}
@@ -103,10 +118,10 @@ func (p *playlist) getPrevious() (os.FileInfo, error) {
 		return nil, errors.New("can't find index of this item: " + p.Current.Name())
 	}
 	if i-1 < 0 {
-		return p.Items[len(p.Items)-1], nil
+		return &p.Items[len(p.Items)-1], nil
 	}
 
-	return p.Items[i-1], nil
+	return &p.Items[i-1], nil
 }
 
 func (p *playlist) itemNames() []string {
