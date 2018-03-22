@@ -1,7 +1,7 @@
 "use strict";
 
 let controls = {
-  btns: document.querySelectorAll('#divControls button'),
+  btns: document.querySelectorAll('#divControlsPlayer button'),
   btnsPlaylist: document.querySelectorAll('#divControlPlaylist'),
   btnStart: document.querySelector('#btnStart'),
   spCurrent: document.querySelector('#spCurrent'),
@@ -46,9 +46,11 @@ function plSelect(e) {
 }
 
 function callMethod(e) {
+  let btn = e.target.closest('button');
+
   let reqBody = {
     component: "player",
-    method: e.target.dataset["method"]
+    method: btn.dataset["method"]
   };
 
   callApi(reqBody)
@@ -80,12 +82,13 @@ function videoCallback(json) {
 }
 
 function sendCommand(e) {
-  let command = e.target.dataset["command"];
+  let btn = e.target.closest('button');
+  
   let reqBody = {
     component: "player",
     method: "sendCommand",
     arguments: {
-      command: command
+      command: btn.dataset["command"]
     }
   };
 

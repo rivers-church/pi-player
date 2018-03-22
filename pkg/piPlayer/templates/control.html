@@ -8,25 +8,31 @@
   <link rel="stylesheet" href="/assets/css/milligram.css">
   <link rel="stylesheet" href="/assets/css/control.css">
   <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Roboto+Slab">
+  <script defer src="/assets/js/fontawesome-all.min.js"></script>
 </head>
 <body>
   <div class="container">
-    <div id="divControls">
+    <div id="divStatus">
       <h1>{{.location}} Controls</h1>
       <p>Currently playing: <span id="spCurrent">{{if .playlist.Current}}{{.playlist.Current.Name}}{{else}}Nothing{{end}}</span></p>
-      <button data-command="pauseResume">Play/Pause</button>
-      <button data-command="quit">Stop</button>
-      <button data-command="seekBack30">Rewind</button>
-      <button data-command="seekForward30">Fast Forward</button>
     </div>
-    <div id="divControlPlaylist">
-      <button data-method="previous">Previous Item</button>
-      <button data-method="next">Next Item</button>
+    <div id="divControls">
+      <div>
+        <button id="btnStart"><i class="fas fa-play-circle"></i></button>
+      </div>
+      <div id="divControlsPlayer">
+        <button data-command="pauseResume" title="Play-Pause"><i class="fas fa-play"></i></button>
+        <button data-command="quit" title="Stop"><i class="fas fa-stop"></i></button>
+        <button data-command="seekBack30" title="Rewind"><i class="fas fa-fast-backward"></i></button>
+        <button data-command="seekForward30" title="Fast Forward"><i class="fas fa-fast-forward"></i></button>
+      </div>
+      <div id="divControlPlaylist">
+        <button data-method="previous" title="Previous"><i class="fas fa-step-backward"></i></button>
+        <button data-method="next" title="Next"><i class="fas fa-step-forward"></i></button>
+      </div>
     </div>
     <div>
       <h2>Playlist</h2>
-      <!-- <button id="btnRemove">Remove from Playlist</button> -->
-      <button id="btnStart">Play Item</button>
       <table id="tblPlaylist">
         {{range .playlist.Items}}
           <tr><td>{{.Name}}</td></tr>

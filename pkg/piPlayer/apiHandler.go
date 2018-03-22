@@ -54,7 +54,7 @@ func (a *APIHandler) Handle(p *Player) http.HandlerFunc {
 		}
 
 		if a.debug {
-			log.Println("message received: ", a.message)
+			log.Printf("message received: %#v\n", a.message)
 		}
 
 		// displach execution based on which component was called

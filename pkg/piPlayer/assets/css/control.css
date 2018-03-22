@@ -2,3 +2,20 @@
   color: white;
   background-color: #9a52c8;
 }
+
+#divControls {
+  display: grid;
+  grid-auto-flow: column;
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  padding: 1rem;
+  background-color: white;
+}
+
+#divControls button {
+  padding: 1.5rem;
+  margin: .1rem;
+  height: auto;
+  line-height: normal;
+}
