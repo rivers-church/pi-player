@@ -6,7 +6,10 @@ let controls = {
   btnStart: document.querySelector('#btnStart'),
   spCurrent: document.querySelector('#spCurrent'),
   tblPlaylist: document.querySelector('#tblPlaylist'),
-  socket: null,
+  connection: {
+    socket: null,
+    active: false
+  },
   flags: {
     websockets: false
   }
@@ -15,12 +18,19 @@ let controls = {
 if (!window["WebSocket"]) {
   console.warn("Websockets not supported in your browser. Fallback functionality will be used.");
 } else if (controls.flags.websockets) {
-  controls.socket = new WebSocket(`ws://${document.location.host}/control/ws`);
-  controls.socket.addEventListener('close', () => {
-    console.log("Websocket connection closed, falling back...");
+  controls.connection.socket = new WebSocket(`ws://${document.location.host}/control/ws`);
+
+  controls.connection.socket.addEventListener('open', e => {
+    console.log("websocket connected");
+    controls.connection.active = true;
   });
 
-  controls.socket.addEventListener('message', e => {
+  controls.connection.socket.addEventListener('close', () => {
+    console.log("Websocket connection closed, falling back...");
+    controls.connection.active = false;
+  });
+
+  controls.connection.socket.addEventListener('message', e => {
     let msg = JSON.parse(e.data);
     console.log('WS Message received!!: ', msg);
   });

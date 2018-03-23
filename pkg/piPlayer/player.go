@@ -15,23 +15,22 @@ import (
 	"time"
 
 	"github.com/17xande/keylogger"
-	"github.com/gorilla/websocket"
 	cdp "github.com/knq/chromedp"
 )
 
 // Player is the object that renders images to the screen through omxplayer or chromium-browser
 type Player struct {
-	api       *APIHandler
-	command   *exec.Cmd
-	pipeIn    io.WriteCloser
-	playlist  playlist
-	conf      *Config
-	control   controller
-	running   bool
-	quitting  bool
-	quit      chan error
-	browser   Browser
-	keylogger *keylogger.KeyLogger
+	Connection connectionWS
+	api        *APIHandler
+	command    *exec.Cmd
+	pipeIn     io.WriteCloser
+	playlist   playlist
+	conf       *Config
+	running    bool
+	quitting   bool
+	quit       chan error
+	browser    Browser
+	keylogger  *keylogger.KeyLogger
 }
 
 // Browser represents the chromium-browser process that is used to display web pages and still images to the screen
@@ -42,19 +41,6 @@ type Browser struct {
 	ctxt    *context.Context
 	cancel  *context.CancelFunc
 }
-
-// controller has the websocket connection to the control page
-type controller struct {
-	socket *websocket.Conn
-	send   chan resMessage
-}
-
-const (
-	socketBufferSize  = 1024
-	messageBufferSize = 256
-)
-
-var upgrader = &websocket.Upgrader{ReadBufferSize: socketBufferSize, WriteBufferSize: socketBufferSize}
 
 var commandList = map[string]string{
 	"speedIncrease":   "1",
@@ -640,57 +626,6 @@ func (p *Player) previous() error {
 	}
 
 	return err
-}
-
-func (c *controller) handlerWebsocket(w http.ResponseWriter, r *http.Request) {
-	var err error
-	c.socket, err = upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Fatal("ServeHTTP:", err)
-		return
-	}
-
-	go c.write()
-	// we can't start the read() method on a separate goroutine, or this function would return and stop serving the websocket connections
-	// we need the infinite loop in the read function to block operations and keep this function alive
-	c.read()
-}
-
-func (c *controller) write() {
-	defer c.socket.Close()
-
-	// this loop keeps running as long as the channel is open.
-	for msg := range c.send {
-		err := c.socket.WriteJSON(msg)
-		if err != nil {
-			log.Println("Error trying to write JSON to the socket: ", err)
-			// this probably means that the connection is broken,
-			// so close the channel and return out of the loop.
-			close(c.send)
-			return
-		}
-	}
-}
-
-// read reads the messages from the socket
-func (c *controller) read() {
-	defer c.socket.Close()
-
-	for {
-		var msg reqMessage
-		err := c.socket.ReadJSON(&msg)
-		if err != nil {
-			log.Println("Error trying to read the JSON from the socket: ", err)
-			// this probably means that the connection is broken,
-			// so close the channel and return out of the loop.
-			close(c.send)
-			return
-		}
-
-		// ignore socket messages for now.
-		// TODO: handle socket messages.
-		log.Println("socket message received: ", msg)
-	}
 }
 
 func (p *Player) remoteRead(cie chan keylogger.InputEvent) {

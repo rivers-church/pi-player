@@ -1,13 +1,9 @@
-.selected {
-  color: white;
-  background-color: #9a52c8;
-}
-
 #divControls {
   display: grid;
   grid-auto-flow: column;
   position: fixed;
   bottom: 0;
+  left: 0;
   width: 100%;
   padding: 1rem;
   background-color: white;
@@ -18,4 +14,13 @@
   margin: .1rem;
   height: auto;
   line-height: normal;
+}
+
+.selected {
+  color: white;
+  background-color: #9a52c8;
+}
+
+.container {
+  padding-bottom: 7.5rem;
 }
