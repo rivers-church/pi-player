@@ -40,7 +40,7 @@ type Browser struct {
 	running bool
 	cdp     *cdp.CDP
 	ctxt    *context.Context
-	cancel  context.CancelFunc
+	cancel  *context.CancelFunc
 }
 
 // controller has the websocket connection to the control page
@@ -112,7 +112,8 @@ func NewPlayer(api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *P
 // CleanUp closes other components properly
 func (p *Player) CleanUp() {
 	// TODO: properly implement this cleanup function
-	p.browser.cancel()
+	c := *p.browser.cancel
+	c()
 }
 
 // FirstRun starts the browser on a black screen and gets things going
@@ -256,12 +257,14 @@ func (p *Player) Start(item *Item, position time.Duration) error {
 			return err
 		}
 
-		var res []string
 		if item.Audio != nil {
-			res, err = p.startBrowserAudio(item.Audio.Name())
-		}
-		if err != nil {
-			log.Println("Error trying to start audio. Returned Message:\n", res)
+			if res, err := p.startBrowserAudio(item.Audio.Name()); err != nil {
+				log.Printf("Error trying to start audio:\n%s\nReturned Message:\n%v", err, res)
+			}
+		} else {
+			if res, err := p.stopBrowserAudio(); err != nil {
+				log.Printf("Error trying to start audio:\n%s\nReturned Message:\n%v", err, res)
+			}
 		}
 	}
 
@@ -273,14 +276,23 @@ func (p *Player) setBrowserBG(url string) error {
 	return p.browser.cdp.Run(*p.browser.ctxt, cdp.SetAttributeValue("#container", "style", v, cdp.ByID))
 }
 
-func (p *Player) startBrowserAudio(url string) ([]string, error) {
-	var res []string
+func (p *Player) startBrowserAudio(url string) (res interface{}, err error) {
 	tasks := cdp.Tasks{
 		cdp.SetAttributeValue("#audMusic", "src", "/content/"+url, cdp.ByID),
+		// TODO: see if we can use something better than an interface for the response
 		cdp.Evaluate(`audMusic.play();`, &res),
 	}
-	err := p.browser.cdp.Run(*p.browser.ctxt, tasks)
-	return res, err
+	err = p.browser.cdp.Run(*p.browser.ctxt, tasks)
+	return
+}
+
+func (p *Player) stopBrowserAudio() (res interface{}, err error) {
+	tasks := cdp.Tasks{
+		cdp.Evaluate(`audMusic.pause();`, &res),
+	}
+	// the response never returns properly here for some reason.
+	err = p.browser.cdp.Run(*p.browser.ctxt, tasks)
+	return
 }
 
 func (p *Player) startBrowser() error {
@@ -337,7 +349,7 @@ func (p *Player) startBrowser() error {
 
 	ctxt, cancel := context.WithCancel(context.Background())
 	p.browser.ctxt = &ctxt
-	p.browser.cancel = cancel
+	p.browser.cancel = &cancel
 	// not sure if this is appropriate here. Not sure if context is
 	// absolutely needed actually. I'm not gracefully terminating things
 	// defer cancel()
