@@ -31,6 +31,8 @@ func main() {
 	kl := keylogger.NewKeyLogger(conf.Remote.Name)
 	p := piplayer.NewPlayer(&a, &conf, kl)
 
+	defer p.CleanUp()
+
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("pkg/piPlayer/assets"))))
 	http.Handle("/content/", http.StripPrefix("/content/", http.FileServer(http.Dir(conf.Directory))))
 	http.HandleFunc("/login", piplayer.LoginHandler(&conf))

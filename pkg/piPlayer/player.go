@@ -109,6 +109,12 @@ func NewPlayer(api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *P
 	return &p
 }
 
+// CleanUp closes other components properly
+func (p *Player) CleanUp() {
+	// TODO: properly implement this cleanup function
+	p.browser.cancel()
+}
+
 // FirstRun starts the browser on a black screen and gets things going
 func (p *Player) FirstRun() {
 	if p.api.test == "web" {
@@ -137,7 +143,7 @@ func (p *Player) FirstRun() {
 	if p.api.debug {
 		log.Println("trying to start first item in playlist:", p.playlist.Items[0].Name())
 	}
-	if err := p.Start(p.playlist.Items[0].Name(), time.Duration(0)); err != nil {
+	if err := p.Start(&p.playlist.Items[0], time.Duration(0)); err != nil {
 		log.Println("Error trying to start first item in playlist.\n", err)
 		return
 	}
@@ -151,8 +157,9 @@ func (p *Player) FirstRun() {
 
 // Start the file that will be played to the screen, it decides which underlying program to use
 // based on the type of file that will be opened.
-func (p *Player) Start(fileName string, position time.Duration) error {
+func (p *Player) Start(item *Item, position time.Duration) error {
 	var err error
+	fileName := item.Name()
 
 	if fileName == "" {
 		return errors.New("empty fileName")
@@ -245,6 +252,17 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 		}
 
 		err = p.setBrowserBG(fileName)
+		if err != nil {
+			return err
+		}
+
+		var res []string
+		if item.Audio != nil {
+			res, err = p.startBrowserAudio(item.Audio.Name())
+		}
+		if err != nil {
+			log.Println("Error trying to start audio. Returned Message:\n", res)
+		}
 	}
 
 	return err
@@ -252,10 +270,17 @@ func (p *Player) Start(fileName string, position time.Duration) error {
 
 func (p *Player) setBrowserBG(url string) error {
 	v := "background-image: url('/content/" + url + "')"
-	err := p.browser.cdp.Run(*p.browser.ctxt, cdp.SetAttributeValue("#container", "style", v, cdp.ByID))
-	// p.browser.cancel()
+	return p.browser.cdp.Run(*p.browser.ctxt, cdp.SetAttributeValue("#container", "style", v, cdp.ByID))
+}
 
-	return err
+func (p *Player) startBrowserAudio(url string) ([]string, error) {
+	var res []string
+	tasks := cdp.Tasks{
+		cdp.SetAttributeValue("#audMusic", "src", "/content/"+url, cdp.ByID),
+		cdp.Evaluate(`audMusic.play();`, &res),
+	}
+	err := p.browser.cdp.Run(*p.browser.ctxt, tasks)
+	return res, err
 }
 
 func (p *Player) startBrowser() error {
@@ -366,7 +391,7 @@ func (p *Player) SendCommand(command string) error {
 	// then start the current item again.
 	if !p.running {
 		if command == "pauseResume" {
-			return p.Start(p.playlist.Current.Name(), 0)
+			return p.Start(p.playlist.Current, 0)
 		}
 		return nil
 	}
@@ -413,7 +438,7 @@ func (p *Player) ServeHTTP(w http.ResponseWriter, h *http.Request) {
 			return
 		}
 
-		err := p.Start(p.playlist.Items[i].Name(), position)
+		err := p.Start(&p.playlist.Items[i], position)
 		if err != nil {
 			m := &resMessage{Success: false, Message: "Error trying to start video: " + err.Error()}
 			log.Println(m.Message)
@@ -543,10 +568,11 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 	if p.api.debug {
 		log.Println("files in playlist:")
 		for _, item := range p.playlist.Items {
-			log.Printf("visual: %s\taudio: %#v", item.Visual.Name(), item.Audio)
+			log.Printf("visual: %s", item.Name())
+			if item.Audio != nil {
+				log.Printf("\taudio: %s", item.Audio.Name())
+			}
 		}
-
-		log.Printf("%#v", p.playlist.Items)
 	}
 	tempControl.ServeHTTP(w, r)
 }
@@ -576,7 +602,7 @@ func (p *Player) next() error {
 		log.Println("going to next item: ", n.Name())
 	}
 
-	err = p.Start(n.Name(), time.Duration(0))
+	err = p.Start(n, time.Duration(0))
 
 	if err == nil {
 		p.playlist.Current = n
@@ -595,7 +621,7 @@ func (p *Player) previous() error {
 		log.Println("going to previous item: ", n.Name())
 	}
 
-	err = p.Start(n.Name(), time.Duration(0))
+	err = p.Start(n, time.Duration(0))
 
 	if err == nil {
 		p.playlist.Current = n
