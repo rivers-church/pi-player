@@ -51,7 +51,7 @@
     "tethering",
     "tracing"
   ]
-  revision = "f100dc013e8818dcb609fa058c3a6dae6d1310d0"
+  revision = "cc77834c1ac1a551a6cbda8895b2109cfba3faa2"
 
 [[projects]]
   branch = "master"
@@ -61,13 +61,13 @@
     "kb",
     "runner"
   ]
-  revision = "46a6388474e20ef92c34290f62602e9fa18c9e95"
+  revision = "f683cfc4c190d6a24ca66ee436184b533fd126b8"
 
 [[projects]]
   name = "github.com/disintegration/imaging"
   packages = ["."]
-  revision = "1884593a19ddc6f2ea050403430d02c1d0fc1283"
-  version = "v1.3.0"
+  revision = "fd34ef7671b12cdf1b024d98c6b327b2770d32c4"
+  version = "v1.4.1"
 
 [[projects]]
   name = "github.com/gorilla/context"
@@ -97,19 +97,19 @@
   branch = "master"
   name = "github.com/knq/chromedp"
   packages = ["."]
-  revision = "46a6388474e20ef92c34290f62602e9fa18c9e95"
+  revision = "f683cfc4c190d6a24ca66ee436184b533fd126b8"
 
 [[projects]]
   branch = "master"
   name = "github.com/knq/snaker"
   packages = ["."]
-  revision = "3b39b7d38b659cf4f16986c62359955695b78a5c"
+  revision = "d9ad1e7f342a5b58202aa92c5f1106d7bb8b9c73"
 
 [[projects]]
   branch = "master"
   name = "github.com/knq/sysutil"
   packages = ["."]
-  revision = "840643935d35cb81c833b4c142357dc9d519e390"
+  revision = "0218e141a794643e8c0fa283b9cd076fc0df662d"
 
 [[projects]]
   branch = "master"
@@ -120,7 +120,7 @@
     "jlexer",
     "jwriter"
   ]
-  revision = "32fa128f234d041f196a9f3e0fea5ac9772c08e1"
+  revision = "8b799c424f57fa123fc63a99d6383bc6e4c02578"
 
 [[projects]]
   branch = "master"
@@ -129,7 +129,7 @@
     "bcrypt",
     "blowfish"
   ]
-  revision = "8c653846df49742c4c85ec37e5d9f8d3ba657895"
+  revision = "2b6c08872f4b66da917bb4ce98df4f0307330f78"
 
 [[projects]]
   branch = "master"
@@ -139,7 +139,7 @@
     "tiff",
     "tiff/lzw"
   ]
-  revision = "12117c17ca67ffa1ce22e9409f3b0b0a93ac08c7"
+  revision = "f315e440302883054d0c2bd85486878cb4f8572c"
 
 [solve-meta]
   analyzer-name = "dep"

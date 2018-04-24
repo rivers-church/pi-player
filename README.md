@@ -29,7 +29,7 @@ Install additional packages:\
 Create a directory for the mount:\
 `sudo mkdir /media/visuals`\
 Add the following entry to the `/etc/fstab` file (use tabs to separate each section):\
-`//host/path /media/visuals  cifs    username=user,password=pass,iocharset=utf8,sec=ntlm   0       0`
+`//host/path /media/visuals  cifs    username=user,password=pass,iocharset=utf8,sec=ntlm,vers=1.0   0       0`
 
 **Note:** replace spaces with */040*\
 Reboot the Pi: `sudo reboot`\
@@ -57,7 +57,7 @@ Run project to make sure it runs.\
 Setup the app to start on boot:\
 Create a file called `pi-player.service` with the following contents:
 
-```
+```systemd
 [Unit]
 Description=Pi Player
 ConditionPathExists=/home/pi/go/src/github.com/17xande/pi-player
@@ -129,7 +129,7 @@ Access the server from a browset to make sure it's running properly. Use the fol
 Setup Syslog for the app to log to the right place:\
 Edit `/etc/rsyslog.conf` and uncomment the following lines:\
 
-```
+```systemd
 # provides UDP syslog reception
 #module(load="imudp")
 #input(type="imudp" port="514")
@@ -183,7 +183,7 @@ Reboot the Pi and make sure that the program still runs on boot correctly.
 Setup X server to start on boot:
 Create a new systemd service file at `/lib/systemd/system/x.service`
 
-```
+```systemd
 [Unit]
 Description=X server
 After=pi-player.service
@@ -211,3 +211,12 @@ sudo systemctl start x
 The screen should go black as the X server starts
 
 Restart the Pi again and make sure everything boots up and works as expected. A black screen should be displayed once the Pi has booted and you should have control from the webpage `<ip-address>:8080/control`
+
+Setup USB support but installing `usbmount` and edit it's systemd file
+
+```bash
+sudo apt install usbmount
+sudo vim /lib/systemd/system/systemd-udev.service
+```
+
+change `MountFlags=slave` to `MountFlags=shared`

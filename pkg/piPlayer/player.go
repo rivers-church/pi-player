@@ -545,7 +545,7 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Println("Error tring to read files from directory: ", err)
-		t := template.Must(template.ParseFiles("templates/error.html"))
+		t := template.Must(template.ParseFiles("pkg/piPlayer/templates/error.html"))
 		err := t.Execute(w, err)
 		if err != nil {
 			log.Println("Error trying to render error page. #fail.", err)

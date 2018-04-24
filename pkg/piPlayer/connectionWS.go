@@ -41,6 +41,7 @@ func (c *connectionWS) HandlerWebsocket(w http.ResponseWriter, r *http.Request) 
 	c.read()
 }
 
+// write sends data to the websocket
 func (c *connectionWS) write() {
 	defer c.conn.Close()
 

@@ -172,7 +172,7 @@ func (v *EventNeedsBeginFramesChanged) UnmarshalJSON(data []byte) error {
 func (v *EventNeedsBeginFramesChanged) UnmarshalEasyJSON(l *jlexer.Lexer) {
 	easyjsonC5a4559bDecodeGithubComChromedpCdprotoHeadlessexperimental1(l, v)
 }
-func easyjsonC5a4559bDecodeGithubComChromedpCdprotoHeadlessexperimental2(in *jlexer.Lexer, out *EventMainFrameReadyForScreenshots) {
+func easyjsonC5a4559bDecodeGithubComChromedpCdprotoHeadlessexperimental2(in *jlexer.Lexer, out *EnterDeterministicModeParams) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -191,6 +191,8 @@ func easyjsonC5a4559bDecodeGithubComChromedpCdprotoHeadlessexperimental2(in *jle
 			continue
 		}
 		switch key {
+		case "initialDate":
+			out.InitialDate = float64(in.Float64())
 		default:
 			in.SkipRecursive()
 		}
@@ -201,34 +203,44 @@ func easyjsonC5a4559bDecodeGithubComChromedpCdprotoHeadlessexperimental2(in *jle
 		in.Consumed()
 	}
 }
-func easyjsonC5a4559bEncodeGithubComChromedpCdprotoHeadlessexperimental2(out *jwriter.Writer, in EventMainFrameReadyForScreenshots) {
+func easyjsonC5a4559bEncodeGithubComChromedpCdprotoHeadlessexperimental2(out *jwriter.Writer, in EnterDeterministicModeParams) {
 	out.RawByte('{')
 	first := true
 	_ = first
+	if in.InitialDate != 0 {
+		const prefix string = ",\"initialDate\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.Float64(float64(in.InitialDate))
+	}
 	out.RawByte('}')
 }
 
 // MarshalJSON supports json.Marshaler interface
-func (v EventMainFrameReadyForScreenshots) MarshalJSON() ([]byte, error) {
+func (v EnterDeterministicModeParams) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
 	easyjsonC5a4559bEncodeGithubComChromedpCdprotoHeadlessexperimental2(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
-func (v EventMainFrameReadyForScreenshots) MarshalEasyJSON(w *jwriter.Writer) {
+func (v EnterDeterministicModeParams) MarshalEasyJSON(w *jwriter.Writer) {
 	easyjsonC5a4559bEncodeGithubComChromedpCdprotoHeadlessexperimental2(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
-func (v *EventMainFrameReadyForScreenshots) UnmarshalJSON(data []byte) error {
+func (v *EnterDeterministicModeParams) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
 	easyjsonC5a4559bDecodeGithubComChromedpCdprotoHeadlessexperimental2(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
-func (v *EventMainFrameReadyForScreenshots) UnmarshalEasyJSON(l *jlexer.Lexer) {
+func (v *EnterDeterministicModeParams) UnmarshalEasyJSON(l *jlexer.Lexer) {
 	easyjsonC5a4559bDecodeGithubComChromedpCdprotoHeadlessexperimental2(l, v)
 }
 func easyjsonC5a4559bDecodeGithubComChromedpCdprotoHeadlessexperimental3(in *jlexer.Lexer, out *EnableParams) {
@@ -370,8 +382,6 @@ func easyjsonC5a4559bDecodeGithubComChromedpCdprotoHeadlessexperimental5(in *jle
 		switch key {
 		case "hasDamage":
 			out.HasDamage = bool(in.Bool())
-		case "mainFrameContentUpdated":
-			out.MainFrameContentUpdated = bool(in.Bool())
 		case "screenshotData":
 			out.ScreenshotData = string(in.String())
 		default:
@@ -397,16 +407,6 @@ func easyjsonC5a4559bEncodeGithubComChromedpCdprotoHeadlessexperimental5(out *jw
 			out.RawString(prefix)
 		}
 		out.Bool(bool(in.HasDamage))
-	}
-	if in.MainFrameContentUpdated {
-		const prefix string = ",\"mainFrameContentUpdated\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
-		out.Bool(bool(in.MainFrameContentUpdated))
 	}
 	if in.ScreenshotData != "" {
 		const prefix string = ",\"screenshotData\":"
@@ -473,6 +473,8 @@ func easyjsonC5a4559bDecodeGithubComChromedpCdprotoHeadlessexperimental6(in *jle
 				}
 				(*out.FrameTime).UnmarshalEasyJSON(in)
 			}
+		case "frameTimeTicks":
+			out.FrameTimeTicks = float64(in.Float64())
 		case "deadline":
 			if in.IsNull() {
 				in.Skip()
@@ -483,6 +485,8 @@ func easyjsonC5a4559bDecodeGithubComChromedpCdprotoHeadlessexperimental6(in *jle
 				}
 				(*out.Deadline).UnmarshalEasyJSON(in)
 			}
+		case "deadlineTicks":
+			out.DeadlineTicks = float64(in.Float64())
 		case "interval":
 			out.Interval = float64(in.Float64())
 		case "noDisplayUpdates":
@@ -521,6 +525,16 @@ func easyjsonC5a4559bEncodeGithubComChromedpCdprotoHeadlessexperimental6(out *jw
 		}
 		(*in.FrameTime).MarshalEasyJSON(out)
 	}
+	if in.FrameTimeTicks != 0 {
+		const prefix string = ",\"frameTimeTicks\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.Float64(float64(in.FrameTimeTicks))
+	}
 	if in.Deadline != nil {
 		const prefix string = ",\"deadline\":"
 		if first {
@@ -530,6 +544,16 @@ func easyjsonC5a4559bEncodeGithubComChromedpCdprotoHeadlessexperimental6(out *jw
 			out.RawString(prefix)
 		}
 		(*in.Deadline).MarshalEasyJSON(out)
+	}
+	if in.DeadlineTicks != 0 {
+		const prefix string = ",\"deadlineTicks\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.Float64(float64(in.DeadlineTicks))
 	}
 	if in.Interval != 0 {
 		const prefix string = ",\"interval\":"
