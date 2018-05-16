@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Menu {{.location}}</title>
+  <link rel="stylesheet" href="/assets/css/milligram.css">
+  <link rel="stylesheet" href="/assets/css/menu.css">
+  <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Roboto+Slab">
+  <script defer src="/assets/js/fontawesome-all.min.js"></script>
+</head>
+<body>
+  <div class="container" style="background-image: url({{.img}})">
+    <h1>Menu</h1>
+      <ul id="ulPlaylist">
+        {{range .playlist.Items}}
+          <li>{{.Name}}</li>
+        {{end}}
+      </ul>
+    </div>
+  </div>
+  <script src="/assets/js/menu.js"></script>
+</body>
+</html>

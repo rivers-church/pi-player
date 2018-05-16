@@ -3,11 +3,16 @@ package piPlayer
 import (
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
 
 const (
+	writeWait       = 10 * time.Second
+	pongWait        = 60 * time.Second
+	pingPeriod      = (pongWait * 9) / 10
+	maxMessageSize  = 512
 	readBufferSize  = 1024
 	writeBufferSize = 1024
 )
@@ -36,25 +41,42 @@ func (c *connectionWS) HandlerWebsocket(w http.ResponseWriter, r *http.Request) 
 
 	c.active = true
 	go c.write()
-	// we can't start the read() method on a separate goroutine, or this function would return and stop serving the websocket connections
-	// we need the infinite loop in the read function to block operations and keep this function alive
-	c.read()
+	go c.read()
 }
 
 // write sends data to the websocket
 func (c *connectionWS) write() {
-	defer c.conn.Close()
+	ticker := time.NewTicker(pingPeriod)
+	defer func() {
+		ticker.Stop()
+		c.conn.Close()
+	}()
 
 	// this loop keeps running as long as the channel is open.
-	for msg := range c.send {
-		err := c.conn.WriteJSON(msg)
-		if err != nil {
-			log.Println("Error trying to write JSON to the socket: ", err)
-			// this probably means that the connection is broken,
-			// so close the channel and break out of the loop.
-			close(c.send)
-			c.active = false
-			break
+	for {
+		select {
+		case msg, ok := <-c.send:
+			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if !ok {
+				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
+			err := c.conn.WriteJSON(msg)
+			if err != nil {
+				log.Println("Error trying to write JSON to the socket: ", err)
+				// this probably means that the connection is broken,
+				// so close the channel and break out of the loop.
+				close(c.send)
+				c.active = false
+				return
+			}
+		case <-ticker.C:
+			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				log.Println("Error trying to send ping message")
+				// not sure what else needs to be done here.
+				return
+			}
 		}
 	}
 }
@@ -63,13 +85,22 @@ func (c *connectionWS) write() {
 func (c *connectionWS) read() {
 	defer c.conn.Close()
 
+	c.conn.SetReadLimit(maxMessageSize)
+	c.conn.SetReadDeadline(time.Now().Add(pongWait))
+	c.conn.SetPongHandler(func(string) error {
+		c.conn.SetReadDeadline(time.Now().Add(pongWait))
+		return nil
+	})
+
 	for {
 		var msg reqMessage
 		err := c.conn.ReadJSON(&msg)
 		if err != nil {
-			log.Println("Error trying to read the JSON from the socket: ", err)
-			// this probably means that the connection is broken,
-			// so close the channel and break out of the loop.
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				log.Println("Error, websocket closed: ", err)
+			} else {
+				log.Println("Error trying to read the JSON from the socket: ", err)
+			}
 			close(c.send)
 			c.active = false
 			break
