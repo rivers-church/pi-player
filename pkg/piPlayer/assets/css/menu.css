@@ -1,5 +1,4 @@
 html, body {
-  background-color: black;
   margin: 0;
   padding: 0;
   width: 100%;
@@ -7,9 +6,23 @@ html, body {
   overflow: hidden;
 }
 
-#container {
+.container {
   width: 100%;
   height: 100%;
   background-size: 100% 100%;
-  transition: background-image 1s ease-in-out;
+}
+
+.item {
+  color: black;
+  text-shadow: 0 0 13px white;
+}
+
+.item:focus {
+  color: white;
+  background-color: #9b4dca66;
+  outline: none;
+}
+
+#ulPlaylist {
+  display: inline-grid;
 }

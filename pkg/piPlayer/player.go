@@ -589,6 +589,19 @@ func (p *Player) HandleViewer(w http.ResponseWriter, r *http.Request) {
 	th.ServeHTTP(w, r)
 }
 
+// HandleMenu handles requests to the menu page
+func (p *Player) HandleMenu(w http.ResponseWriter, r *http.Request) {
+	th := TemplateHandler{
+		filename: "menu.html",
+		data: map[string]interface{}{
+			"playlist": p.playlist,
+			"img":      "/content/" + p.playlist.Items[0].Name(),
+		},
+	}
+
+	th.ServeHTTP(w, r)
+}
+
 // next starts the next item in the playlist
 func (p *Player) next() error {
 	n, err := p.playlist.getNext()
