@@ -1,4 +1,4 @@
-package piPlayer
+package piplayer
 
 import (
 	"context"
@@ -58,22 +58,6 @@ var commandList = map[string]string{
 	"seekForward30":   "\x1b[C",
 	"seekBack600":     "\x1b[B",
 	"seekForward600":  "\x1b[A",
-}
-
-var remoteCommands = map[string]string{
-	"KEY_HOME":         "",
-	"KEY_INFO":         "",
-	"KEY_UP":           "",
-	"KEY_DOWN":         "",
-	"KEY_LEFT":         "",
-	"KEY_RIGHT":        "",
-	"KEY_ENTER":        "",
-	"KEY_BACK":         "",
-	"KEY_CONTEXT_MENU": "",
-	"KEY_PLAYPAUSE":    "pauseResume",
-	"KEY_STOP":         "quit",
-	"KEY_REWIND":       "seekBack30",
-	"KEY_FASTFORWARD":  "seekForward30",
 }
 
 // NewPlayer creates a new Player

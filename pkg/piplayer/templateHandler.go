@@ -1,4 +1,4 @@
-package piPlayer
+package piplayer
 
 import (
 	"html/template"
