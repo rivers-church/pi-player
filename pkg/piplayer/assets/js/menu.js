@@ -28,13 +28,15 @@ function run() {
   });
 
   conn.addEventListener('message', e => {
-    switch (e.data) {
+    let msg = JSON.parse(e.data)
+
+    switch (msg.message) {
       case 'KEY_UP':
       case 'KEY_DOWN':
-        remoteArrowPress(e);
+        remoteArrowPress(e, msg);
         break;
       case 'KEY_ENTER':
-        remoteEnterPress(e);
+        remoteEnterPress(e, msg);
         break;
       default:
         console.log("Unsupported message received: ", e.data);
@@ -42,7 +44,7 @@ function run() {
     }
   });
 
-  function remoteArrowPress(e) {
+  function remoteArrowPress(e, msg) {
     let selectedItem = document.querySelector(menuItemSelector + ':focus');
     if (selectedItem == null) {
       // No item is selected, focus on first item.
@@ -57,19 +59,26 @@ function run() {
       return;
     }
 
-    let diff = e.data == 'KEY_UP' ? -1 : 1;
+    let diff = msg.message == 'KEY_UP' ? -1 : 1;
 
-    if (e.data == 'KEY_UP' && i <= 0) {
+    if (msg.message == 'KEY_UP' && i <= 0) {
       i = arrItems.length;
-    } else if (e.data == 'KEY_DOWN' && i >= arrItems.length - 1) {
+    } else if (msg.message == 'KEY_DOWN' && i >= arrItems.length - 1) {
       i = -1;
     }
 
     arrItems[i + diff].focus();
   }
 
-  function remoteEnterPress(e) {
+  function remoteEnterPress(e, msg) {
     let selectedItem = document.querySelector(menuItemSelector + ':focus');
+
+    if (selectedItem == null) {
+      // No item selected, focus on first item again.
+      arrItems[0].focus();
+      return;
+    }
+
     let reqBody = {
       component: 'player',
       method: 'start',

@@ -39,6 +39,8 @@ func (c *connectionWS) HandlerWebsocket(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	c.send = make(chan resMessage)
+
 	c.active = true
 	go c.write()
 	go c.read()
@@ -106,7 +108,6 @@ func (c *connectionWS) read() {
 			break
 		}
 
-		// ignore socket messages for now.
 		// TODO: handle socket messages.
 		log.Println("socket message received: ", msg)
 	}

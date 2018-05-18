@@ -16,6 +16,8 @@ type TemplateHandler struct {
 	data     map[string]interface{}
 }
 
+const templateDir = "pkg/piplayer/templates"
+
 // NewTemplateHandler returns a new template handler for a specific page
 func NewTemplateHandler(filename string) TemplateHandler {
 	return TemplateHandler{filename: filename}
@@ -26,7 +28,7 @@ func (t *TemplateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// once keeps track of which of these anonymous functions have already been called,
 	// and stores their result. If they are called again it just returns the stored result.
 	// t.once.Do(func(){
-	t.templ = template.Must(template.ParseFiles(filepath.Join("pkg/piPlayer/templates", t.filename)))
+	t.templ = template.Must(template.ParseFiles(filepath.Join(templateDir, t.filename)))
 	// // })
 	// data := map[string]string{
 	// 	"Host": r.Host,
