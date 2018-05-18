@@ -591,6 +591,16 @@ func (p *Player) HandleViewer(w http.ResponseWriter, r *http.Request) {
 
 // HandleMenu handles requests to the menu page
 func (p *Player) HandleMenu(w http.ResponseWriter, r *http.Request) {
+	if err := p.playlist.fromFolder(p.conf.Directory); err != nil {
+		log.Println("Error tring to read files from directory: ", err)
+		t := template.Must(template.ParseFiles("pkg/piPlayer/templates/error.html"))
+		err := t.Execute(w, err)
+		if err != nil {
+			log.Println("Error trying to render error page. #fail.", err)
+		}
+		return
+	}
+
 	th := TemplateHandler{
 		filename: "menu.html",
 		data: map[string]interface{}{
