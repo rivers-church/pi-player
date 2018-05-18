@@ -1,4 +1,4 @@
-package piPlayer
+package piplayer
 
 import (
 	"encoding/json"
@@ -45,39 +45,45 @@ func (a *APIHandler) Handle(p *Player) http.HandlerFunc {
 		a.message = reqMessage{}
 		decoder := json.NewDecoder(r.Body)
 		err := decoder.Decode(&a.message)
-		defer r.Body.Close()
 		if err != nil {
 			m := &resMessage{Success: false, Message: "Error decoding JSON request: " + err.Error()}
 			log.Println(m.Message)
 			json.NewEncoder(w).Encode(m)
+			r.Body.Close()
 			return
 		}
 
-		if a.debug {
-			log.Printf("message received: %#v\n", a.message)
-		}
+		a.handleMessage(p, w, r)
+	}
+}
 
-		// displach execution based on which component was called
-		// in this case, the Player component
-		if a.message.Component == "player" {
-			p.ServeHTTP(w, r)
-			return
-		}
+func (a *APIHandler) handleMessage(p *Player, w http.ResponseWriter, r *http.Request) {
+	if a.debug {
+		log.Printf("message received: %#v\n", a.message)
+	}
 
-		if a.message.Component == "playlist" {
-			p.playlist.handleAPI(p.api, w, r)
-			return
-		}
+	// displach execution based on which component was called
+	// in this case, the Player component
+	if a.message.Component == "player" {
+		p.ServeHTTP(w, r)
+		return
+	}
 
-		// return a generic success message for debugging
-		m := &resMessage{
-			Success: true,
-			Message: fmt.Sprintf("Message Received:\ncomponent: %s\nmethod: %s\narguments: %v\n", a.message.Component, a.message.Method, a.message.Arguments),
-		}
-		json.NewEncoder(w).Encode(m)
+	if a.message.Component == "playlist" {
+		p.playlist.handleAPI(p.api, w, r)
+		return
+	}
 
-		if p.api.debug {
-			log.Println(m.Message)
-		}
+	// return a generic success message for debugging
+	m := &resMessage{
+		Success: true,
+		Message: fmt.Sprintf("Message Received:\ncomponent: %s\nmethod: %s\narguments: %v\n", a.message.Component, a.message.Method, a.message.Arguments),
+	}
+	json.NewEncoder(w).Encode(m)
+
+	r.Body.Close()
+
+	if p.api.debug {
+		log.Println(m.Message)
 	}
 }

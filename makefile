@@ -1,6 +1,6 @@
 # variables
 BINARY_NAME=pi-player
-CMD_MAIN=cmd/piPlayer/main.go
+CMD_MAIN=cmd/piplayer/main.go
 
 build:
 	go build -o $(BINARY_NAME) $(CMD_MAIN)

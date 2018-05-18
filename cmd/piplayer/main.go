@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/17xande/keylogger"
-	piplayer "github.com/17xande/pi-player/pkg/piPlayer"
+	piplayer "github.com/17xande/pi-player/pkg/piplayer"
 )
 
 func main() {
@@ -33,7 +33,7 @@ func main() {
 
 	defer p.CleanUp()
 
-	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("pkg/piPlayer/assets"))))
+	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("pkg/piplayer/assets"))))
 	http.Handle("/content/", http.StripPrefix("/content/", http.FileServer(http.Dir(conf.Directory))))
 	http.HandleFunc("/login", piplayer.LoginHandler(&conf))
 	http.HandleFunc("/logout", piplayer.LogoutHandler)
@@ -41,7 +41,7 @@ func main() {
 	http.HandleFunc("/settings", conf.HandleSettings)
 	http.HandleFunc("/viewer", p.HandleViewer)
 	http.HandleFunc("/menu", p.HandleMenu)
-	http.HandleFunc("/control/ws", p.Connection.HandlerWebsocket)
+	http.HandleFunc("/ws", p.Connection.HandlerWebsocket)
 	http.HandleFunc("/api", a.Handle(p))
 	http.HandleFunc("/", handlerHome)
 
