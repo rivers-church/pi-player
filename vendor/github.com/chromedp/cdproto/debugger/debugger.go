@@ -91,14 +91,15 @@ func (p *EnableParams) Do(ctxt context.Context, h cdp.Executor) (debuggerID runt
 
 // EvaluateOnCallFrameParams evaluates expression on a given call frame.
 type EvaluateOnCallFrameParams struct {
-	CallFrameID           CallFrameID `json:"callFrameId"`                     // Call frame identifier to evaluate on.
-	Expression            string      `json:"expression"`                      // Expression to evaluate.
-	ObjectGroup           string      `json:"objectGroup,omitempty"`           // String object group name to put result into (allows rapid releasing resulting object handles using releaseObjectGroup).
-	IncludeCommandLineAPI bool        `json:"includeCommandLineAPI,omitempty"` // Specifies whether command line API should be available to the evaluated expression, defaults to false.
-	Silent                bool        `json:"silent,omitempty"`                // In silent mode exceptions thrown during evaluation are not reported and do not pause execution. Overrides setPauseOnException state.
-	ReturnByValue         bool        `json:"returnByValue,omitempty"`         // Whether the result is expected to be a JSON object that should be sent by value.
-	GeneratePreview       bool        `json:"generatePreview,omitempty"`       // Whether preview should be generated for the result.
-	ThrowOnSideEffect     bool        `json:"throwOnSideEffect,omitempty"`     // Whether to throw an exception if side effect cannot be ruled out during evaluation.
+	CallFrameID           CallFrameID       `json:"callFrameId"`                     // Call frame identifier to evaluate on.
+	Expression            string            `json:"expression"`                      // Expression to evaluate.
+	ObjectGroup           string            `json:"objectGroup,omitempty"`           // String object group name to put result into (allows rapid releasing resulting object handles using releaseObjectGroup).
+	IncludeCommandLineAPI bool              `json:"includeCommandLineAPI,omitempty"` // Specifies whether command line API should be available to the evaluated expression, defaults to false.
+	Silent                bool              `json:"silent,omitempty"`                // In silent mode exceptions thrown during evaluation are not reported and do not pause execution. Overrides setPauseOnException state.
+	ReturnByValue         bool              `json:"returnByValue,omitempty"`         // Whether the result is expected to be a JSON object that should be sent by value.
+	GeneratePreview       bool              `json:"generatePreview,omitempty"`       // Whether preview should be generated for the result.
+	ThrowOnSideEffect     bool              `json:"throwOnSideEffect,omitempty"`     // Whether to throw an exception if side effect cannot be ruled out during evaluation.
+	Timeout               runtime.TimeDelta `json:"timeout,omitempty"`               // Terminate execution after timing out (number of milliseconds).
 }
 
 // EvaluateOnCallFrame evaluates expression on a given call frame.
@@ -151,6 +152,12 @@ func (p EvaluateOnCallFrameParams) WithGeneratePreview(generatePreview bool) *Ev
 // be ruled out during evaluation.
 func (p EvaluateOnCallFrameParams) WithThrowOnSideEffect(throwOnSideEffect bool) *EvaluateOnCallFrameParams {
 	p.ThrowOnSideEffect = throwOnSideEffect
+	return &p
+}
+
+// WithTimeout terminate execution after timing out (number of milliseconds).
+func (p EvaluateOnCallFrameParams) WithTimeout(timeout runtime.TimeDelta) *EvaluateOnCallFrameParams {
+	p.Timeout = timeout
 	return &p
 }
 
@@ -685,6 +692,53 @@ func (p *SetBreakpointByURLParams) Do(ctxt context.Context, h cdp.Executor) (bre
 	return res.BreakpointID, res.Locations, nil
 }
 
+// SetBreakpointOnFunctionCallParams sets JavaScript breakpoint before each
+// call to the given function. If another function was created from the same
+// source as a given one, calling it will also trigger the breakpoint.
+type SetBreakpointOnFunctionCallParams struct {
+	ObjectID  runtime.RemoteObjectID `json:"objectId"`            // Function object id.
+	Condition string                 `json:"condition,omitempty"` // Expression to use as a breakpoint condition. When specified, debugger will stop on the breakpoint if this expression evaluates to true.
+}
+
+// SetBreakpointOnFunctionCall sets JavaScript breakpoint before each call to
+// the given function. If another function was created from the same source as a
+// given one, calling it will also trigger the breakpoint.
+//
+// parameters:
+//   objectID - Function object id.
+func SetBreakpointOnFunctionCall(objectID runtime.RemoteObjectID) *SetBreakpointOnFunctionCallParams {
+	return &SetBreakpointOnFunctionCallParams{
+		ObjectID: objectID,
+	}
+}
+
+// WithCondition expression to use as a breakpoint condition. When specified,
+// debugger will stop on the breakpoint if this expression evaluates to true.
+func (p SetBreakpointOnFunctionCallParams) WithCondition(condition string) *SetBreakpointOnFunctionCallParams {
+	p.Condition = condition
+	return &p
+}
+
+// SetBreakpointOnFunctionCallReturns return values.
+type SetBreakpointOnFunctionCallReturns struct {
+	BreakpointID BreakpointID `json:"breakpointId,omitempty"` // Id of the created breakpoint for further reference.
+}
+
+// Do executes Debugger.setBreakpointOnFunctionCall against the provided context.
+//
+// returns:
+//   breakpointID - Id of the created breakpoint for further reference.
+func (p *SetBreakpointOnFunctionCallParams) Do(ctxt context.Context, h cdp.Executor) (breakpointID BreakpointID, err error) {
+	// execute
+	var res SetBreakpointOnFunctionCallReturns
+	err = h.Execute(ctxt, CommandSetBreakpointOnFunctionCall, p, &res)
+	if err != nil {
+		return "", err
+	}
+
+	return res.BreakpointID, nil
+}
+
 // SetBreakpointsActiveParams activates / deactivates all breakpoints on the
 // page.
 type SetBreakpointsActiveParams struct {
@@ -911,32 +965,33 @@ func (p *StepOverParams) Do(ctxt context.Context, h cdp.Executor) (err error) {
 
 // Command names.
 const (
-	CommandContinueToLocation     = "Debugger.continueToLocation"
-	CommandDisable                = "Debugger.disable"
-	CommandEnable                 = "Debugger.enable"
-	CommandEvaluateOnCallFrame    = "Debugger.evaluateOnCallFrame"
-	CommandGetPossibleBreakpoints = "Debugger.getPossibleBreakpoints"
-	CommandGetScriptSource        = "Debugger.getScriptSource"
-	CommandGetStackTrace          = "Debugger.getStackTrace"
-	CommandPause                  = "Debugger.pause"
-	CommandPauseOnAsyncCall       = "Debugger.pauseOnAsyncCall"
-	CommandRemoveBreakpoint       = "Debugger.removeBreakpoint"
-	CommandRestartFrame           = "Debugger.restartFrame"
-	CommandResume                 = "Debugger.resume"
-	CommandScheduleStepIntoAsync  = "Debugger.scheduleStepIntoAsync"
-	CommandSearchInContent        = "Debugger.searchInContent"
-	CommandSetAsyncCallStackDepth = "Debugger.setAsyncCallStackDepth"
-	CommandSetBlackboxPatterns    = "Debugger.setBlackboxPatterns"
-	CommandSetBlackboxedRanges    = "Debugger.setBlackboxedRanges"
-	CommandSetBreakpoint          = "Debugger.setBreakpoint"
-	CommandSetBreakpointByURL     = "Debugger.setBreakpointByUrl"
-	CommandSetBreakpointsActive   = "Debugger.setBreakpointsActive"
-	CommandSetPauseOnExceptions   = "Debugger.setPauseOnExceptions"
-	CommandSetReturnValue         = "Debugger.setReturnValue"
-	CommandSetScriptSource        = "Debugger.setScriptSource"
-	CommandSetSkipAllPauses       = "Debugger.setSkipAllPauses"
-	CommandSetVariableValue       = "Debugger.setVariableValue"
-	CommandStepInto               = "Debugger.stepInto"
-	CommandStepOut                = "Debugger.stepOut"
-	CommandStepOver               = "Debugger.stepOver"
+	CommandContinueToLocation          = "Debugger.continueToLocation"
+	CommandDisable                     = "Debugger.disable"
+	CommandEnable                      = "Debugger.enable"
+	CommandEvaluateOnCallFrame         = "Debugger.evaluateOnCallFrame"
+	CommandGetPossibleBreakpoints      = "Debugger.getPossibleBreakpoints"
+	CommandGetScriptSource             = "Debugger.getScriptSource"
+	CommandGetStackTrace               = "Debugger.getStackTrace"
+	CommandPause                       = "Debugger.pause"
+	CommandPauseOnAsyncCall            = "Debugger.pauseOnAsyncCall"
+	CommandRemoveBreakpoint            = "Debugger.removeBreakpoint"
+	CommandRestartFrame                = "Debugger.restartFrame"
+	CommandResume                      = "Debugger.resume"
+	CommandScheduleStepIntoAsync       = "Debugger.scheduleStepIntoAsync"
+	CommandSearchInContent             = "Debugger.searchInContent"
+	CommandSetAsyncCallStackDepth      = "Debugger.setAsyncCallStackDepth"
+	CommandSetBlackboxPatterns         = "Debugger.setBlackboxPatterns"
+	CommandSetBlackboxedRanges         = "Debugger.setBlackboxedRanges"
+	CommandSetBreakpoint               = "Debugger.setBreakpoint"
+	CommandSetBreakpointByURL          = "Debugger.setBreakpointByUrl"
+	CommandSetBreakpointOnFunctionCall = "Debugger.setBreakpointOnFunctionCall"
+	CommandSetBreakpointsActive        = "Debugger.setBreakpointsActive"
+	CommandSetPauseOnExceptions        = "Debugger.setPauseOnExceptions"
+	CommandSetReturnValue              = "Debugger.setReturnValue"
+	CommandSetScriptSource             = "Debugger.setScriptSource"
+	CommandSetSkipAllPauses            = "Debugger.setSkipAllPauses"
+	CommandSetVariableValue            = "Debugger.setVariableValue"
+	CommandStepInto                    = "Debugger.stepInto"
+	CommandStepOut                     = "Debugger.stepOut"
+	CommandStepOver                    = "Debugger.stepOver"
 )

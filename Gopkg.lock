@@ -51,7 +51,7 @@
     "tethering",
     "tracing"
   ]
-  revision = "cc77834c1ac1a551a6cbda8895b2109cfba3faa2"
+  revision = "dfccfa0568b0f5213f75d5e99a46d97a9f3d1ca4"
 
 [[projects]]
   branch = "master"
@@ -61,19 +61,19 @@
     "kb",
     "runner"
   ]
-  revision = "f683cfc4c190d6a24ca66ee436184b533fd126b8"
+  revision = "310d213f6f2630dc62a681d941727e6d10c907a2"
 
 [[projects]]
   name = "github.com/disintegration/imaging"
   packages = ["."]
-  revision = "fd34ef7671b12cdf1b024d98c6b327b2770d32c4"
-  version = "v1.4.1"
+  revision = "bbcee2f5c9d5e94ca42c8b50ec847fec64a6c134"
+  version = "v1.4.2"
 
 [[projects]]
   name = "github.com/gorilla/context"
   packages = ["."]
-  revision = "1ea25387ff6f684839d82767c1733ff4d4d15d0a"
-  version = "v1.1"
+  revision = "08b5f424b9271eedf6f9f0ce86cb9396ed337a42"
+  version = "v1.1.1"
 
 [[projects]]
   name = "github.com/gorilla/securecookie"
@@ -97,7 +97,7 @@
   branch = "master"
   name = "github.com/knq/chromedp"
   packages = ["."]
-  revision = "f683cfc4c190d6a24ca66ee436184b533fd126b8"
+  revision = "310d213f6f2630dc62a681d941727e6d10c907a2"
 
 [[projects]]
   branch = "master"
@@ -129,7 +129,7 @@
     "bcrypt",
     "blowfish"
   ]
-  revision = "2b6c08872f4b66da917bb4ce98df4f0307330f78"
+  revision = "1a580b3eff7814fc9b40602fd35256c63b50f491"
 
 [[projects]]
   branch = "master"

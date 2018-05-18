@@ -225,6 +225,7 @@ const (
 	CommandDebuggerSetBlackboxedRanges                     = debugger.CommandSetBlackboxedRanges
 	CommandDebuggerSetBreakpoint                           = debugger.CommandSetBreakpoint
 	CommandDebuggerSetBreakpointByURL                      = debugger.CommandSetBreakpointByURL
+	CommandDebuggerSetBreakpointOnFunctionCall             = debugger.CommandSetBreakpointOnFunctionCall
 	CommandDebuggerSetBreakpointsActive                    = debugger.CommandSetBreakpointsActive
 	CommandDebuggerSetPauseOnExceptions                    = debugger.CommandSetPauseOnExceptions
 	CommandDebuggerSetReturnValue                          = debugger.CommandSetReturnValue
@@ -260,7 +261,6 @@ const (
 	EventEmulationVirtualTimeBudgetExpired                 = "Emulation.virtualTimeBudgetExpired"
 	EventEmulationVirtualTimePaused                        = "Emulation.virtualTimePaused"
 	CommandHeadlessExperimentalBeginFrame                  = headlessexperimental.CommandBeginFrame
-	CommandHeadlessExperimentalEnterDeterministicMode      = headlessexperimental.CommandEnterDeterministicMode
 	CommandHeadlessExperimentalDisable                     = headlessexperimental.CommandDisable
 	CommandHeadlessExperimentalEnable                      = headlessexperimental.CommandEnable
 	EventHeadlessExperimentalNeedsBeginFramesChanged       = "HeadlessExperimental.needsBeginFramesChanged"
@@ -344,6 +344,7 @@ const (
 	CommandNetworkGetResponseBody                          = network.CommandGetResponseBody
 	CommandNetworkGetRequestPostData                       = network.CommandGetRequestPostData
 	CommandNetworkGetResponseBodyForInterception           = network.CommandGetResponseBodyForInterception
+	CommandNetworkTakeResponseBodyForInterceptionAsStream  = network.CommandTakeResponseBodyForInterceptionAsStream
 	CommandNetworkReplayXHR                                = network.CommandReplayXHR
 	CommandNetworkSearchInResponseBody                     = network.CommandSearchInResponseBody
 	CommandNetworkSetBlockedURLS                           = network.CommandSetBlockedURLS
@@ -363,6 +364,7 @@ const (
 	EventNetworkRequestServedFromCache                     = "Network.requestServedFromCache"
 	EventNetworkRequestWillBeSent                          = "Network.requestWillBeSent"
 	EventNetworkResourceChangedPriority                    = "Network.resourceChangedPriority"
+	EventNetworkSignedExchangeReceived                     = "Network.signedExchangeReceived"
 	EventNetworkResponseReceived                           = "Network.responseReceived"
 	EventNetworkWebSocketClosed                            = "Network.webSocketClosed"
 	EventNetworkWebSocketCreated                           = "Network.webSocketCreated"
@@ -419,6 +421,8 @@ const (
 	CommandPageStartScreencast                             = page.CommandStartScreencast
 	CommandPageStopLoading                                 = page.CommandStopLoading
 	CommandPageCrash                                       = page.CommandCrash
+	CommandPageClose                                       = page.CommandClose
+	CommandPageSetWebLifecycleState                        = page.CommandSetWebLifecycleState
 	CommandPageStopScreencast                              = page.CommandStopScreencast
 	EventPageDomContentEventFired                          = "Page.domContentEventFired"
 	EventPageFrameAttached                                 = "Page.frameAttached"
@@ -516,6 +520,7 @@ const (
 	CommandTargetAttachToTarget                            = target.CommandAttachToTarget
 	CommandTargetCloseTarget                               = target.CommandCloseTarget
 	CommandTargetCreateBrowserContext                      = target.CommandCreateBrowserContext
+	CommandTargetGetBrowserContexts                        = target.CommandGetBrowserContexts
 	CommandTargetCreateTarget                              = target.CommandCreateTarget
 	CommandTargetDetachFromTarget                          = target.CommandDetachFromTarget
 	CommandTargetDisposeBrowserContext                     = target.CommandDisposeBrowserContext
@@ -1041,6 +1046,9 @@ func UnmarshalMessage(msg *Message) (interface{}, error) {
 	case CommandDebuggerSetBreakpointByURL:
 		v = new(debugger.SetBreakpointByURLReturns)
 
+	case CommandDebuggerSetBreakpointOnFunctionCall:
+		v = new(debugger.SetBreakpointOnFunctionCallReturns)
+
 	case CommandDebuggerSetBreakpointsActive:
 		return emptyVal, nil
 
@@ -1145,9 +1153,6 @@ func UnmarshalMessage(msg *Message) (interface{}, error) {
 
 	case CommandHeadlessExperimentalBeginFrame:
 		v = new(headlessexperimental.BeginFrameReturns)
-
-	case CommandHeadlessExperimentalEnterDeterministicMode:
-		return emptyVal, nil
 
 	case CommandHeadlessExperimentalDisable:
 		return emptyVal, nil
@@ -1398,6 +1403,9 @@ func UnmarshalMessage(msg *Message) (interface{}, error) {
 	case CommandNetworkGetResponseBodyForInterception:
 		v = new(network.GetResponseBodyForInterceptionReturns)
 
+	case CommandNetworkTakeResponseBodyForInterceptionAsStream:
+		v = new(network.TakeResponseBodyForInterceptionAsStreamReturns)
+
 	case CommandNetworkReplayXHR:
 		return emptyVal, nil
 
@@ -1454,6 +1462,9 @@ func UnmarshalMessage(msg *Message) (interface{}, error) {
 
 	case EventNetworkResourceChangedPriority:
 		v = new(network.EventResourceChangedPriority)
+
+	case EventNetworkSignedExchangeReceived:
+		v = new(network.EventSignedExchangeReceived)
 
 	case EventNetworkResponseReceived:
 		v = new(network.EventResponseReceived)
@@ -1621,6 +1632,12 @@ func UnmarshalMessage(msg *Message) (interface{}, error) {
 		return emptyVal, nil
 
 	case CommandPageCrash:
+		return emptyVal, nil
+
+	case CommandPageClose:
+		return emptyVal, nil
+
+	case CommandPageSetWebLifecycleState:
 		return emptyVal, nil
 
 	case CommandPageStopScreencast:
@@ -1914,6 +1931,9 @@ func UnmarshalMessage(msg *Message) (interface{}, error) {
 	case CommandTargetCreateBrowserContext:
 		v = new(target.CreateBrowserContextReturns)
 
+	case CommandTargetGetBrowserContexts:
+		v = new(target.GetBrowserContextsReturns)
+
 	case CommandTargetCreateTarget:
 		v = new(target.CreateTargetReturns)
 
@@ -1921,7 +1941,7 @@ func UnmarshalMessage(msg *Message) (interface{}, error) {
 		return emptyVal, nil
 
 	case CommandTargetDisposeBrowserContext:
-		v = new(target.DisposeBrowserContextReturns)
+		return emptyVal, nil
 
 	case CommandTargetGetTargetInfo:
 		v = new(target.GetTargetInfoReturns)

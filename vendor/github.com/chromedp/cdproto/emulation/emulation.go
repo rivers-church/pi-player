@@ -13,7 +13,6 @@ import (
 
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/page"
-	"github.com/chromedp/cdproto/runtime"
 )
 
 // CanEmulateParams tells whether emulation is supported.
@@ -415,10 +414,11 @@ func (p *SetTouchEmulationEnabledParams) Do(ctxt context.Context, h cdp.Executor
 // real-time with a synthetic time source) and sets the current virtual time
 // policy. Note this supersedes any previous time budget.
 type SetVirtualTimePolicyParams struct {
-	Policy                            VirtualTimePolicy `json:"policy"`
-	Budget                            float64           `json:"budget,omitempty"`                            // If set, after this many virtual milliseconds have elapsed virtual time will be paused and a virtualTimeBudgetExpired event is sent.
-	MaxVirtualTimeTaskStarvationCount int64             `json:"maxVirtualTimeTaskStarvationCount,omitempty"` // If set this specifies the maximum number of tasks that can be run before virtual is forced forwards to prevent deadlock.
-	WaitForNavigation                 bool              `json:"waitForNavigation,omitempty"`                 // If set the virtual time policy change should be deferred until any frame starts navigating. Note any previous deferred policy change is superseded.
+	Policy                            VirtualTimePolicy   `json:"policy"`
+	Budget                            float64             `json:"budget,omitempty"`                            // If set, after this many virtual milliseconds have elapsed virtual time will be paused and a virtualTimeBudgetExpired event is sent.
+	MaxVirtualTimeTaskStarvationCount int64               `json:"maxVirtualTimeTaskStarvationCount,omitempty"` // If set this specifies the maximum number of tasks that can be run before virtual is forced forwards to prevent deadlock.
+	WaitForNavigation                 bool                `json:"waitForNavigation,omitempty"`                 // If set the virtual time policy change should be deferred until any frame starts navigating. Note any previous deferred policy change is superseded.
+	InitialVirtualTime                *cdp.TimeSinceEpoch `json:"initialVirtualTime,omitempty"`                // If set, base::Time::Now will be overridden to initially return this value.
 }
 
 // SetVirtualTimePolicy turns on virtual time for all frames (replacing
@@ -456,26 +456,31 @@ func (p SetVirtualTimePolicyParams) WithWaitForNavigation(waitForNavigation bool
 	return &p
 }
 
+// WithInitialVirtualTime if set, base::Time::Now will be overridden to
+// initially return this value.
+func (p SetVirtualTimePolicyParams) WithInitialVirtualTime(initialVirtualTime *cdp.TimeSinceEpoch) *SetVirtualTimePolicyParams {
+	p.InitialVirtualTime = initialVirtualTime
+	return &p
+}
+
 // SetVirtualTimePolicyReturns return values.
 type SetVirtualTimePolicyReturns struct {
-	VirtualTimeBase      *runtime.Timestamp `json:"virtualTimeBase,omitempty"`      // Absolute timestamp at which virtual time was first enabled (milliseconds since epoch).
-	VirtualTimeTicksBase float64            `json:"virtualTimeTicksBase,omitempty"` // Absolute timestamp at which virtual time was first enabled (up time in milliseconds).
+	VirtualTimeTicksBase float64 `json:"virtualTimeTicksBase,omitempty"` // Absolute timestamp at which virtual time was first enabled (up time in milliseconds).
 }
 
 // Do executes Emulation.setVirtualTimePolicy against the provided context.
 //
 // returns:
-//   virtualTimeBase - Absolute timestamp at which virtual time was first enabled (milliseconds since epoch).
 //   virtualTimeTicksBase - Absolute timestamp at which virtual time was first enabled (up time in milliseconds).
-func (p *SetVirtualTimePolicyParams) Do(ctxt context.Context, h cdp.Executor) (virtualTimeBase *runtime.Timestamp, virtualTimeTicksBase float64, err error) {
+func (p *SetVirtualTimePolicyParams) Do(ctxt context.Context, h cdp.Executor) (virtualTimeTicksBase float64, err error) {
 	// execute
 	var res SetVirtualTimePolicyReturns
 	err = h.Execute(ctxt, CommandSetVirtualTimePolicy, p, &res)
 	if err != nil {
-		return nil, 0, err
+		return 0, err
 	}
 
-	return res.VirtualTimeBase, res.VirtualTimeTicksBase, nil
+	return res.VirtualTimeTicksBase, nil
 }
 
 // Command names.

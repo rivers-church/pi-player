@@ -6,7 +6,6 @@ import (
 	json "encoding/json"
 	cdp "github.com/chromedp/cdproto/cdp"
 	page "github.com/chromedp/cdproto/page"
-	runtime "github.com/chromedp/cdproto/runtime"
 	easyjson "github.com/mailru/easyjson"
 	jlexer "github.com/mailru/easyjson/jlexer"
 	jwriter "github.com/mailru/easyjson/jwriter"
@@ -39,16 +38,6 @@ func easyjsonC5a4559bDecodeGithubComChromedpCdprotoEmulation(in *jlexer.Lexer, o
 			continue
 		}
 		switch key {
-		case "virtualTimeBase":
-			if in.IsNull() {
-				in.Skip()
-				out.VirtualTimeBase = nil
-			} else {
-				if out.VirtualTimeBase == nil {
-					out.VirtualTimeBase = new(runtime.Timestamp)
-				}
-				(*out.VirtualTimeBase).UnmarshalEasyJSON(in)
-			}
 		case "virtualTimeTicksBase":
 			out.VirtualTimeTicksBase = float64(in.Float64())
 		default:
@@ -65,16 +54,6 @@ func easyjsonC5a4559bEncodeGithubComChromedpCdprotoEmulation(out *jwriter.Writer
 	out.RawByte('{')
 	first := true
 	_ = first
-	if in.VirtualTimeBase != nil {
-		const prefix string = ",\"virtualTimeBase\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
-		(*in.VirtualTimeBase).MarshalEasyJSON(out)
-	}
 	if in.VirtualTimeTicksBase != 0 {
 		const prefix string = ",\"virtualTimeTicksBase\":"
 		if first {
@@ -138,6 +117,16 @@ func easyjsonC5a4559bDecodeGithubComChromedpCdprotoEmulation1(in *jlexer.Lexer, 
 			out.MaxVirtualTimeTaskStarvationCount = int64(in.Int64())
 		case "waitForNavigation":
 			out.WaitForNavigation = bool(in.Bool())
+		case "initialVirtualTime":
+			if in.IsNull() {
+				in.Skip()
+				out.InitialVirtualTime = nil
+			} else {
+				if out.InitialVirtualTime == nil {
+					out.InitialVirtualTime = new(cdp.TimeSinceEpoch)
+				}
+				(*out.InitialVirtualTime).UnmarshalEasyJSON(in)
+			}
 		default:
 			in.SkipRecursive()
 		}
@@ -191,6 +180,16 @@ func easyjsonC5a4559bEncodeGithubComChromedpCdprotoEmulation1(out *jwriter.Write
 			out.RawString(prefix)
 		}
 		out.Bool(bool(in.WaitForNavigation))
+	}
+	if in.InitialVirtualTime != nil {
+		const prefix string = ",\"initialVirtualTime\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		(*in.InitialVirtualTime).MarshalEasyJSON(out)
 	}
 	out.RawByte('}')
 }
