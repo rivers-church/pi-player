@@ -132,6 +132,22 @@ func (p *Player) FirstRun() {
 
 }
 
+// stop quits omxplayer if it's running.
+func (p *Player) stop() error {
+	if p.running {
+		p.quitting = true
+		p.quit = make(chan error)
+		defer close(p.quit)
+		p.pipeIn.Write([]byte("q"))
+		// block till omxplayer exits
+		err := <-p.quit
+		if err != nil && err.Error() != "exit status 3" {
+			return err
+		}
+	}
+	return nil
+}
+
 // Start the file that will be played to the screen, it decides which underlying program to use
 // based on the type of file that will be opened.
 func (p *Player) Start(item *Item, position time.Duration) error {
@@ -146,16 +162,9 @@ func (p *Player) Start(item *Item, position time.Duration) error {
 	ext := path.Ext(fileName)
 
 	// if omxplayer is already running, stop it
-	if p.running {
-		p.quitting = true
-		p.quit = make(chan error)
-		p.pipeIn.Write([]byte("q"))
-		// block till omxplayer exits
-		err := <-p.quit
-		if err != nil && err.Error() != "exit status 3" {
-			return err
-		}
-		close(p.quit)
+	err = p.stop()
+	if err != nil {
+		return err
 	}
 
 	if ext == ".mp4" {
@@ -251,6 +260,10 @@ func (p *Player) Start(item *Item, position time.Duration) error {
 func (p *Player) setBrowserBG(url string) error {
 	v := "background-image: url('/content/" + url + "')"
 	return p.browser.cdp.Run(*p.browser.ctxt, cdp.SetAttributeValue("#container", "style", v, cdp.ByID))
+}
+
+func (p *Player) setBrowserLocation(url string) error {
+	return p.browser.cdp.Run(*p.browser.ctxt, cdp.Navigate(url))
 }
 
 func (p *Player) startBrowserAudio(url string) (res interface{}, err error) {
@@ -641,4 +654,13 @@ func (p *Player) previous() error {
 	}
 
 	return err
+}
+
+func (p *Player) home() error {
+	err := p.stop()
+	if err != nil {
+		return err
+	}
+
+	return p.setBrowserLocation("http://localhost:8080/menu")
 }
