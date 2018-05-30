@@ -22,7 +22,7 @@ Wait for network connection on boot to allow the Pi to automatically mount a net
 `Localisation Options > A bunch of stuff here.`
 
 Install additional packages:\
-`sudo apt install git vim chromium-browser libgtk-3-0 xorg ttf-freefont`
+`sudo apt install git vim chromium-browser libgtk-3-0 xorg ttf-freefont usbmount`
 
 ### Setup network location mount on boot
 
@@ -41,6 +41,15 @@ Something similar to the following should be returned:\
 `media-visuals.mount`\
 Take note of that mount service for later.
 
+Edit the udev daemon systemd file to allow `usbmount` to automatically mount usb drives:
+
+`sudo vim /lib/systemd/system/systemd/systemd-udevd.service`
+
+Set `MountFlags=slave` to `MountFlags=shared`
+
+Reboot the Pi: `sudo reboot`
+You can test by connecting a usb stick and verify that the contents of the usb can be found at location `/media/usb`.
+
 [Install GO](https://golang.org/doc/install)\
 Get the pi-player project: `go get github.com/17xande/pi-player`\
 Update the *location* and *directory* settings in the `config.json` file. Leave the remote options as they are:
@@ -50,6 +59,15 @@ Update the *location* and *directory* settings in the `config.json` file. Leave 
   "location": "Foyer",
   "directory": "/media/visuals/foyer"
 }
+```
+
+Change the file permissions for `config.json` so that the program can save changes to the file:
+
+```bash
+# users in the group can write to file
+sudo chmod 664 config.json
+# change group to piplayerservice
+sudo chgrp piplayerservice config.json
 ```
 
 Build Project.\
