@@ -355,11 +355,13 @@ func (p *Player) startBrowser() error {
 		log.Println("taking a little nap to allow chrome to start nicely")
 	}
 
-	if p.api.test == "linux" {
-		time.Sleep(15 * time.Second)
-	} else {
-		time.Sleep(7 * time.Second)
-	}
+	// if p.api.test == "linux" {
+	// 	time.Sleep(15 * time.Second)
+	// } else {
+	// 	time.Sleep(10 * time.Second)
+	// }
+
+	time.Sleep(15 * time.Second)
 
 	if p.api.debug {
 		p.browser.cdp, err = cdp.New(ctxt, cdp.WithLog(log.Printf))
