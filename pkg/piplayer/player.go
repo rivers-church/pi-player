@@ -35,8 +35,8 @@ type Player struct {
 }
 
 const (
-	statusMenu = 0
-	statusLive = 1
+	statusMenu = 1
+	statusLive = 0
 )
 
 // Browser represents the chromium-browser process that is used to display web pages and still images to the screen

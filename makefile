@@ -5,6 +5,12 @@ CMD_MAIN=cmd/piplayer/main.go
 build:
 	go build -o $(BINARY_NAME) $(CMD_MAIN)
 
+upgrade:
+	sudo systemctl stop pi-player
+	git pull
+	go build -o $(BINARY_NAME) $(CMD_MAIN)
+	sudo systemctl start pi-player
+
 run-pi:
 	go build -o $(BINARY_NAME) $(CMD_MAIN)
 	sudo systemctl restart pi-player
