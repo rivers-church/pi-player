@@ -78,6 +78,8 @@ func handleRemoteLive(p *Player, key string) {
 		err := p.home()
 		if err != nil {
 			log.Println("Error trying to go to HOME menu from remote.\n", err)
+		} else {
+			p.status = statusMenu
 		}
 	default:
 		c, ok := remoteCommands[key]
@@ -122,9 +124,23 @@ func handleRemoteMenu(p *Player, key string) {
 		log.Println("handling remote input for menu")
 	}
 
-	msg := resMessage{
-		Event:   "keyDown",
-		Message: key,
+	switch {
+	case key == "KEY_HOME":
+		err := p.home()
+		if err != nil {
+			log.Println("Error trying to go to HOME menu from remote.\n", err)
+		}
+	case (key == "KEY_UP" || key == "KEY_DOWN" || key == "KEYPLAYPAUSE" || key == "KEY_ENTER"):
+		msg := resMessage{
+			Event:   "keyDown",
+			Message: key,
+		}
+		p.Connection.send <- msg
+	default:
+		c, ok := remoteCommands[key]
+		// ignore empty commands, they are not supported yet
+		if !ok || c == "" {
+			return
+		}
 	}
-	p.Connection.send <- msg
 }
