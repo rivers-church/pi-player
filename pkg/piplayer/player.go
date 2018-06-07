@@ -68,7 +68,7 @@ var commandList = map[string]string{
 
 // NewPlayer creates a new Player
 func NewPlayer(api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *Player {
-	p := Player{api: api, conf: conf, keylogger: keylogger}
+	p := Player{api: api, conf: conf, keylogger: keylogger, Connection: connectionWS{}}
 	if api.debug {
 		log.Println("initializing remote")
 	}
@@ -585,10 +585,21 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 func (p *Player) HandleViewer(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
+	if err := p.playlist.fromFolder(p.conf.Directory); err != nil {
+		log.Println("Error tring to read files from directory: ", err)
+		t := template.Must(template.ParseFiles("pkg/piPlayer/templates/error.html"))
+		err := t.Execute(w, err)
+		if err != nil {
+			log.Println("Error trying to render error page. #fail.", err)
+		}
+		return
+	}
+
 	th := TemplateHandler{
 		filename: "viewer.html",
 		data: map[string]interface{}{
-			"img": "/content/" + q.Get("img"),
+			"playlist": p.playlist,
+			"img":      "/content/" + q.Get("img"),
 		},
 	}
 

@@ -48,13 +48,20 @@ func remoteRead(p *Player, cie chan keylogger.InputEvent) {
 
 		if p.api.debug {
 			log.Println("Key:", key, directions[ie.Value])
+			log.Println("Sending keypress to page and nothing else.")
 		}
 
-		if p.status == statusLive {
-			handleRemoteLive(p, key)
-		} else if p.status == statusMenu {
-			handleRemoteMenu(p, key)
+		msg := resMessage{
+			Event:   "keyDown",
+			Message: key,
 		}
+		p.Connection.send <- msg
+
+		// if p.status == statusLive {
+		// 	handleRemoteLive(p, key)
+		// } else if p.status == statusMenu {
+		// 	handleRemoteMenu(p, key)
+		// }
 	}
 }
 

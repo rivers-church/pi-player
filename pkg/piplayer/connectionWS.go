@@ -39,6 +39,8 @@ func (c *connectionWS) HandlerWebsocket(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	log.Println("Websocket connection being handled...")
+
 	c.send = make(chan resMessage)
 
 	c.active = true

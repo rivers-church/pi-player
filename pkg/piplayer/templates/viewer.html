@@ -21,11 +21,38 @@
       background-size: 100% 100%;
       transition: background-image 1s ease-in-out;
     }
+
+    #ulPlaylist {
+      visibility: hidden;
+    }
+    
+    .item {
+      color: white;
+      text-shadow: 0 0 13px black;
+    }
+
+    .item:focus {
+      color: white;
+      background-color: #9b4dca66;
+      outline: none;
+    }
+
+    #ulPlaylist {
+      display: inline-grid;
+    }
   </style>
 </head>
 <body>
-  <div id="container" style="background-image: url({{.img}})"></div>
-  <audio id="audMusic" src=""></audio>
+  <div id="container" style="background-image: url({{.img}})">
+    <ul id="ulPlaylist">
+      {{range .playlist.Items}}
+        <li class="item" tabindex="0">{{.Name}}</li>
+      {{end}}
+    </ul>
+    <video id="vidMedia"></video>
+    <audio id="audMusic"></audio>
+  </div>
+<script src="/assets/js/menu.js"></script>
   <script>
     let audMusic = document.querySelector("#audMusic");
   </script>
