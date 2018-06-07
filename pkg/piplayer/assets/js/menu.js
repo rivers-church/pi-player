@@ -121,8 +121,12 @@ function run() {
 
     switch (ext) {
       case '.mp4':
-        // play video
+        // Play video
         ulPlaylist.style.visibility = 'hidden';
+        vidMedia.src = `/content/${n}`;
+        // Blackout the background.
+        divContainer.style.backgroundImage = null;
+        vidMedia.play();
         break;
       case '.jpg':
       case '.jpeg':
