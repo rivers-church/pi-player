@@ -20,16 +20,33 @@ function run() {
   const audMusic = document.querySelector('#audMusic');
   const arrItems = Array.from(document.querySelectorAll(menuItemSelector));
 
+  let conn = null;
+
   if (arrItems.length <= 0) {
     // No items in the menu. Nothing to do here.
     console.error("No items in the playlist, so then not much to do here?")
     return;
   }
 
-  let conn = new WebSocket('ws://' + document.location.host + '/ws');
+  wsConnect();
+
+  function wsConnect() {
+    conn = new WebSocket('ws://' + document.location.host + '/ws');
+  }
+  
+  conn.addEventListener('open', e => {
+    console.log("Connection Opened.");
+  });
+  
+  conn.addEventListener('error', e => {
+    console.log("Error in the websocket connection:\n", err);
+  });
+
   conn.addEventListener('close', e => {
     console.log("Connection closed.");
-    // TODO retry connection
+    console.log("Trying to reconnect...");
+
+    let to = setTimeout(() => wsConnect(), 2000);
   });
 
   conn.addEventListener('message', e => {
@@ -118,12 +135,12 @@ function run() {
   function startItem(el) {
     let n = el.textContent;
     let ext = n.slice(n.lastIndexOf('.'));
+    ulPlaylist.style.visibility = 'hidden';
 
     switch (ext) {
       case '.mp4':
-        // Play video
-        ulPlaylist.style.visibility = 'hidden';
         vidMedia.src = `/content/${n}`;
+        vidMedia.style.visibility = 'visible';
         // Blackout the background.
         divContainer.style.backgroundImage = null;
         vidMedia.play();
@@ -131,9 +148,13 @@ function run() {
       case '.jpg':
       case '.jpeg':
       case '.png':
-        // change background image
+        // Stop video if playing.
+        if (!vidMedia.paused) {
+          vidMedia.pause();
+          vidMedia.style.visibility = 'hidden';
+        }
+        // Change background image.
         divContainer.style.backgroundImage = `url("/content/${n}")`;
-        ulPlaylist.style.visibility = 'hidden';
       break;
       default:
         console.log("File type not supported: ", ext);
