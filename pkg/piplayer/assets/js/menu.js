@@ -24,7 +24,7 @@ function run() {
 
   if (arrItems.length <= 0) {
     // No items in the menu. Nothing to do here.
-    console.error("No items in the playlist, so then not much to do here?")
+    console.warn("No items in the playlist, so then not much to do here?")
     return;
   }
 
@@ -32,6 +32,16 @@ function run() {
 
   function wsConnect() {
     conn = new WebSocket('ws://' + document.location.host + '/ws');
+
+    // If connection is not established, try again after 2 seconds.
+    let to = setTimeout(() => {
+      if (conn.readyState != 1) {
+        console.warn("Connection attempt unsuccessfull, trying again...");
+        wsConnect();
+      } else {
+        console.log("Re-connection successful.");
+      }
+    }, 2000);
   }
   
   conn.addEventListener('open', e => {
@@ -43,8 +53,7 @@ function run() {
   });
 
   conn.addEventListener('close', e => {
-    console.log("Connection closed.");
-    console.log("Trying to reconnect...");
+    console.log("Connection closed.\nTrying to reconnect...");
 
     let to = setTimeout(() => wsConnect(), 2000);
   });
@@ -117,6 +126,14 @@ function run() {
     startItem(selectedItem);
   }
 
+  function getItems() {
+    let reqBody = {
+      component: 'playlist',
+      method: 'getItems'
+    }
+
+    conn.send(JSON.stringify(reqBody));
+  }
 
   function remoteHomePress(e, msg) {
     // If the menu is hidden, show it.
