@@ -9,9 +9,9 @@ function run() {
   }
 
   // Ignore all keyboard input on the Pi browser.
-  document.addEventListener("keydown", e => {
-    e.preventDefault();
-  });
+  // document.addEventListener("keydown", e => {
+  //   e.preventDefault();
+  // });
 
   const menuItemSelector = '.item';
   const divContainer = document.querySelector('#container');
@@ -31,34 +31,36 @@ function run() {
   wsConnect();
 
   function wsConnect() {
-    conn = new WebSocket('ws://' + document.location.host + '/ws');
+    let u = 'ws://' + document.location.host + '/ws';
+    conn = new WebSocket(u);
 
     // If connection is not established, try again after 2 seconds.
-    let to = setTimeout(() => {
-      if (conn.readyState != 1) {
-        console.warn("Connection attempt unsuccessfull, trying again...");
-        wsConnect();
-      } else {
-        console.log("Re-connection successful.");
-      }
-    }, 2000);
+    // let to = setTimeout(() => {
+    //   if (conn.readyState != 1) {
+    //     console.warn("Connection attempt unsuccessfull, trying again...");
+    //     wsConnect();
+    //   } else {
+    //     console.log("Connection successful.");
+    //   }
+    // }, 2000);
+    conn.addEventListener('open', e => {
+      console.log("Connection Opened.");
+    });
+    
+    conn.addEventListener('error', e => {
+      console.log("Error in the websocket connection:\n", e);
+    });
+  
+    conn.addEventListener('close', e => {
+      console.log("Connection closed.\nTrying to reconnect...");
+  
+      let to = setTimeout(() => wsConnect(), 2000);
+    });
+
+    conn.addEventListener('message', socketMessage);
   }
-  
-  conn.addEventListener('open', e => {
-    console.log("Connection Opened.");
-  });
-  
-  conn.addEventListener('error', e => {
-    console.log("Error in the websocket connection:\n", err);
-  });
 
-  conn.addEventListener('close', e => {
-    console.log("Connection closed.\nTrying to reconnect...");
-
-    let to = setTimeout(() => wsConnect(), 2000);
-  });
-
-  conn.addEventListener('message', e => {
+  function socketMessage(e) {
     let msg = JSON.parse(e.data)
 
     console.log(msg);
@@ -78,7 +80,7 @@ function run() {
         console.log("Unsupported message received: ", e.data);
         break;
     }
-  });
+  }
 
   function remoteArrowPress(e, msg) {
     let selectedItem = document.querySelector(menuItemSelector + ':focus');

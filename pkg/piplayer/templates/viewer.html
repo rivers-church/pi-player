@@ -4,46 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <link rel="stylesheet" href="/assets/css/milligram.css">
+  <link rel="stylesheet" href="/assets/css/menu.css">
+  <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Roboto+Slab">
+  <script defer src="/assets/js/fontawesome-all.min.js"></script>
   <title>Image and browser viewer</title>
-  <style>
-    html, body {
-      background-color: black;
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-    }
-
-    #container {
-      width: 100%;
-      height: 100%;
-      background-size: 100% 100%;
-      transition: background-image 1s ease-in-out;
-    }
-
-    #ulPlaylist {
-      visibility: hidden;
-      position: fixed;
-      display: inline-grid;
-    }
-
-    #vidMedia {
-      width: 100%;
-      height: 100%;
-    }
-    
-    .item {
-      color: white;
-      text-shadow: 0 0 13px black;
-    }
-
-    .item:focus {
-      color: white;
-      background-color: #9b4dca66;
-      outline: none;
-    }
-  </style>
 </head>
 <body>
   <div id="container" style="background-image: url({{.img}})">
