@@ -18,6 +18,12 @@ html, body {
   visibility: hidden;
   position: fixed;
   display: inline-grid;
+  list-style: none;
+  padding: 2em;
+  background-color: #000B;
+  font-size: 1.3em;
+  font-weight: 500;
+  letter-spacing: 0.1em;
 }
 
 #vidMedia {
