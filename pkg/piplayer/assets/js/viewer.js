@@ -1,38 +1,39 @@
 "use strict";
 
-run();
+let viewer = {
+  menuItemSelector: '.item',
+  arrItems: null,
+  conn: null,
+  divContainer: document.querySelector('#container'),
+  ulPlaylist: document.querySelector('#ulPlaylist'),
+  vidMedia: document.querySelector('#vidMedia'),
+  audMusic: document.querySelector('#audMusic'),
 
-function run() {
-  if (!window["WebSocket"]) {
-    console.error("This page requires WebSocket support. Please use a WebSocket enabled service.");
-    return;
-  }
+  run: function() {
+    if (!window["WebSocket"]) {
+      console.error("This page requires WebSocket support. Please use a WebSocket enabled service.");
+      return;
+    }
+  
+    // Ignore all keyboard input on the Pi browser.
+    // document.addEventListener("keydown", e => {
+    //   e.preventDefault();
+    // });
+  
+    this.arrItems = Array.from(document.querySelectorAll(this.menuItemSelector));
+  
+    if (this.arrItems.length <= 0) {
+      // No items in the menu. Nothing to do here.
+      console.warn("No items in the playlist, so then not much to do here?")
+      return;
+    }
+  
+    this.wsConnect();
+  },
 
-  // Ignore all keyboard input on the Pi browser.
-  // document.addEventListener("keydown", e => {
-  //   e.preventDefault();
-  // });
-
-  const menuItemSelector = '.item';
-  const divContainer = document.querySelector('#container');
-  const ulPlaylist = document.querySelector('#ulPlaylist');
-  const vidMedia = document.querySelector('#vidMedia');
-  const audMusic = document.querySelector('#audMusic');
-  const arrItems = Array.from(document.querySelectorAll(menuItemSelector));
-
-  let conn = null;
-
-  if (arrItems.length <= 0) {
-    // No items in the menu. Nothing to do here.
-    console.warn("No items in the playlist, so then not much to do here?")
-    return;
-  }
-
-  wsConnect();
-
-  function wsConnect() {
+  wsConnect: function() {
     let u = 'ws://' + document.location.host + '/ws';
-    conn = new WebSocket(u);
+    this.conn = new WebSocket(u);
 
     // If connection is not established, try again after 2 seconds.
     // let to = setTimeout(() => {
@@ -43,24 +44,24 @@ function run() {
     //     console.log("Connection successful.");
     //   }
     // }, 2000);
-    conn.addEventListener('open', e => {
+    this.conn.addEventListener('open', e => {
       console.log("Connection Opened.");
     });
     
-    conn.addEventListener('error', e => {
+    this.conn.addEventListener('error', e => {
       console.log("Error in the websocket connection:\n", e);
     });
   
-    conn.addEventListener('close', e => {
+    this.conn.addEventListener('close', e => {
       console.log("Connection closed.\nTrying to reconnect...");
   
-      let to = setTimeout(() => wsConnect(), 2000);
+      let to = setTimeout(() => this.wsConnect(), 2000);
     });
 
-    conn.addEventListener('message', socketMessage);
-  }
+    this.conn.addEventListener('message', this.socketMessage);
+  },
 
-  function socketMessage(e) {
+  socketMessage: function(e) {
     let msg = JSON.parse(e.data)
 
     console.log(msg);
@@ -68,29 +69,38 @@ function run() {
     switch (msg.message) {
       case 'KEY_UP':
       case 'KEY_DOWN':
-        remoteArrowPress(e, msg);
+        this.remoteArrowPress(e, msg);
         break;
       case 'KEY_ENTER':
-        remoteEnterPress(e, msg);
+        this.remoteEnterPress(e, msg);
         break;
       case 'KEY_HOME':
-        remoteHomePress(e, msg);
+        this.remoteHomePress(e, msg);
         break;
       default:
         console.log("Unsupported message received: ", e.data);
         break;
     }
-  }
+  },
 
-  function remoteArrowPress(e, msg) {
+  getItems: function() {
+    let reqBody = {
+      component: 'playlist',
+      method: 'getItems'
+    }
+
+    this.conn.send(JSON.stringify(reqBody));
+  },
+
+  remoteArrowPress: function(e, msg) {
     let selectedItem = document.querySelector(menuItemSelector + ':focus');
     if (selectedItem == null) {
       // No item is selected, focus on first item.
-      arrItems[0].focus();
+      this.arrItems[0].focus();
       return;
     }
 
-    let i = arrItems.indexOf(selectedItem);
+    let i = this.arrItems.indexOf(selectedItem);
     if (i < 0) {
       console.error("Element not in initial array of elements?\nFocusing on first item.")
       arrItems[0].focus();
@@ -100,20 +110,20 @@ function run() {
     let diff = msg.message == 'KEY_UP' ? -1 : 1;
 
     if (msg.message == 'KEY_UP' && i <= 0) {
-      i = arrItems.length;
-    } else if (msg.message == 'KEY_DOWN' && i >= arrItems.length - 1) {
+      i = this.arrItems.length;
+    } else if (msg.message == 'KEY_DOWN' && i >= this.arrItems.length - 1) {
       i = -1;
     }
 
-    arrItems[i + diff].focus();
-  }
+    this.arrItems[i + diff].focus();
+  },
 
-  function remoteEnterPress(e, msg) {
+  remoteEnterPress: function(e, msg) {
     let selectedItem = document.querySelector(menuItemSelector + ':focus');
 
     if (selectedItem == null) {
       // No item selected, focus on first item again.
-      arrItems[0].focus();
+      this.arrItems[0].focus();
       return;
     }
 
@@ -125,55 +135,58 @@ function run() {
     //   }
     // };
     // conn.send(JSON.stringify(reqBody));
-    startItem(selectedItem);
-  }
+    this.startItem(selectedItem);
+  },
 
-  function getItems() {
-    let reqBody = {
-      component: 'playlist',
-      method: 'getItems'
-    }
-
-    conn.send(JSON.stringify(reqBody));
-  }
-
-  function remoteHomePress(e, msg) {
+  remoteHomePress: function(e, msg) {
     // If the menu is hidden, show it.
-    if (ulPlaylist.style.visibility !== 'visible') {
-      ulPlaylist.style.visibility = 'visible';
+    if (this.ulPlaylist.style.visibility !== 'visible') {
+      this.ulPlaylist.style.visibility = 'visible';
       // arrItems[0].focus();
       return;
     }
 
     // If the meny is showing, hide it.
-    if (ulPlaylist.style.visibility === 'visible') {
-      ulPlaylist.style.visibility = 'hidden';
+    if (this.ulPlaylist.style.visibility === 'visible') {
+      this.ulPlaylist.style.visibility = 'hidden';
     }
-  }
+  },
 
-  function startItem(el) {
+  remotePlayPress: function(e, msg) {
+
+  },
+
+  remoteStopPress: function(e, msg) {
+
+  },
+
+  remoteSeek: function(e, msg) {
+    
+  },
+
+  startItem: function(el) {
     let n = el.textContent;
     let ext = n.slice(n.lastIndexOf('.'));
-    ulPlaylist.style.visibility = 'hidden';
+    this.ulPlaylist.style.visibility = 'hidden';
 
     switch (ext) {
       case '.mp4':
-        vidMedia.src = `/content/${n}`;
-        vidMedia.style.visibility = 'visible';
+        this.vidMedia.src = `/content/${n}`;
+        this.vidMedia.style.visibility = 'visible';
         // Blackout the background.
-        divContainer.style.backgroundImage = null;
-        vidMedia.play();
+        this.divContainer.style.backgroundImage = null;
+        this.vidMedia.play();
         break;
       case '.jpg':
       case '.jpeg':
       case '.png':
         // Stop video if playing.
-        if (!vidMedia.paused) {
-          vidMedia.pause();
-          vidMedia.style.visibility = 'hidden';
+        if (!this.vidMedia.paused) {
+          this.vidMedia.pause();
+          this.vidMedia.style.visibility = 'hidden';
         }
         // Change background image.
-        divContainer.style.backgroundImage = `url("/content/${n}")`;
+        this.divContainer.style.backgroundImage = `url("/content/${n}")`;
       break;
       default:
         console.log("File type not supported: ", ext);
@@ -181,3 +194,5 @@ function run() {
     }
   }
 }
+
+viewer.run();

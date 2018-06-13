@@ -12,13 +12,13 @@
 </head>
 <body>
   <div id="container" style="background-image: url({{.img}})">
+    <video id="vidMedia"></video>
+    <audio id="audMusic"></audio>
     <ul id="ulPlaylist">
       {{range .playlist.Items}}
         <li class="item" tabindex="0">{{.Name}}</li>
       {{end}}
     </ul>
-    <video id="vidMedia"></video>
-    <audio id="audMusic"></audio>
   </div>
 <script src="/assets/js/viewer.js"></script>
   <script>
