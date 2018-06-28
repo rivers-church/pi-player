@@ -11,13 +11,13 @@
   <title>Image and browser viewer</title>
 </head>
 <body>
-  <div id="container" style="background-image: url({{.img}})">
+  <div id="container"> <!-- style="background-image: url({{.img}})"> -->
     <video id="vidMedia"></video>
     <audio id="audMusic"></audio>
     <ul id="ulPlaylist">
-      {{range .playlist.Items}}
-        <li class="item" tabindex="0">{{.Name}}</li>
-      {{end}}
+      {{- range $i, $e := .playlist.Items}}
+        <li class="item" tabindex="0" data-index="{{$i}}">{{.Name}}</li>
+      {{- end}}
     </ul>
   </div>
 <script src="/assets/js/viewer.js"></script>

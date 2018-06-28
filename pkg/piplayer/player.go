@@ -551,7 +551,7 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Println("Error tring to read files from directory: ", err)
-		t := template.Must(template.ParseFiles("pkg/piPlayer/templates/error.html"))
+		t := template.Must(template.ParseFiles("pkg/piplayer/templates/error.html"))
 		err := t.Execute(w, err)
 		if err != nil {
 			log.Println("Error trying to render error page. #fail.", err)
@@ -584,6 +584,18 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 // HandleViewer handles requests to the image viewer page
 func (p *Player) HandleViewer(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
+	img := q.Get("img")
+
+	// If no source image is supplied, load the first item in the playlist
+	// Don't think this will work properly with videos yet.
+	// Should probably handle this in the browser.
+	// if img == "" {
+	// 	if err := p.playlist.fromFolder(p.conf.Directory); err != nil {
+	// 		log.Println("Can't read files from directory\n", err)
+	// 	} else {
+	// 		img = p.playlist.Items[0].Name()
+	// 	}
+	// }
 
 	if err := p.playlist.fromFolder(p.conf.Directory); err != nil {
 		log.Println("Error tring to read files from directory: ", err)
@@ -599,7 +611,7 @@ func (p *Player) HandleViewer(w http.ResponseWriter, r *http.Request) {
 		filename: "viewer.html",
 		data: map[string]interface{}{
 			"playlist": p.playlist,
-			"img":      "/content/" + q.Get("img"),
+			"img":      "/content/" + img,
 		},
 	}
 

@@ -1,15 +1,19 @@
 "use strict";
 
-let viewer = {
-  menuItemSelector: '.item',
-  arrItems: null,
-  conn: null,
-  divContainer: document.querySelector('#container'),
-  ulPlaylist: document.querySelector('#ulPlaylist'),
-  vidMedia: document.querySelector('#vidMedia'),
-  audMusic: document.querySelector('#audMusic'),
+class Viewer {
+  menuItemSelector = '.item';
+  conn = null;
+  arrItems = null;
+  divContainer = document.querySelector('#container');
+  ulPlaylist = document.querySelector('#ulPlaylist');
+  vidMedia = document.querySelector('#vidMedia');
+  audMusic = document.querySelector('#audMusic');
+  playlist = {
+    current: null,
+    items: []
+  };
 
-  run: function() {
+  constructor() {
     if (!window["WebSocket"]) {
       console.error("This page requires WebSocket support. Please use a WebSocket enabled service.");
       return;
@@ -27,23 +31,26 @@ let viewer = {
       console.warn("No items in the playlist, so then not much to do here?")
       return;
     }
+
+    this.playlist.items = this.arrItems.map(el => el.textContent);
+    this.startItem(0);
   
     this.wsConnect();
-  },
+  }
 
-  wsConnect: function() {
+  wsConnect() {
     let u = 'ws://' + document.location.host + '/ws';
     this.conn = new WebSocket(u);
 
     // If connection is not established, try again after 2 seconds.
     // let to = setTimeout(() => {
-    //   if (conn.readyState != 1) {
+    //   if (this.conn.readyState != 1) {
     //     console.warn("Connection attempt unsuccessfull, trying again...");
     //     wsConnect();
     //   } else {
     //     console.log("Connection successful.");
     //   }
-    // }, 2000);
+    // } 2000);
     this.conn.addEventListener('open', e => {
       console.log("Connection Opened.");
     });
@@ -58,10 +65,10 @@ let viewer = {
       let to = setTimeout(() => this.wsConnect(), 2000);
     });
 
-    this.conn.addEventListener('message', this.socketMessage);
-  },
+    this.conn.addEventListener('message', this.socketMessage.bind(this));
+  }
 
-  socketMessage: function(e) {
+  socketMessage(e) {
     let msg = JSON.parse(e.data)
 
     console.log(msg);
@@ -71,29 +78,46 @@ let viewer = {
       case 'KEY_DOWN':
         this.remoteArrowPress(e, msg);
         break;
+      case 'KEY_LEFT':
+        this.remoteArrowLeftPress(e);
+        break;
+      case 'KEY_RIGHT':
+        this.remoteArrowRightPress(e);
+        break;
       case 'KEY_ENTER':
-        this.remoteEnterPress(e, msg);
+        this.remoteEnterPress(e);
         break;
       case 'KEY_HOME':
-        this.remoteHomePress(e, msg);
+        this.remoteHomePress(e);
+        break;
+      case 'KEY_PLAYPAUSE':
+        this.remotePlayPress(e);
+        break;
+      case 'KEY_STOP':
+        this.remoteStopPress(e);
+      case 'KEY_FASTFORWARD':
+        this.remoteSeek(e, 15);
+        break;
+      case 'KEY_REWIND':
+        this.remoteSeek(e, -15);
         break;
       default:
         console.log("Unsupported message received: ", e.data);
         break;
     }
-  },
+  }
 
-  getItems: function() {
+  getItems() {
     let reqBody = {
       component: 'playlist',
       method: 'getItems'
     }
 
     this.conn.send(JSON.stringify(reqBody));
-  },
+  }
 
-  remoteArrowPress: function(e, msg) {
-    let selectedItem = document.querySelector(menuItemSelector + ':focus');
+  remoteArrowPress(e, msg) {
+    let selectedItem = document.querySelector(this.menuItemSelector + ':focus');
     if (selectedItem == null) {
       // No item is selected, focus on first item.
       this.arrItems[0].focus();
@@ -103,7 +127,7 @@ let viewer = {
     let i = this.arrItems.indexOf(selectedItem);
     if (i < 0) {
       console.error("Element not in initial array of elements?\nFocusing on first item.")
-      arrItems[0].focus();
+      this.arrItems[0].focus();
       return;
     }
 
@@ -116,10 +140,28 @@ let viewer = {
     }
 
     this.arrItems[i + diff].focus();
-  },
+  }
 
-  remoteEnterPress: function(e, msg) {
-    let selectedItem = document.querySelector(menuItemSelector + ':focus');
+  remoteArrowLeftPress(e) {
+    if (this.playlist.current == 0) {
+      this.startItem(this.playlist.items.length - 1);
+      return
+    }
+
+      this.startItem(this.playlist.current - 1);
+  }
+
+  remoteArrowRightPress(e) {
+    if (this.playlist.current >= this.playlist.items.length - 1) {
+      this.startItem(0);
+      return;
+    }
+
+    this.startItem(this.playlist.current + 1);
+  }
+
+  remoteEnterPress(e) {
+    let selectedItem = document.querySelector(this.menuItemSelector + ':focus');
 
     if (selectedItem == null) {
       // No item selected, focus on first item again.
@@ -135,14 +177,15 @@ let viewer = {
     //   }
     // };
     // conn.send(JSON.stringify(reqBody));
-    this.startItem(selectedItem);
-  },
+    let i = this.playlist.items.indexOf(selectedItem.textContent);
+    this.startItem(i);
+  }
 
-  remoteHomePress: function(e, msg) {
+  remoteHomePress(e) {
     // If the menu is hidden, show it.
     if (this.ulPlaylist.style.visibility !== 'visible') {
       this.ulPlaylist.style.visibility = 'visible';
-      // arrItems[0].focus();
+      this.arrItems[this.playlist.current].focus();
       return;
     }
 
@@ -150,28 +193,33 @@ let viewer = {
     if (this.ulPlaylist.style.visibility === 'visible') {
       this.ulPlaylist.style.visibility = 'hidden';
     }
-  },
+  }
 
-  remotePlayPress: function(e, msg) {
+  remotePlayPress(e) {
+    if (this.vidMedia.paused) {
+      this.vidMedia.play();
+    } else {
+      this.vidMedia.pause();
+    }
+  }
 
-  },
+  remoteStopPress(e) {
+    this.vidMedia.pause();
+    this.videMedia.currentTime = 0;
+  }
 
-  remoteStopPress: function(e, msg) {
+  remoteSeek(e, msg) {
+    this.vidMedia.currentTime += msg;
+  }
 
-  },
-
-  remoteSeek: function(e, msg) {
-    
-  },
-
-  startItem: function(el) {
-    let n = el.textContent;
-    let ext = n.slice(n.lastIndexOf('.'));
+  startItem(index) {
+    let name = this.playlist.items[index];
+    let ext = name.slice(name.lastIndexOf('.'));
     this.ulPlaylist.style.visibility = 'hidden';
 
     switch (ext) {
       case '.mp4':
-        this.vidMedia.src = `/content/${n}`;
+        this.vidMedia.src = `/content/${name}`;
         this.vidMedia.style.visibility = 'visible';
         // Blackout the background.
         this.divContainer.style.backgroundImage = null;
@@ -186,13 +234,15 @@ let viewer = {
           this.vidMedia.style.visibility = 'hidden';
         }
         // Change background image.
-        this.divContainer.style.backgroundImage = `url("/content/${n}")`;
+        this.divContainer.style.backgroundImage = `url("/content/${name}")`;
       break;
       default:
         console.log("File type not supported: ", ext);
+        return;
         break;
     }
+    this.playlist.current = index;
   }
 }
 
-viewer.run();
+let viewer = new Viewer();
