@@ -126,10 +126,10 @@ func (p *Player) FirstRun() {
 		return
 	}
 
-	if p.api.debug {
-		log.Println("trying to start first item in playlist:", p.playlist.Items[0].Name())
-	}
-
+	// if p.api.debug {
+	// 	log.Println("trying to start first item in playlist:", p.playlist.Items[0].Name())
+	// }
+	//
 	// The first item will start from the browser now, so no need to call this code.
 	// if err := p.Start(&p.playlist.Items[0], time.Duration(0)); err != nil {
 	// 	log.Println("Error trying to start first item in playlist.\n", err)
@@ -309,6 +309,8 @@ func (p *Player) startBrowser() error {
 		"--disable-infobars",
 		"--noerrdialogs",
 		"--no-first-run",
+		"--enable-experimental-web-platform-features",
+		"--javascript-harmony",
 		"--remote-debugging-port=9222",
 		"http://localhost:8080/viewer",
 	}
