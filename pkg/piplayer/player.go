@@ -20,7 +20,7 @@ import (
 
 // Player is the object that renders images to the screen through omxplayer or chromium-browser
 type Player struct {
-	Connection connectionWS
+	Connection ConnectionWS
 	api        *APIHandler
 	command    *exec.Cmd
 	pipeIn     io.WriteCloser
@@ -68,7 +68,13 @@ var commandList = map[string]string{
 
 // NewPlayer creates a new Player
 func NewPlayer(api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *Player {
-	p := Player{api: api, conf: conf, keylogger: keylogger, Connection: connectionWS{}}
+	p := Player{
+		api:        api,
+		conf:       conf,
+		keylogger:  keylogger,
+		Connection: ConnectionWS{},
+	}
+
 	if api.debug {
 		log.Println("initializing remote")
 	}
@@ -81,6 +87,9 @@ func NewPlayer(api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *P
 	for _, ie := range chans {
 		go remoteRead(&p, ie)
 	}
+
+	// Listen for websocket messages from the browser.
+	go p.HandleWebSocketMessage()
 
 	return &p
 }
@@ -120,15 +129,17 @@ func (p *Player) FirstRun() {
 	if p.api.debug {
 		log.Println("trying to start first item in playlist:", p.playlist.Items[0].Name())
 	}
-	if err := p.Start(&p.playlist.Items[0], time.Duration(0)); err != nil {
-		log.Println("Error trying to start first item in playlist.\n", err)
-		return
-	}
-	p.playlist.Current = &p.playlist.Items[0]
 
-	if p.api.debug {
-		log.Println("first item should have started successfuly.")
-	}
+	// The first item will start from the browser now, so no need to call this code.
+	// if err := p.Start(&p.playlist.Items[0], time.Duration(0)); err != nil {
+	// 	log.Println("Error trying to start first item in playlist.\n", err)
+	// 	return
+	// }
+	// p.playlist.Current = &p.playlist.Items[0]
+
+	// if p.api.debug {
+	// 	log.Println("first item should have started successfuly.")
+	// }
 
 }
 
@@ -361,17 +372,20 @@ func (p *Player) startBrowser() error {
 	// 	time.Sleep(10 * time.Second)
 	// }
 
-	time.Sleep(15 * time.Second)
+	// Not using Chrome Debug Protocol anymore.
 
-	if p.api.debug {
-		p.browser.cdp, err = cdp.New(ctxt, cdp.WithLog(log.Printf))
-	} else {
-		p.browser.cdp, err = cdp.New(ctxt)
-	}
+	// time.Sleep(15 * time.Second)
 
-	if err != nil {
-		err = errors.New("Error trying to start cdp:\n" + err.Error())
-	}
+	// // Start Chrome Debugging Protocol client
+	// if p.api.debug {
+	// 	p.browser.cdp, err = cdp.New(ctxt, cdp.WithLog(log.Printf))
+	// } else {
+	// 	p.browser.cdp, err = cdp.New(ctxt)
+	// }
+
+	// if err != nil {
+	// 	err = errors.New("Error trying to start cdp:\n" + err.Error())
+	// }
 
 	return err
 }
@@ -688,4 +702,23 @@ func (p *Player) home() error {
 	}
 
 	return p.setBrowserLocation("http://localhost:8080/menu")
+}
+
+// HandleWebSocketMessage handles messages from ConnectionWS that come from the
+// browser's websocket connection
+func (p *Player) HandleWebSocketMessage() {
+	if p.api.debug {
+		log.Println("Listening to websocket messages from browser")
+	}
+	for {
+		select {
+		case msg, ok := <-p.Connection.receive:
+			if !ok {
+				log.Println("Error receiving message from ConnectionWS for processing")
+				close(p.Connection.receive)
+				return
+			}
+			log.Println("got a message from ConnectionWS", msg)
+		}
+	}
 }

@@ -47,7 +47,7 @@ func main() {
 	http.HandleFunc("/settings", conf.HandleSettings)
 	http.HandleFunc("/viewer", p.HandleViewer)
 	http.HandleFunc("/menu", p.HandleMenu)
-	http.HandleFunc("/ws", p.Connection.HandlerWebsocket)
+	http.HandleFunc("/ws", p.Connection.HandlerWebsocket(p))
 	http.HandleFunc("/api", a.Handle(p))
 	http.HandleFunc("/", handlerHome)
 

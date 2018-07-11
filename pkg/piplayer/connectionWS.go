@@ -22,43 +22,59 @@ var upgrader = &websocket.Upgrader{
 	WriteBufferSize: writeBufferSize,
 }
 
-// connectionWS has the websocket connection to the control page
-type connectionWS struct {
-	conn   *websocket.Conn
-	send   chan resMessage
-	active bool
+// ConnectionWS has the websocket connection to the control page.
+type ConnectionWS struct {
+	conn    *websocket.Conn
+	send    chan resMessage
+	receive chan reqMessage
+	active  bool
 }
 
-// HandleWebsocket handles websocket connections
-func (c *connectionWS) HandlerWebsocket(w http.ResponseWriter, r *http.Request) {
-	var err error
-	c.conn, err = upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Println("Error trying to upgrade to websocket connection:", err)
-		c.active = false
-		return
+// NewConnection returns a connection with open send and receive channels
+// func NewConnection() ConnectionWS {
+// 	conn := ConnectionWS{
+// 		send:    make(chan resMessage),
+// 		receive: make(chan reqMessage),
+// 	}
+
+// 	return conn
+// }
+
+// HandlerWebsocket handles websocket connections.
+func (c *ConnectionWS) HandlerWebsocket(p *Player) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var err error
+		c.conn, err = upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			log.Println("Error trying to upgrade to websocket connection:", err)
+			c.active = false
+			return
+		}
+
+		log.Println("Websocket connection being handled...")
+
+		c.send = make(chan resMessage)
+		c.receive = make(chan reqMessage)
+
+		c.active = true
+		go c.write()
+		go c.read()
+		go p.HandleWebSocketMessage()
 	}
-
-	log.Println("Websocket connection being handled...")
-
-	c.send = make(chan resMessage)
-
-	c.active = true
-	go c.write()
-	go c.read()
 }
 
-// write sends data to the websocket
-func (c *connectionWS) write() {
+// write sends data to the websocket.
+func (c *ConnectionWS) write() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
 		c.conn.Close()
 	}()
 
-	// this loop keeps running as long as the channel is open.
+	// This loop keeps running as long as the channel is open.
 	for {
 		select {
+		// Send a message from the send channel to the websocket.
 		case msg, ok := <-c.send:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
@@ -85,8 +101,8 @@ func (c *connectionWS) write() {
 	}
 }
 
-// read reads the messages from the socket
-func (c *connectionWS) read() {
+// read reads the messages from the socket.
+func (c *ConnectionWS) read() {
 	defer c.conn.Close()
 
 	c.conn.SetReadLimit(maxMessageSize)
@@ -106,11 +122,13 @@ func (c *connectionWS) read() {
 				log.Println("Error trying to read the JSON from the socket: ", err)
 			}
 			close(c.send)
+			close(c.receive)
 			c.active = false
 			break
 		}
 
-		// TODO: handle socket messages.
+		// Handle socket messages.
 		log.Println("socket message received: ", msg)
+		c.receive <- msg
 	}
 }

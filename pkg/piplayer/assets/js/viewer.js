@@ -68,6 +68,11 @@ class Viewer {
     this.conn.addEventListener('message', this.socketMessage.bind(this));
   }
 
+  writeMessage(obj) {
+    let json = JSON.stringify(obj);
+    this.conn.send(json);
+  }
+
   socketMessage(e) {
     let msg = JSON.parse(e.data)
 
@@ -113,7 +118,7 @@ class Viewer {
       method: 'getItems'
     }
 
-    this.conn.send(JSON.stringify(reqBody));
+    this.writeMessage(reqBody);
   }
 
   remoteArrowPress(e, msg) {
