@@ -32,9 +32,9 @@ class Viewer {
       return;
     }
 
-    this.playlist.items = this.arrItems.map(el => el.textContent);
-    this.startItem(0);
-  
+    this.getItems().then(res => {
+      this.startItem(0);
+    });
     this.wsConnect();
   }
 
@@ -42,15 +42,6 @@ class Viewer {
     let u = 'ws://' + document.location.host + '/ws';
     this.conn = new WebSocket(u);
 
-    // If connection is not established, try again after 2 seconds.
-    // let to = setTimeout(() => {
-    //   if (this.conn.readyState != 1) {
-    //     console.warn("Connection attempt unsuccessfull, trying again...");
-    //     wsConnect();
-    //   } else {
-    //     console.log("Connection successful.");
-    //   }
-    // } 2000);
     this.conn.addEventListener('open', e => {
       console.log("Connection Opened.");
     });
@@ -68,9 +59,23 @@ class Viewer {
     this.conn.addEventListener('message', this.socketMessage.bind(this));
   }
 
-  writeMessage(obj) {
-    let json = JSON.stringify(obj);
-    this.conn.send(json);
+  callApi(reqBody) {
+    let myHeaders = new Headers();
+    myHeaders.append('Content-Type', 'application/json');
+  
+    let myInit = {
+      method: "POST",
+      headers: myHeaders,
+      body: JSON.stringify(reqBody)
+    }
+  
+    return fetch(`${window.location.origin}/api`, myInit)
+      .then(res => res.json())
+      .then(json => {
+        console.log(json);
+        return json;
+      })
+      .catch(err => console.error(err));
   }
 
   socketMessage(e) {
@@ -92,7 +97,7 @@ class Viewer {
       case 'KEY_ENTER':
         this.remoteEnterPress(e);
         break;
-      case 'KEY_HOME':
+      case 'KEY_CONTEXT_MENU':
         this.remoteHomePress(e);
         break;
       case 'KEY_PLAYPAUSE':
@@ -118,7 +123,15 @@ class Viewer {
       method: 'getItems'
     }
 
-    this.writeMessage(reqBody);
+    return this.callApi(reqBody)
+      .then(res => {
+        if (!res || !res.success) {
+          console.error(res);
+          return;
+        }
+        this.playlist.items = res.message;
+        return res;
+      });
   }
 
   remoteArrowPress(e, msg) {
@@ -174,15 +187,7 @@ class Viewer {
       return;
     }
 
-    // let reqBody = {
-    //   component: 'player',
-    //   method: 'start',
-    //   arguments: {
-    //     path: selectedItem.textContent
-    //   }
-    // };
-    // conn.send(JSON.stringify(reqBody));
-    let i = this.playlist.items.indexOf(selectedItem.textContent);
+    let i = selectedItem.dataset.index;
     this.startItem(i);
   }
 
@@ -218,7 +223,12 @@ class Viewer {
   }
 
   startItem(index) {
-    let name = this.playlist.items[index];
+    if (index <= -1) {
+      console.error("Cannot play item at negative index.");
+      return;
+    }
+
+    let name = this.playlist.items[index].Visual;
     let ext = name.slice(name.lastIndexOf('.'));
     this.ulPlaylist.style.visibility = 'hidden';
 

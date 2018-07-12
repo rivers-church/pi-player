@@ -24,7 +24,7 @@ type Player struct {
 	api        *APIHandler
 	command    *exec.Cmd
 	pipeIn     io.WriteCloser
-	playlist   playlist
+	playlist   *Playlist
 	conf       *Config
 	running    bool
 	quitting   bool
@@ -73,6 +73,7 @@ func NewPlayer(api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *P
 		conf:       conf,
 		keylogger:  keylogger,
 		Connection: ConnectionWS{},
+		playlist:   &Playlist{},
 	}
 
 	if api.debug {
@@ -114,11 +115,6 @@ func (p *Player) FirstRun() {
 	if err := p.startBrowser(); err != nil {
 		log.Println("Error trying to start the browser:\n", err)
 		p.browser.running = false
-	}
-
-	err := p.playlist.fromFolder(p.conf.Directory)
-	if err != nil {
-		log.Println("Error trying to read files from directory.\n", err)
 	}
 
 	if len(p.playlist.Items) == 0 {
@@ -717,10 +713,11 @@ func (p *Player) HandleWebSocketMessage() {
 		case msg, ok := <-p.Connection.receive:
 			if !ok {
 				log.Println("Error receiving message from ConnectionWS for processing")
-				close(p.Connection.receive)
 				return
 			}
-			log.Println("got a message from ConnectionWS", msg)
+			if p.api.debug {
+				log.Println("got a message from ConnectionWS", msg)
+			}
 		}
 	}
 }

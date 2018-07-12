@@ -9,14 +9,22 @@ import (
 	"path"
 )
 
-type playlist struct {
+// Playlist stores the media items that can be played
+type Playlist struct {
 	Name    string
 	Items   []Item
 	Current *Item
 }
 
+// NewPlaylist creates a new playlist with media in the designated folder.
+func NewPlaylist(dir string) (Playlist, error) {
+	pl := Playlist{Name: dir}
+	err := pl.fromFolder(dir)
+	return pl, err
+}
+
 // Handles requests to the playlist api
-func (p *playlist) handleAPI(api *APIHandler, w http.ResponseWriter, h *http.Request) {
+func (p *Playlist) handleAPI(api *APIHandler, w http.ResponseWriter, h *http.Request) {
 	var m *resMessage
 	if api.message.Method == "getCurrent" {
 		if p.Current != nil {
@@ -35,7 +43,7 @@ func (p *playlist) handleAPI(api *APIHandler, w http.ResponseWriter, h *http.Req
 		m = &resMessage{
 			Success: true,
 			Event:   "items",
-			Message: p.itemNames(),
+			Message: p.itemsString(),
 		}
 	}
 
@@ -45,7 +53,7 @@ func (p *playlist) handleAPI(api *APIHandler, w http.ResponseWriter, h *http.Req
 	json.NewEncoder(w).Encode(m)
 }
 
-func (p *playlist) fromFolder(folderPath string) error {
+func (p *Playlist) fromFolder(folderPath string) error {
 	// remove all items from the current playlist if there are any
 	p.Items = []Item{}
 
@@ -82,7 +90,7 @@ func (p *playlist) fromFolder(folderPath string) error {
 	return nil
 }
 
-func (p *playlist) getIndex(fileName string) int {
+func (p *Playlist) getIndex(fileName string) int {
 	for i, item := range p.Items {
 		if item.Name() == fileName {
 			return i
@@ -92,7 +100,7 @@ func (p *playlist) getIndex(fileName string) int {
 	return -1
 }
 
-func (p *playlist) getNext() (*Item, error) {
+func (p *Playlist) getNext() (*Item, error) {
 	if p.Current == nil {
 		return nil, errors.New("no current item, can't get next")
 	}
@@ -108,7 +116,7 @@ func (p *playlist) getNext() (*Item, error) {
 	return &p.Items[i+1], nil
 }
 
-func (p *playlist) getPrevious() (*Item, error) {
+func (p *Playlist) getPrevious() (*Item, error) {
 	if p.Current == nil {
 		return nil, errors.New("no current item, can't get previous")
 	}
@@ -124,11 +132,11 @@ func (p *playlist) getPrevious() (*Item, error) {
 	return &p.Items[i-1], nil
 }
 
-func (p *playlist) itemNames() []string {
-	var res []string
+func (p *Playlist) itemsString() []ItemString {
+	var res []ItemString
 
 	for _, item := range p.Items {
-		res = append(res, item.Name())
+		res = append(res, item.String())
 	}
 
 	return res
