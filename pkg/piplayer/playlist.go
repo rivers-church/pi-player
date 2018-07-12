@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"path"
+	"strconv"
 )
 
 // Playlist stores the media items that can be played
@@ -26,7 +27,9 @@ func NewPlaylist(dir string) (Playlist, error) {
 // Handles requests to the playlist api
 func (p *Playlist) handleAPI(api *APIHandler, w http.ResponseWriter, h *http.Request) {
 	var m *resMessage
-	if api.message.Method == "getCurrent" {
+
+	switch api.message.Method {
+	case "getCurrent":
 		if p.Current != nil {
 			m = &resMessage{
 				Success: true,
@@ -39,12 +42,37 @@ func (p *Playlist) handleAPI(api *APIHandler, w http.ResponseWriter, h *http.Req
 				Event:   "noCurrent",
 			}
 		}
-	} else if api.message.Method == "getItems" {
+	case "setCurrent":
+		if api.message.Arguments == nil || len(api.message.Arguments) == 0 {
+			m = &resMessage{
+				Success: false,
+				Event:   "noArgumentSupplied",
+			}
+			break
+		}
+
+		index, err := strconv.Atoi(api.message.Arguments["index"])
+		if err != nil || index < 0 || index >= len(p.Items) {
+			m = &resMessage{
+				Success: false,
+				Event:   "argumentInvalid",
+			}
+			break
+		}
+
+		p.Current = &p.Items[index]
+	case "getItems":
+		if err := p.fromFolder(p.Name); err != nil {
+			log.Printf("Api call failed. Can't get items from folder %s\n%v", p.Name, err)
+		}
+
 		m = &resMessage{
 			Success: true,
 			Event:   "items",
 			Message: p.itemsString(),
 		}
+	default:
+		log.Printf("API call unsupported. Ignoring:\n%v\n", api.message)
 	}
 
 	if api.debug {

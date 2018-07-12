@@ -257,6 +257,18 @@ class Viewer {
         break;
     }
     this.playlist.current = index;
+
+    let reqBody = {
+      component: "playlist",
+      method: "setCurrent",
+      arguments: {index: index}
+    };
+
+    this.callApi(reqBody).then(res => {
+      if (!res || !res.success) {
+        console.error("Cound't set the current item through the API.");
+      }
+    });
   }
 }
 
