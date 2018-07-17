@@ -73,7 +73,7 @@ func NewPlayer(api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *P
 		conf:       conf,
 		keylogger:  keylogger,
 		Connection: ConnectionWS{},
-		playlist:   &Playlist{},
+		playlist:   &Playlist{Name: conf.Directory},
 	}
 
 	if api.debug {

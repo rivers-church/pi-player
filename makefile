@@ -11,18 +11,14 @@ upgrade:
 	go build -o $(BINARY_NAME) $(CMD_MAIN)
 	sudo systemctl start pi-player
 
-run-pi:
-	go build -o $(BINARY_NAME) $(CMD_MAIN)
+run-pi: build
 	sudo systemctl restart pi-player
 
-run-mac:
-	go build -o $(BINARY_NAME) $(CMD_MAIN)
+run-mac: build
 	./$(BINARY_NAME) --debug --test mac
 
-run-linux:
-	go build -o $(BINARY_NAME) $(CMD_MAIN)
+run-linux: build
 	./$(BINARY_NAME) --debug --test linux
 
-run-web:
-	go build -o $(BINARY_NAME) $(CMD_MAIN)
+run-web: build
 	./$(BINARY_NAME) --debug --test web
