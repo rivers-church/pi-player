@@ -52,6 +52,7 @@ func (p *Playlist) handleAPI(api *APIHandler, w http.ResponseWriter, h *http.Req
 		}
 
 		index, err := strconv.Atoi(api.message.Arguments["index"])
+
 		if err != nil || index < 0 || index >= len(p.Items) {
 			m = &resMessage{
 				Success: false,
@@ -61,6 +62,16 @@ func (p *Playlist) handleAPI(api *APIHandler, w http.ResponseWriter, h *http.Req
 		}
 
 		p.Current = &p.Items[index]
+
+		m = &resMessage{
+			Success: true,
+			Event:   "setCurrent",
+			Message: p.Current,
+		}
+
+		if api.debug {
+			log.Println("set current item index to:", index)
+		}
 	case "getItems":
 		if err := p.fromFolder(p.Name); err != nil {
 			log.Printf("Api call failed. Can't get items from folder %s\n%v", p.Name, err)
@@ -75,9 +86,6 @@ func (p *Playlist) handleAPI(api *APIHandler, w http.ResponseWriter, h *http.Req
 		log.Printf("API call unsupported. Ignoring:\n%v\n", api.message)
 	}
 
-	if api.debug {
-		log.Println("sending current item.\n", m)
-	}
 	json.NewEncoder(w).Encode(m)
 }
 

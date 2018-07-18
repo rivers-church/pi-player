@@ -1,19 +1,19 @@
-"use strict";
-
 class Viewer {
-  menuItemSelector = '.item';
-  conn = null;
-  arrItems = null;
-  divContainer = document.querySelector('#container');
-  ulPlaylist = document.querySelector('#ulPlaylist');
-  vidMedia = document.querySelector('#vidMedia');
-  audMusic = document.querySelector('#audMusic');
-  playlist = {
-    current: null,
-    items: []
-  };
-
+  
   constructor() {
+    this.menuItemSelector = '.item';
+    this.conn = null;
+    this.arrItems = null;
+    this.playlist = {
+      current: null,
+      items: []
+    };
+  
+    this.divContainer = document.querySelector('#container');
+    this.ulPlaylist = document.querySelector('#ulPlaylist');
+    this.vidMedia = document.querySelector('#vidMedia');
+    this.audMusic = document.querySelector('#audMusic');
+
     if (!window["WebSocket"]) {
       console.error("This page requires WebSocket support. Please use a WebSocket enabled service.");
       return;
@@ -261,7 +261,7 @@ class Viewer {
     let reqBody = {
       component: "playlist",
       method: "setCurrent",
-      arguments: {index: index}
+      arguments: {index: index.toString()}
     };
 
     this.callApi(reqBody).then(res => {

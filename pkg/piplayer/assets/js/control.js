@@ -1,125 +1,150 @@
-"use strict";
+class Control {
+  constructor() {
+    // Find all the relevant elements
+    this.btns = document.querySelectorAll('#divControlsPlayer button');
+    this.btnsPlaylist = document.querySelectorAll('#divControlPlaylist');
+    this.btnStart = document.querySelector('#btnStart');
+    this.spCurrent = document.querySelector('#spCurrent');
+    this.tblPlaylist = document.querySelector('#tblPlaylist');
 
-let controls = {
-  btns: document.querySelectorAll('#divControlsPlayer button'),
-  btnsPlaylist: document.querySelectorAll('#divControlPlaylist'),
-  btnStart: document.querySelector('#btnStart'),
-  spCurrent: document.querySelector('#spCurrent'),
-  tblPlaylist: document.querySelector('#tblPlaylist'),
-  connection: {
-    socket: null,
-    active: false
-  },
-  flags: {
-    websockets: false
-  }
-};
+    this.conn = null;
+    this.playlist = {
+      current: null,
+      selected: null,
+      items: []
+    };
 
-if (!window["WebSocket"]) {
-  console.warn("Websockets not supported in your browser. Fallback functionality will be used.");
-} else if (controls.flags.websockets) {
-  controls.connection.socket = new WebSocket(`ws://${document.location.host}/control/ws`);
-
-  controls.connection.socket.addEventListener('open', e => {
-    console.log("websocket connected");
-    controls.connection.active = true;
-  });
-
-  controls.connection.socket.addEventListener('close', () => {
-    console.log("Websocket connection closed, falling back...");
-    controls.connection.active = false;
-  });
-
-  controls.connection.socket.addEventListener('message', e => {
-    let msg = JSON.parse(e.data);
-    console.log('WS Message received!!: ', msg);
-  });
-}
-
-let playlist = {
-  items: Array.from(controls.tblPlaylist.querySelectorAll('td')).map(el => el.textContent),
-  selected: null,
-  playPause: e => console.log(e)
-}
-
-controls.tblPlaylist.addEventListener('click', plSelect);
-controls.btns.forEach(btn => btn.addEventListener('click', sendCommand));
-controls.btnsPlaylist.forEach(btn => btn.addEventListener('click', callMethod));
-controls.btnStart.addEventListener('click', startItem);
-
-function plSelect(e) {
-  if (playlist.selected != null) {
-    playlist.selected.classList.remove('selected');
-  }
-  playlist.selected = e.target;
-  playlist.selected.classList.add('selected');
-}
-
-function callMethod(e) {
-  let btn = e.target.closest('button');
-
-  let reqBody = {
-    component: "player",
-    method: btn.dataset["method"]
-  };
-
-  callApi(reqBody)
-    .then(videoCallback);
-}
-
-function startItem(e) {
-  let reqBody = {
-    component: "player",
-    method: "start",
-    arguments: {
-      path: playlist.selected.textContent
+    if (!window["WebSocket"]) {
+      console.error("This page requires WebSocket support. Please use a WebSocket enabled service.");
+      return;
     }
-  };
 
-  callApi(reqBody).then(videoCallback);
-}
-
-function videoCallback(json) {
-  if (json.success) {
-    spCurrent.textContent = json.message;
-    let event = {};
-    let items = Array.from(tblPlaylist.querySelectorAll('td'));
-    event.target = items.find(val => {
-      return val.textContent == json.message;
-    });
-    plSelect(event);
-  }
-}
-
-function sendCommand(e) {
-  let btn = e.target.closest('button');
-  
-  let reqBody = {
-    component: "player",
-    method: "sendCommand",
-    arguments: {
-      command: btn.dataset["command"]
-    }
-  };
-
-  callApi(reqBody);
-}
-
-function callApi(reqBody) {
-  let myHeaders = new Headers();
-  myHeaders.append('Content-Type', 'application/json');
-
-  let myInit = {
-    method: "POST",
-    headers: myHeaders,
-    body: JSON.stringify(reqBody)
-  }
-
-  return fetch(`${window.location.origin}/api`, myInit)
-    .then(res => res.json())
-    .then(json => {
-      console.log(json);
-      return json;
+    this.getItems().then(res => {
+      console.log("loaded playlist from server");
     })
-    .catch(err => console.error(err));
+
+    this.wsConnect();
+  }
+
+  getItems() {
+    let reqBody = {
+      component: 'playlist',
+      method: 'getItems'
+    }
+
+    return this.callApi(reqBody)
+    .then(res => {
+      if (!res || !res.success) {
+        console.error(res);
+        return;
+      }
+      this.playlist.items = res.message;
+      return res;
+    });
+
+    this.tblPlaylist.addEventListener('click', this.plSelect);
+    this.btns.forEach(btn => btn.addEventListener('click', this.sendCommand));
+    this.btnsPlaylist.forEach(btn => btn.addEventListener('click', this.callMethod));
+    this.btnStart.addEventListener('click', this.startItem);
+  }
+
+  wsConnect() {
+    let u = 'ws://' + document.location.host + '/control';
+    this.conn = new WebSocket(u);
+
+    this.conn.addEventListener('open', e => {
+      console.log("Connection Opened.");
+    });
+    
+    this.conn.addEventListener('error', e => {
+      console.log("Error in the websocket connection:\n", e);
+    });
+  
+    this.conn.addEventListener('close', e => {
+      console.log("Connection closed.\nTrying to reconnect...");
+  
+      let to = setTimeout(() => this.wsConnect(), 2000);
+    });
+
+    this.conn.addEventListener('message', this.socketMessage.bind(this));
+  }
+
+  plSelect(e) {
+    if (this.playlist.selected != null) {
+      this.playlist.selected.classList.remove('selected');
+    }
+    this.playlist.selected = e.target;
+    this.playlist.selected.classList.add('selected');
+  }
+  
+  callMethod(e) {
+    let btn = e.target.closest('button');
+  
+    let reqBody = {
+      component: "player",
+      method: btn.dataset["method"]
+    };
+  
+    this.callApi(reqBody)
+      .then(this.videoCallback);
+  }
+  
+  startItem(e) {
+    let reqBody = {
+      component: "player",
+      method: "start",
+      arguments: {
+        path: playlist.selected.textContent
+      }
+    };
+  
+    this.callApi(reqBody).then(this.videoCallback);
+  }
+  
+  videoCallback(json) {
+    if (json.success) {
+      this.spCurrent.textContent = json.message;
+      let event = {};
+      let items = Array.from(this.tblPlaylist.querySelectorAll('td'));
+      event.target = items.find(val => {
+        return val.textContent == json.message;
+      });
+      plSelect(event);
+    }
+  }
+  
+  sendCommand(e) {
+    let btn = e.target.closest('button');
+    
+    let reqBody = {
+      component: "player",
+      method: "sendCommand",
+      arguments: {
+        command: btn.dataset["command"]
+      }
+    };
+  
+    this.callApi(reqBody);
+  }
+  
+  callApi(reqBody) {
+    let myHeaders = new Headers();
+    myHeaders.append('Content-Type', 'application/json');
+  
+    let myInit = {
+      method: "POST",
+      headers: myHeaders,
+      body: JSON.stringify(reqBody)
+    }
+  
+    return fetch(`${window.location.origin}/api`, myInit)
+      .then(res => res.json())
+      .then(json => {
+        console.log(json);
+        return json;
+      })
+      .catch(err => console.error(err));
+  }
 }
+
+let control = new Control();
