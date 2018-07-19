@@ -22,7 +22,7 @@ var upgrader = &websocket.Upgrader{
 	WriteBufferSize: writeBufferSize,
 }
 
-// ConnectionWS has the websocket connection to the control page.
+// ConnectionWS represents a WebSocket connection.
 type ConnectionWS struct {
 	conn    *websocket.Conn
 	send    chan resMessage
@@ -40,8 +40,8 @@ type ConnectionWS struct {
 // 	return conn
 // }
 
-// HandlerWebsocket handles websocket connections.
-func (c *ConnectionWS) HandlerWebsocket(p *Player) http.HandlerFunc {
+// HandlerWebsocketViewer handles websocket connections for the browser viewer.
+func (c *ConnectionWS) HandlerWebsocketViewer(p *Player) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var err error
 		c.conn, err = upgrader.Upgrade(w, r, nil)
@@ -60,6 +60,13 @@ func (c *ConnectionWS) HandlerWebsocket(p *Player) http.HandlerFunc {
 		go c.write()
 		go c.read()
 		go p.HandleWebSocketMessage()
+	}
+}
+
+// HandlerWebsockerControl handlers websocket connections for the browser control.
+func (c *ConnectionWS) HandlerWebsockerControl(p *Player) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
 	}
 }
 

@@ -30,9 +30,6 @@ func (t *TemplateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// t.once.Do(func(){
 	t.templ = template.Must(template.ParseFiles(filepath.Join(templateDir, t.filename)))
 	// // })
-	// data := map[string]string{
-	// 	"Host": r.Host,
-	// }
 
 	err := t.templ.Execute(w, t.data)
 	if err != nil {

@@ -1,11 +1,12 @@
 class Control {
   constructor() {
-    // Find all the relevant elements
+    // make these constants in a module
     this.btns = document.querySelectorAll('#divControlsPlayer button');
     this.btnsPlaylist = document.querySelectorAll('#divControlPlaylist');
     this.btnStart = document.querySelector('#btnStart');
     this.spCurrent = document.querySelector('#spCurrent');
     this.tblPlaylist = document.querySelector('#tblPlaylist');
+    this.wsPath = "/ws/control";
 
     this.conn = null;
     this.playlist = {
@@ -49,7 +50,7 @@ class Control {
   }
 
   wsConnect() {
-    let u = 'ws://' + document.location.host + '/control';
+    let u = 'ws://' + document.location.host + this.wsPath;
     this.conn = new WebSocket(u);
 
     this.conn.addEventListener('open', e => {

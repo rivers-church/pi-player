@@ -102,8 +102,12 @@ func (p *Playlist) fromFolder(folderPath string) error {
 	// filter out all files except for supported ones
 	for _, file := range files {
 		e := path.Ext(file.Name())
-		if e == ".mp4" || e == ".jpg" || e == ".jpeg" || e == ".png" || e == ".html" {
-			p.Items = append(p.Items, Item{Visual: file})
+		if e == ".mp4" {
+			p.Items = append(p.Items, Item{Visual: file, Type: "video"})
+		} else if e == ".jpg" || e == ".jpeg" || e == ".png" {
+			p.Items = append(p.Items, Item{Visual: file, Type: "image"})
+		} else if e == ".html" {
+			p.Items = append(p.Items, Item{Visual: file, Type: "browser"})
 		}
 	}
 

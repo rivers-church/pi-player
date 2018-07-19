@@ -1,6 +1,9 @@
 package piplayer
 
-import "os"
+import (
+	"os"
+	"path/filepath"
+)
 
 // Item represents a playlist item
 // it can have a visual element, an audio element, or both.
@@ -8,6 +11,7 @@ import "os"
 type Item struct {
 	Audio  os.FileInfo
 	Visual os.FileInfo
+	Type   string
 }
 
 // ItemString is a simpler representation of an Item,
@@ -15,13 +19,15 @@ type Item struct {
 type ItemString struct {
 	Audio  string
 	Visual string
+	Type   string
 }
 
-// Name returns the filename of the visual element
+// Name returns the filename of the visual element.
 func (i *Item) Name() string {
-	return i.Visual.Name()
+	return removeExtension(i.Visual.Name())
 }
 
+// String returns an newly created ItemString version of the Item.
 func (i *Item) String() ItemString {
 	is := ItemString{}
 	if i.Audio != nil {
@@ -30,5 +36,13 @@ func (i *Item) String() ItemString {
 	if i.Visual != nil {
 		is.Visual = i.Visual.Name()
 	}
+
+	is.Type = i.Type
 	return is
+}
+
+func removeExtension(filename string) string {
+	ext := filepath.Ext(filename)
+	l := len(filename) - len(ext)
+	return filename[:l]
 }

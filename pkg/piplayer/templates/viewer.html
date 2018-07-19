@@ -17,7 +17,11 @@
     <div id=containerPlaylist>
       <ul id="ulPlaylist">
         {{- range $i, $e := .playlist.Items}}
-          <li class="item" tabindex="0" data-index="{{$i}}">{{.Name}}</li>
+          <li class="item" tabindex="0" data-index="{{$i}}">
+            <i class="fas fa-{{.Type}}"></i>
+            {{if .Audio}}<i class="fas fa-music"></i>{{end}}
+            <span>{{.Name}}</span>
+          </li>
         {{- end}}
       </ul>
     </div>

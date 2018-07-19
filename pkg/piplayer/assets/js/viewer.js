@@ -101,7 +101,7 @@ class Viewer {
         this.remoteEnterPress(e);
         break;
       case 'KEY_CONTEXT_MENU':
-        this.remoteHomePress(e);
+        this.remoteContextMenuPress(e);
         break;
       case 'KEY_PLAYPAUSE':
         this.remotePlayPress(e);
@@ -190,11 +190,11 @@ class Viewer {
       return;
     }
 
-    let i = selectedItem.dataset.index;
+    let i = parseInt(selectedItem.dataset.index, 10);
     this.startItem(i);
   }
 
-  remoteHomePress(e) {
+  remoteContextMenuPress(e) {
     // If the menu is hidden, show it.
     if (this.divContainerPlaylist.style.visibility !== 'visible') {
       this.divContainerPlaylist.style.visibility = 'visible';
@@ -231,35 +231,14 @@ class Viewer {
       return;
     }
 
-    let name = this.playlist.items[index].Visual;
-    let ext = name.slice(name.lastIndexOf('.'));
     this.divContainerPlaylist.style.visibility = 'hidden';
+    let item = this.playlist.items[index];
 
-    switch (ext) {
-      case '.mp4':
-        this.vidMedia.src = `/content/${name}`;
-        this.vidMedia.style.visibility = 'visible';
-        // Blackout the background.
-        this.divContainer.style.backgroundImage = null;
-        this.vidMedia.play();
-        break;
-      case '.jpg':
-      case '.jpeg':
-      case '.png':
-        // Stop video if playing.
-        if (!this.vidMedia.paused) {
-          this.vidMedia.pause();
-          this.vidMedia.style.visibility = 'hidden';
-        }
-        // Change background image.
-        this.divContainer.style.backgroundImage = `url("/content/${name}")`;
-      break;
-      default:
-        console.log("File type not supported: ", ext);
-        return;
-        break;
+    let started = this.startVisual(item.Visual);
+    if (started) {
+      this.playlist.current = index;
     }
-    this.playlist.current = index;
+    this.startAudio(item.Audio);
 
     let reqBody = {
       component: "playlist",
@@ -272,6 +251,58 @@ class Viewer {
         console.error("Cound't set the current item through the API.");
       }
     });
+  }
+
+  startVisual(fileName) {
+    let success = true;
+    let ext = fileName.slice(fileName.lastIndexOf('.'));
+
+    switch (ext) {
+      case '.mp4':
+        this.vidMedia.src = `/content/${fileName}`;
+        this.vidMedia.style.visibility = 'visible';
+        this.vidMedia.play();
+        // Blackout the background.
+        this.divContainer.style.backgroundImage = null;
+        break;
+      case '.jpg':
+      case '.jpeg':
+      case '.png':
+        // Change background image.
+        this.divContainer.style.backgroundImage = `url("/content/${fileName}")`;
+        // Stop video if playing.
+        if (!this.vidMedia.paused) {
+          this.vidMedia.pause();
+          this.vidMedia.style.visibility = 'hidden';
+        }
+      break;
+      default:
+        console.log("File type not supported: ", fileName);
+        success = false;
+        break;
+    }
+    return success;
+  }
+
+  startAudio(fileName) {
+    let success = true;
+    let ext = fileName.slice(fileName.lastIndexOf('.'));
+
+    switch (ext) {
+      case '.mp3':
+        this.audMusic.src = `/content/${fileName}`;
+        this.audMusic.play();
+        break;
+      case '':
+        this.audMusic.pause();
+        this.audMusic.src = null;
+        break;
+      default:
+        console.log("File type not supported: ", fileName)
+        success = false;
+        break;
+    }
+    return success;
   }
 }
 
