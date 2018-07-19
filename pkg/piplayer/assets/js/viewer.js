@@ -209,16 +209,37 @@ class Viewer {
   }
 
   remotePlayPress(e) {
-    if (this.vidMedia.paused) {
-      this.vidMedia.play();
-    } else {
-      this.vidMedia.pause();
+    let item = this.playlist.items[this.playlist.current];
+
+    if (item.Audio != "") {
+      if (this.audMusic.paused) {
+        this.audMusic.play();
+      } else {
+        this.audMusic.pause();
+      }
+    }
+
+    if (item.Type == "video") {
+      if (this.vidMedia.paused) {
+        this.vidMedia.play();
+      } else {
+        this.vidMedia.pause();
+      }
     }
   }
 
   remoteStopPress(e) {
-    this.vidMedia.pause();
-    this.videMedia.currentTime = 0;
+    let item = this.playlist.items[this.playlist.current];
+
+    if (item.Type == "video") {
+      this.vidMedia.pause();
+      this.vidMedia.currentTime = 0;
+    }
+
+    if (item.Audio != "") {
+      this.audMusic.pause();
+      this.audMusic.currentTime = 0;
+    }
   }
 
   remoteSeek(e, msg) {
@@ -234,12 +255,13 @@ class Viewer {
     this.divContainerPlaylist.style.visibility = 'hidden';
     let item = this.playlist.items[index];
 
+    this.startAudio(item.Audio);
     let started = this.startVisual(item.Visual);
     if (started) {
       this.playlist.current = index;
     }
-    this.startAudio(item.Audio);
 
+    // Notify the server that a new item has started.
     let reqBody = {
       component: "playlist",
       method: "setCurrent",
@@ -285,6 +307,11 @@ class Viewer {
   }
 
   startAudio(fileName) {
+    if (fileName == "") {
+      this.audMusic.src = "";
+      return true;
+    }
+    
     let success = true;
     let ext = fileName.slice(fileName.lastIndexOf('.'));
 
