@@ -14,11 +14,13 @@
   <div id="container"> <!-- style="background-image: url({{.img}})"> -->
     <video id="vidMedia"></video>
     <audio id="audMusic"></audio>
-    <ul id="ulPlaylist">
-      {{- range $i, $e := .playlist.Items}}
-        <li class="item" tabindex="0" data-index="{{$i}}">{{.Name}}</li>
-      {{- end}}
-    </ul>
+    <div id=containerPlaylist>
+      <ul id="ulPlaylist">
+        {{- range $i, $e := .playlist.Items}}
+          <li class="item" tabindex="0" data-index="{{$i}}">{{.Name}}</li>
+        {{- end}}
+      </ul>
+    </div>
   </div>
 <script src="/assets/js/viewer.js"></script>
   <script>

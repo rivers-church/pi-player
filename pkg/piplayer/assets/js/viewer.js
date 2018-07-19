@@ -1,7 +1,9 @@
 class Viewer {
   
   constructor() {
+    // make these constants in a module
     this.menuItemSelector = '.item';
+    this.wsPath = '/ws/viewer';
     this.conn = null;
     this.arrItems = null;
     this.playlist = {
@@ -11,6 +13,7 @@ class Viewer {
   
     this.divContainer = document.querySelector('#container');
     this.ulPlaylist = document.querySelector('#ulPlaylist');
+    this.divContainerPlaylist = document.querySelector('#containerPlaylist');
     this.vidMedia = document.querySelector('#vidMedia');
     this.audMusic = document.querySelector('#audMusic');
 
@@ -39,7 +42,7 @@ class Viewer {
   }
 
   wsConnect() {
-    let u = 'ws://' + document.location.host + '/ws';
+    let u = 'ws://' + document.location.host + this.wsPath;
     this.conn = new WebSocket(u);
 
     this.conn.addEventListener('open', e => {
@@ -193,15 +196,15 @@ class Viewer {
 
   remoteHomePress(e) {
     // If the menu is hidden, show it.
-    if (this.ulPlaylist.style.visibility !== 'visible') {
-      this.ulPlaylist.style.visibility = 'visible';
+    if (this.divContainerPlaylist.style.visibility !== 'visible') {
+      this.divContainerPlaylist.style.visibility = 'visible';
       this.arrItems[this.playlist.current].focus();
       return;
     }
 
     // If the meny is showing, hide it.
-    if (this.ulPlaylist.style.visibility === 'visible') {
-      this.ulPlaylist.style.visibility = 'hidden';
+    if (this.divContainerPlaylist.style.visibility === 'visible') {
+      this.divContainerPlaylist.style.visibility = 'hidden';
     }
   }
 
@@ -230,7 +233,7 @@ class Viewer {
 
     let name = this.playlist.items[index].Visual;
     let ext = name.slice(name.lastIndexOf('.'));
-    this.ulPlaylist.style.visibility = 'hidden';
+    this.divContainerPlaylist.style.visibility = 'hidden';
 
     switch (ext) {
       case '.mp4':
