@@ -70,6 +70,16 @@ class Control {
     this.conn.addEventListener('message', this.socketMessage.bind(this));
   }
 
+  socketMessage(e) {
+    let msg = JSON.parse(e.data);
+    console.log(msg);
+
+    switch (msg.message) {
+      default:
+      console.log("Unsupported message received: ", e.data);
+    }
+  }
+
   plSelect(e) {
     if (this.playlist.selected != null) {
       this.playlist.selected.classList.remove('selected');

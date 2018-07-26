@@ -40,8 +40,8 @@ type ConnectionWS struct {
 // 	return conn
 // }
 
-// HandlerWebsocketViewer handles websocket connections for the browser viewer.
-func (c *ConnectionWS) HandlerWebsocketViewer(p *Player) http.HandlerFunc {
+// HandlerWebsocket handles websocket connections for the browser viewer.
+func (c *ConnectionWS) HandlerWebsocket(p *Player) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var err error
 		c.conn, err = upgrader.Upgrade(w, r, nil)
@@ -51,7 +51,7 @@ func (c *ConnectionWS) HandlerWebsocketViewer(p *Player) http.HandlerFunc {
 			return
 		}
 
-		log.Println("Websocket connection being handled...")
+		log.Println("Websocket connection being handled for ", r.URL.Path)
 
 		c.send = make(chan resMessage)
 		c.receive = make(chan reqMessage)
@@ -60,13 +60,6 @@ func (c *ConnectionWS) HandlerWebsocketViewer(p *Player) http.HandlerFunc {
 		go c.write()
 		go c.read()
 		go p.HandleWebSocketMessage()
-	}
-}
-
-// HandlerWebsockerControl handlers websocket connections for the browser control.
-func (c *ConnectionWS) HandlerWebsockerControl(p *Player) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-
 	}
 }
 

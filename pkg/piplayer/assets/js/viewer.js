@@ -82,8 +82,7 @@ class Viewer {
   }
 
   socketMessage(e) {
-    let msg = JSON.parse(e.data)
-
+    let msg = JSON.parse(e.data);
     console.log(msg);
 
     switch (msg.message) {

@@ -20,18 +20,19 @@ import (
 
 // Player is the object that renders images to the screen through omxplayer or chromium-browser
 type Player struct {
-	Connection ConnectionWS
-	api        *APIHandler
-	command    *exec.Cmd
-	pipeIn     io.WriteCloser
-	playlist   *Playlist
-	conf       *Config
-	running    bool
-	quitting   bool
-	status     int
-	quit       chan error
-	browser    Browser
-	keylogger  *keylogger.KeyLogger
+	ConnViewer  ConnectionWS
+	ConnControl ConnectionWS
+	api         *APIHandler
+	command     *exec.Cmd
+	pipeIn      io.WriteCloser
+	playlist    *Playlist
+	conf        *Config
+	running     bool
+	quitting    bool
+	status      int
+	quit        chan error
+	browser     Browser
+	keylogger   *keylogger.KeyLogger
 }
 
 const (
@@ -69,11 +70,12 @@ var commandList = map[string]string{
 // NewPlayer creates a new Player
 func NewPlayer(api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *Player {
 	p := Player{
-		api:        api,
-		conf:       conf,
-		keylogger:  keylogger,
-		Connection: ConnectionWS{},
-		playlist:   &Playlist{Name: conf.Directory},
+		api:         api,
+		conf:        conf,
+		keylogger:   keylogger,
+		ConnViewer:  ConnectionWS{},
+		ConnControl: ConnectionWS{},
+		playlist:    &Playlist{Name: conf.Directory},
 	}
 
 	if api.debug {
@@ -710,14 +712,20 @@ func (p *Player) HandleWebSocketMessage() {
 	}
 	for {
 		select {
-		case msg, ok := <-p.Connection.receive:
-			if !ok {
-				log.Println("Error receiving message from ConnectionWS for processing")
-				return
-			}
-			if p.api.debug {
-				log.Println("got a message from ConnectionWS", msg)
-			}
+		case msg, ok := <-p.ConnViewer.receive:
+			p.processWebsocketMessage(msg, ok)
+		case msg, ok := <-p.ConnControl.receive:
+			p.processWebsocketMessage(msg, ok)
 		}
+	}
+}
+
+func (p *Player) processWebsocketMessage(msg reqMessage, ok bool) {
+	if !ok {
+		log.Println("Error receiving message from ConnectionWS for processing")
+		return
+	}
+	if p.api.debug {
+		log.Println("got a message from ConnectionWS", msg)
 	}
 }

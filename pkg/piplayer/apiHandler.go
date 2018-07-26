@@ -70,7 +70,7 @@ func (a *APIHandler) handleMessage(p *Player, w http.ResponseWriter, r *http.Req
 	}
 
 	if a.message.Component == "playlist" {
-		p.playlist.handleAPI(p.api, w, r)
+		p.playlist.handleAPI(p, w, r)
 		return
 	}
 

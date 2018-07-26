@@ -25,10 +25,10 @@ func NewPlaylist(dir string) (Playlist, error) {
 }
 
 // Handles requests to the playlist api
-func (p *Playlist) handleAPI(api *APIHandler, w http.ResponseWriter, h *http.Request) {
+func (p *Playlist) handleAPI(plr *Player, w http.ResponseWriter, h *http.Request) {
 	var m *resMessage
 
-	switch api.message.Method {
+	switch plr.api.message.Method {
 	case "getCurrent":
 		if p.Current != nil {
 			m = &resMessage{
@@ -43,7 +43,7 @@ func (p *Playlist) handleAPI(api *APIHandler, w http.ResponseWriter, h *http.Req
 			}
 		}
 	case "setCurrent":
-		if api.message.Arguments == nil || len(api.message.Arguments) == 0 {
+		if plr.api.message.Arguments == nil || len(plr.api.message.Arguments) == 0 {
 			m = &resMessage{
 				Success: false,
 				Event:   "noArgumentSupplied",
@@ -51,7 +51,7 @@ func (p *Playlist) handleAPI(api *APIHandler, w http.ResponseWriter, h *http.Req
 			break
 		}
 
-		index, err := strconv.Atoi(api.message.Arguments["index"])
+		index, err := strconv.Atoi(plr.api.message.Arguments["index"])
 
 		if err != nil || index < 0 || index >= len(p.Items) {
 			m = &resMessage{
@@ -69,7 +69,12 @@ func (p *Playlist) handleAPI(api *APIHandler, w http.ResponseWriter, h *http.Req
 			Message: p.Current,
 		}
 
-		if api.debug {
+		// send update to the control page, if open.
+		if plr.ConnControl.active {
+			// plr.ConnControl.send
+		}
+
+		if plr.api.debug {
 			log.Println("set current item index to:", index)
 		}
 	case "getItems":
@@ -83,7 +88,7 @@ func (p *Playlist) handleAPI(api *APIHandler, w http.ResponseWriter, h *http.Req
 			Message: p.itemsString(),
 		}
 	default:
-		log.Printf("API call unsupported. Ignoring:\n%v\n", api.message)
+		log.Printf("API call unsupported. Ignoring:\n%v\n", plr.api.message)
 	}
 
 	json.NewEncoder(w).Encode(m)

@@ -55,7 +55,7 @@ func remoteRead(p *Player, cie chan keylogger.InputEvent) {
 			Event:   "keyDown",
 			Message: key,
 		}
-		p.Connection.send <- msg
+		p.ConnViewer.send <- msg
 
 		// if p.status == statusLive {
 		// 	handleRemoteLive(p, key)
@@ -142,7 +142,7 @@ func handleRemoteMenu(p *Player, key string) {
 			Event:   "keyDown",
 			Message: key,
 		}
-		p.Connection.send <- msg
+		p.ConnViewer.send <- msg
 	default:
 		c, ok := remoteCommands[key]
 		// ignore empty commands, they are not supported yet
