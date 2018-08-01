@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"path"
+	"strconv"
 	"time"
 
 	"github.com/17xande/keylogger"
@@ -160,110 +160,23 @@ func (p *Player) stop() error {
 // Start the file that will be played to the screen, it decides which underlying program to use
 // based on the type of file that will be opened.
 func (p *Player) Start(item *Item, position time.Duration) error {
-	var err error
 	fileName := item.Name()
 
 	if fileName == "" {
 		return errors.New("empty fileName")
 	}
 
-	pos := fmt.Sprintf("%02d:%02d:%02d", int(position.Hours()), int(position.Minutes())%60, int(position.Seconds())%60)
-	ext := path.Ext(fileName)
+	i := p.playlist.getIndex(fileName)
 
-	// if omxplayer is already running, stop it
-	err = p.stop()
-	if err != nil {
-		return err
+	res := resMessage{
+		Event:   "start",
+		Message: strconv.Itoa(i),
+		Success: true,
 	}
 
-	if ext == ".mp4" {
-		p.command = exec.Command("omxplayer", "-b", "-l", pos, "-o", p.conf.AudioOutput, path.Join(p.conf.Directory, fileName))
-		// check if video must be looped
-		if len(fileName) > 8 && fileName[len(fileName)-8:len(fileName)-4] == "LOOP" {
-			p.command.Args = append(p.command.Args, "--loop")
-		}
-		p.pipeIn, err = p.command.StdinPipe()
-		if err != nil {
-			return err
-		}
+	p.ConnViewer.send <- res
 
-		if p.api.test != "web" {
-			if err := p.setBrowserBG(""); err != nil {
-				log.Println("Error trying to set browser background to black before player video:\n", err)
-			}
-		}
-
-		if p.api.test == "mac" {
-			p.command = exec.Command("qlmanage", "-p", path.Join(p.conf.Directory, fileName))
-		} else if p.api.test == "linux" {
-			p.command = exec.Command("xdg-open", path.Join(p.conf.Directory, fileName))
-		} else if p.api.test == "web" {
-			p.command = exec.Command("echo", path.Join(p.conf.Directory, fileName))
-		}
-
-		if p.api.debug {
-			p.command.Stdout = os.Stdout
-		}
-		p.command.Stderr = os.Stderr
-
-		err := p.command.Start()
-		if err != nil {
-			return err
-		}
-		p.running = true
-		p.status = statusLive
-
-		// wait for program to finish
-		go func() {
-			// Cmd.Wait() blocks till the process is finished
-			err := p.command.Wait()
-			p.running = false
-			if p.quitting {
-				if p.api.debug {
-					log.Println("quitting the player")
-				}
-				p.quitting = false
-				p.quit <- err
-				return
-			}
-			if p.api.debug {
-				log.Println("player wasn't quitting, go to next item")
-			}
-			// if the process was not quit midway, and ended naturally, go to the next item.
-			if err := p.next(); err != nil {
-				log.Printf("Error trying to go to next item after current item finished: %v\n", err)
-			}
-
-		}()
-	} else if ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".html" {
-		if p.api.test == "web" {
-			log.Println("ignore request to display image.")
-			return nil
-		}
-		if !p.browser.running {
-			log.Println("Error: Browser should be running by now. Trying to start it again")
-			if err := p.startBrowser(); err != nil {
-				return errors.New("Could not start browser again\n" + err.Error())
-			}
-		}
-
-		err = p.setBrowserBG(fileName)
-		if err != nil {
-			return err
-		}
-
-		if item.Audio != nil {
-			if res, err := p.startBrowserAudio(item.Audio.Name()); err != nil {
-				log.Printf("Error trying to start audio:\n%s\nReturned Message:\n%v", err, res)
-			}
-		} else {
-			if res, err := p.stopBrowserAudio(); err != nil {
-				log.Printf("Error trying to start audio:\n%s\nReturned Message:\n%v", err, res)
-			}
-		}
-	}
-
-	return err
+	return nil
 }
 
 func (p *Player) setBrowserBG(url string) error {
@@ -713,19 +626,23 @@ func (p *Player) HandleWebSocketMessage() {
 	for {
 		select {
 		case msg, ok := <-p.ConnViewer.receive:
-			p.processWebsocketMessage(msg, ok)
-		case msg, ok := <-p.ConnControl.receive:
-			p.processWebsocketMessage(msg, ok)
-		}
-	}
-}
+			if !ok {
+				log.Println("error receiving websocket message from viewer")
+				return
+			}
 
-func (p *Player) processWebsocketMessage(msg reqMessage, ok bool) {
-	if !ok {
-		log.Println("Error receiving message from ConnectionWS for processing")
-		return
-	}
-	if p.api.debug {
-		log.Println("got a message from ConnectionWS", msg)
+			if p.api.debug {
+				log.Println("got a message from ConnectionWS", msg)
+			}
+		case msg, ok := <-p.ConnControl.receive:
+			if !ok {
+				log.Println("error receiving websocket message from Control")
+				return
+			}
+
+			if p.api.debug {
+				log.Println("got a message from ConnectionWS", msg)
+			}
+		}
 	}
 }

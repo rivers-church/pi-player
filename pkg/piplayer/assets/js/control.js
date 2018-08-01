@@ -25,6 +25,11 @@ class Control {
     })
 
     this.wsConnect();
+
+    this.tblPlaylist.addEventListener('click', this.plSelect.bind(this));
+    this.btns.forEach(btn => btn.addEventListener('click', this.sendCommand.bind(this)));
+    this.btnsPlaylist.forEach(btn => btn.addEventListener('click', this.callMethod.bind(this)));
+    this.btnStart.addEventListener('click', this.startItem.bind(this));
   }
 
   getItems() {
@@ -42,11 +47,6 @@ class Control {
       this.playlist.items = res.message;
       return res;
     });
-
-    this.tblPlaylist.addEventListener('click', this.plSelect);
-    this.btns.forEach(btn => btn.addEventListener('click', this.sendCommand));
-    this.btnsPlaylist.forEach(btn => btn.addEventListener('click', this.callMethod));
-    this.btnStart.addEventListener('click', this.startItem);
   }
 
   wsConnect() {
@@ -97,7 +97,7 @@ class Control {
     };
   
     this.callApi(reqBody)
-      .then(this.videoCallback);
+      .then(this.videoCallback.bind(this));
   }
   
   startItem(e) {
@@ -105,11 +105,11 @@ class Control {
       component: "player",
       method: "start",
       arguments: {
-        path: playlist.selected.textContent
+        path: this.playlist.selected.textContent
       }
     };
   
-    this.callApi(reqBody).then(this.videoCallback);
+    this.callApi(reqBody).then(this.videoCallback.bind(this));
   }
   
   videoCallback(json) {
@@ -120,7 +120,7 @@ class Control {
       event.target = items.find(val => {
         return val.textContent == json.message;
       });
-      plSelect(event);
+      this.plSelect(event);
     }
   }
   

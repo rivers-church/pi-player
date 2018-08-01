@@ -85,6 +85,12 @@ class Viewer {
     let msg = JSON.parse(e.data);
     console.log(msg);
 
+    switch (msg.event) {
+      case 'start':
+        this.startItem(msg.message);
+        return;
+    }
+
     switch (msg.message) {
       case 'KEY_UP':
       case 'KEY_DOWN':
