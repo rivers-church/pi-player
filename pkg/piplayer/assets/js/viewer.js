@@ -174,7 +174,7 @@ class Viewer {
       return
     }
 
-      this.startItem(this.playlist.current - 1);
+      this.startItem(parseInt(this.playlist.current) - 1);
   }
 
   remoteArrowRightPress(e) {
@@ -183,7 +183,7 @@ class Viewer {
       return;
     }
 
-    this.startItem(this.playlist.current + 1);
+    this.startItem(parseInt(this.playlist.current, 10) + 1);
   }
 
   remoteEnterPress(e) {
@@ -291,6 +291,10 @@ class Viewer {
         this.vidMedia.play();
         // Blackout the background.
         this.divContainer.style.backgroundImage = null;
+        // Listen for when the video ends and start the next item.
+        this.vidMedia.addEventListener('ended', e => {
+          this.remoteArrowRightPress();
+        });
         break;
       case '.jpg':
       case '.jpeg':
@@ -300,8 +304,8 @@ class Viewer {
         // Stop video if playing.
         if (!this.vidMedia.paused) {
           this.vidMedia.pause();
-          this.vidMedia.style.visibility = 'hidden';
         }
+        this.vidMedia.style.visibility = 'hidden';
       break;
       default:
         console.log("File type not supported: ", fileName);
@@ -312,6 +316,10 @@ class Viewer {
   }
 
   startAudio(fileName) {
+    if (!this.audMusic.paused) {
+      this.audMusic.pause();
+    }
+
     if (fileName == "") {
       this.audMusic.src = "";
       return true;
