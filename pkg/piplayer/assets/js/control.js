@@ -74,7 +74,9 @@ class Control {
     let msg = JSON.parse(e.data);
     console.log(msg);
 
-    switch (msg.message) {
+    switch (msg.event) {
+      case "setCurrent":
+        break;
       default:
       console.log("Unsupported message received: ", e.data);
     }
@@ -115,13 +117,17 @@ class Control {
   videoCallback(json) {
     if (json.success) {
       this.spCurrent.textContent = json.message;
-      let event = {};
       let items = Array.from(this.tblPlaylist.querySelectorAll('td'));
+      let event = {};
       event.target = items.find(val => {
         return val.textContent == json.message;
       });
       this.plSelect(event);
     }
+  }
+
+  setCurrent(event) {
+    
   }
   
   sendCommand(e) {

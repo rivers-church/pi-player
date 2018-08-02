@@ -33,15 +33,25 @@
     </div>
     <div>
       <h2>Playlist</h2>
+      <!-- {{- range $i, $e := .playlist.Items}}
+        <li class="item" tabindex="0" data-index="{{$i}}">
+          <i class="fas fa-{{.Type}}"></i>
+          {{if .Audio}}<i class="fas fa-music"></i>{{end}}
+          <span>{{.Name}}</span>
+        </li>
+      {{- end}} -->
       <table id="tblPlaylist">
-        {{range .playlist.Items}}
-          <tr>
-            <td>{{.Name}}</td>
-            <td>{{if .Audio}}
+        {{- range $i, $e := .playlist.Items}}
+          <tr data-index="{{$i}}">
+            <td class="icon"><i class="fas fa-{{.Type}}"></i></td>
+            <td class="icon">
+              {{- if .Audio}}
               <i class="fas fa-music"></i>
-            {{end}}</td>
+              {{- end}}
+            </td>
+            <td>{{.Name}}</td>
           </tr>
-        {{end}}
+        {{- end}}
       </table>
     </div>
     <div>

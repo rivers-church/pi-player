@@ -24,3 +24,11 @@
 .container {
   padding-bottom: 7.5rem;
 }
+
+.icon {
+  width: 1%;
+}
+
+td {
+  padding: 1.2rem .5rem;
+}
