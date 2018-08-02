@@ -76,6 +76,7 @@ class Control {
 
     switch (msg.event) {
       case "setCurrent":
+        this.setCurrent(parseInt(msg.message))
         break;
       default:
       console.log("Unsupported message received: ", e.data);
@@ -86,8 +87,15 @@ class Control {
     if (this.playlist.selected != null) {
       this.playlist.selected.classList.remove('selected');
     }
-    this.playlist.selected = e.target;
+    this.playlist.selected = e.target.closest('tr');
     this.playlist.selected.classList.add('selected');
+  }
+
+  setCurrent(index) {
+    this.playlist.current = index;
+    this.spCurrent.textContent = this.playlist.items[index].Visual;
+    let el = this.tblPlaylist.querySelector(`tr[data-index="${index}"]`);
+    this.plSelect({target: el});
   }
   
   callMethod(e) {
@@ -103,11 +111,14 @@ class Control {
   }
   
   startItem(e) {
+    let s = this.playlist.selected;
+    let itemName = s.querySelector('td.item-name').textContent;
     let reqBody = {
       component: "player",
       method: "start",
       arguments: {
-        path: this.playlist.selected.textContent
+        path: itemName,
+        index: s.dataset.index
       }
     };
   
@@ -116,18 +127,8 @@ class Control {
   
   videoCallback(json) {
     if (json.success) {
-      this.spCurrent.textContent = json.message;
-      let items = Array.from(this.tblPlaylist.querySelectorAll('td'));
-      let event = {};
-      event.target = items.find(val => {
-        return val.textContent == json.message;
-      });
-      this.plSelect(event);
+      console.log("instruction sent successfully. awaiting confirmation in socket.");
     }
-  }
-
-  setCurrent(event) {
-    
   }
   
   sendCommand(e) {

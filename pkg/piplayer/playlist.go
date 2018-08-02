@@ -26,25 +26,25 @@ func NewPlaylist(dir string) (Playlist, error) {
 
 // Handles requests to the playlist api
 func (p *Playlist) handleAPI(plr *Player, w http.ResponseWriter, h *http.Request) {
-	var m *resMessage
+	var m resMessage
 
 	switch plr.api.message.Method {
 	case "getCurrent":
 		if p.Current != nil {
-			m = &resMessage{
+			m = resMessage{
 				Success: true,
 				Event:   "current",
 				Message: p.Current.Name(),
 			}
 		} else {
-			m = &resMessage{
+			m = resMessage{
 				Success: true,
 				Event:   "noCurrent",
 			}
 		}
 	case "setCurrent":
 		if plr.api.message.Arguments == nil || len(plr.api.message.Arguments) == 0 {
-			m = &resMessage{
+			m = resMessage{
 				Success: false,
 				Event:   "noArgumentSupplied",
 			}
@@ -54,7 +54,7 @@ func (p *Playlist) handleAPI(plr *Player, w http.ResponseWriter, h *http.Request
 		index, err := strconv.Atoi(plr.api.message.Arguments["index"])
 
 		if err != nil || index < 0 || index >= len(p.Items) {
-			m = &resMessage{
+			m = resMessage{
 				Success: false,
 				Event:   "argumentInvalid",
 			}
@@ -63,15 +63,15 @@ func (p *Playlist) handleAPI(plr *Player, w http.ResponseWriter, h *http.Request
 
 		p.Current = &p.Items[index]
 
-		m = &resMessage{
+		m = resMessage{
 			Success: true,
 			Event:   "setCurrent",
-			Message: p.Current,
+			Message: index,
 		}
 
 		// send update to the control page, if open.
 		if plr.ConnControl.active {
-			// plr.ConnControl.send
+			plr.ConnControl.send <- m
 		}
 
 		if plr.api.debug {
@@ -82,7 +82,7 @@ func (p *Playlist) handleAPI(plr *Player, w http.ResponseWriter, h *http.Request
 			log.Printf("Api call failed. Can't get items from folder %s\n%v", p.Name, err)
 		}
 
-		m = &resMessage{
+		m = resMessage{
 			Success: true,
 			Event:   "items",
 			Message: p.itemsString(),

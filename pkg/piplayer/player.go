@@ -339,10 +339,32 @@ func (p *Player) SendCommand(command string) error {
 
 // Handles requets to the player api
 func (p *Player) ServeHTTP(w http.ResponseWriter, h *http.Request) {
+	switch p.api.message.Method {
+	case "start":
+	case "next":
+	case "previous":
+	case "playPause":
+	case "stop":
+	case "seek":
+	default:
+		log.Println("unsupported ")
+	}
+
 	if p.api.message.Method == "start" {
+		// might need this later
 		fileName, ok := p.api.message.Arguments["path"]
+
+		sIndex, ok := p.api.message.Arguments["index"]
 		if !ok {
-			m := &resMessage{Success: false, Message: "No movie name provided."}
+			m := &resMessage{Success: false, Message: "No intem index provided"}
+			log.Println(m.Message)
+			json.NewEncoder(w).Encode(m)
+			return
+		}
+
+		index, err := strconv.Atoi(sIndex)
+		if err != nil {
+			m := &resMessage{Success: false, Message: "Invalid item index provided"}
 			log.Println(m.Message)
 			json.NewEncoder(w).Encode(m)
 			return
@@ -369,7 +391,7 @@ func (p *Player) ServeHTTP(w http.ResponseWriter, h *http.Request) {
 			return
 		}
 
-		err := p.Start(&p.playlist.Items[i], position)
+		err = p.Start(&p.playlist.Items[index], position)
 		if err != nil {
 			m := &resMessage{Success: false, Message: "Error trying to start video: " + err.Error()}
 			log.Println(m.Message)
