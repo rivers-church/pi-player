@@ -42,32 +42,3 @@ func remoteRead(p *Player, cie chan keylogger.InputEvent) {
 		p.ConnViewer.send <- msg
 	}
 }
-
-func handleRemoteLive(p *Player, key string) {
-	if p.api.debug {
-		log.Println("handling remote input for live media")
-	}
-
-	switch key {
-	case "KEY_LEFT":
-		err := p.previous()
-		if err != nil {
-			log.Println("Error trying to go to previous item from remote.\n", err)
-		}
-	case "KEY_RIGHT":
-		err := p.next()
-		if err != nil {
-			log.Println("Error trying to go to next item from remote.\n", err)
-		}
-	case "KEY_HOME":
-		err := p.home()
-		if err != nil {
-			log.Println("Error trying to go to HOME menu from remote.\n", err)
-		} else {
-			p.status = statusMenu
-		}
-	default:
-		log.Println("Key not supported: ", key)
-	}
-
-}
