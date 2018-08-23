@@ -163,34 +163,7 @@ func (p *Player) Start(item *Item, position time.Duration) error {
 	return nil
 }
 
-func (p *Player) setBrowserBG(url string) error {
-	v := "background-image: url('/content/" + url + "')"
-	return p.browser.cdp.Run(*p.browser.ctxt, cdp.SetAttributeValue("#container", "style", v, cdp.ByID))
-}
-
-func (p *Player) setBrowserLocation(url string) error {
-	return p.browser.cdp.Run(*p.browser.ctxt, cdp.Navigate(url))
-}
-
-func (p *Player) startBrowserAudio(url string) (res interface{}, err error) {
-	tasks := cdp.Tasks{
-		cdp.SetAttributeValue("#audMusic", "src", "/content/"+url, cdp.ByID),
-		// TODO: see if we can use something better than an interface for the response
-		cdp.Evaluate(`audMusic.play();`, &res),
-	}
-	err = p.browser.cdp.Run(*p.browser.ctxt, tasks)
-	return
-}
-
-func (p *Player) stopBrowserAudio() (res interface{}, err error) {
-	tasks := cdp.Tasks{
-		cdp.Evaluate(`audMusic.pause();`, &res),
-	}
-	// the response never returns properly here for some reason.
-	err = p.browser.cdp.Run(*p.browser.ctxt, tasks)
-	return
-}
-
+// startBrowser starts Chromium browser, or Google Chrome with the relevant flags.
 func (p *Player) startBrowser() error {
 	if p.browser.running {
 		return errors.New("Error: Browser already running, cannot start another instance")
