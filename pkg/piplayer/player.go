@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"html/template"
 	"io"
 	"log"
@@ -123,21 +122,6 @@ func (p *Player) FirstRun() {
 		log.Println("No items in current directory.")
 		return
 	}
-
-	// if p.api.debug {
-	// 	log.Println("trying to start first item in playlist:", p.playlist.Items[0].Name())
-	// }
-	//
-	// The first item will start from the browser now, so no need to call this code.
-	// if err := p.Start(&p.playlist.Items[0], time.Duration(0)); err != nil {
-	// 	log.Println("Error trying to start first item in playlist.\n", err)
-	// 	return
-	// }
-	// p.playlist.Current = &p.playlist.Items[0]
-
-	// if p.api.debug {
-	// 	log.Println("first item should have started successfuly.")
-	// }
 
 }
 
@@ -269,71 +253,6 @@ func (p *Player) startBrowser() error {
 	// defer cancel()
 	var err error
 
-	// start the Chrome Debugging Protocol thang
-	// We have to wait for chrome to start running first,
-	// so we the whole program has to take a little nap.
-	// TODO: figure out a better way to do this. Perhaps put the initial
-	// start of the first item in it's own goroutine that waits
-	// till chrome starts outputting stuff?
-	if p.api.debug {
-		log.Println("taking a little nap to allow chrome to start nicely")
-	}
-
-	// if p.api.test == "linux" {
-	// 	time.Sleep(15 * time.Second)
-	// } else {
-	// 	time.Sleep(10 * time.Second)
-	// }
-
-	// Not using Chrome Debug Protocol anymore.
-
-	// time.Sleep(15 * time.Second)
-
-	// // Start Chrome Debugging Protocol client
-	// if p.api.debug {
-	// 	p.browser.cdp, err = cdp.New(ctxt, cdp.WithLog(log.Printf))
-	// } else {
-	// 	p.browser.cdp, err = cdp.New(ctxt)
-	// }
-
-	// if err != nil {
-	// 	err = errors.New("Error trying to start cdp:\n" + err.Error())
-	// }
-
-	return err
-}
-
-// SendCommand sends a command to the omxplayer process
-func (p *Player) SendCommand(command string) error {
-	cmd, ok := commandList[command]
-	if !ok {
-		return errors.New("Command not found: " + command)
-	}
-
-	var err error
-	if p.api.debug {
-		fmt.Println("cmd:", cmd)
-	}
-	if p.api.test == "mac" {
-		return nil
-	}
-
-	// if the player isn't running ignore the comand, unless it is a play-pause
-	// then start the current item again.
-	if !p.running {
-		if command == "pauseResume" {
-			return p.Start(p.playlist.Current, 0)
-		}
-		return nil
-	}
-
-	b := []byte(cmd)
-	_, err = p.pipeIn.Write(b)
-
-	if err != nil {
-		err = fmt.Errorf("sendCommand: %v", err)
-	}
-
 	return err
 }
 
@@ -438,41 +357,6 @@ func (p *Player) ServeHTTP(w http.ResponseWriter, h *http.Request) {
 			Event:   "videoStarted",
 			Message: p.playlist.Current.Name(),
 		}
-		json.NewEncoder(w).Encode(m)
-		return
-	}
-
-	if p.api.message.Method == "sendCommand" {
-		cmd, ok := p.api.message.Arguments["command"]
-		if !ok {
-			m := &resMessage{Success: false, Message: "No command sent."}
-			log.Println(m.Message)
-			json.NewEncoder(w).Encode(m)
-			return
-		}
-
-		if cmd == "quit" {
-			p.quitting = true
-			p.quit = make(chan error)
-		}
-
-		err := p.SendCommand(cmd)
-		if err != nil {
-			m := &resMessage{Success: false, Message: "Error trying to execute command: " + err.Error()}
-			log.Println(m.Message)
-			json.NewEncoder(w).Encode(m)
-			return
-		}
-
-		if cmd == "quit" {
-			err := <-p.quit
-			if err != nil {
-				log.Println("error tring to stop video from web interface")
-			}
-			close(p.quit)
-		}
-
-		m := &resMessage{Success: true, Message: "Command sent and executed"}
 		json.NewEncoder(w).Encode(m)
 		return
 	}
