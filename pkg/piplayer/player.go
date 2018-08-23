@@ -141,8 +141,8 @@ func (p *Player) stop() error {
 	return nil
 }
 
-// Start the file that will be played to the screen, it decides which underlying program to use
-// based on the type of file that will be opened.
+// Start the file that will be played in the browser. Sends a message to the
+// ConnViewer channel to be sent over the websocket.
 func (p *Player) Start(item *Item, position time.Duration) error {
 	fileName := item.Name()
 
@@ -233,8 +233,6 @@ func (p *Player) startBrowser() error {
 func (p *Player) ServeHTTP(w http.ResponseWriter, h *http.Request) {
 	switch p.api.message.Method {
 	case "start":
-	case "next":
-	case "previous":
 	case "playPause":
 	case "stop":
 	case "seek":
@@ -485,15 +483,6 @@ func (p *Player) previous() error {
 	}
 
 	return err
-}
-
-func (p *Player) home() error {
-	err := p.stop()
-	if err != nil {
-		return err
-	}
-
-	return p.setBrowserLocation("http://localhost:8080/menu")
 }
 
 // HandleWebSocketMessage handles messages from ConnectionWS that come from the
