@@ -17,6 +17,11 @@ class Viewer {
     this.vidMedia = document.querySelector('#vidMedia');
     this.audMusic = document.querySelector('#audMusic');
 
+    // Listen for when the video ends and start the next item.
+    this.vidMedia.addEventListener('ended', e => {
+      this.next();
+    });
+
     if (!window["WebSocket"]) {
       console.error("This page requires WebSocket support. Please use a WebSocket enabled service.");
       return;
@@ -324,10 +329,6 @@ class Viewer {
         this.vidMedia.play();
         // Blackout the background.
         this.divContainer.style.backgroundImage = null;
-        // Listen for when the video ends and start the next item.
-        this.vidMedia.addEventListener('ended', e => {
-          this.remoteArrowRightPress();
-        });
         break;
       case '.jpg':
       case '.jpeg':
@@ -349,16 +350,17 @@ class Viewer {
   }
 
   startAudio(fileName) {
-    if (!this.audMusic.paused) {
+    let success = true;
+
+    if (this.audMusic.src != "" && !this.audMusic.paused) {
       this.audMusic.pause();
     }
 
     if (fileName == "") {
       this.audMusic.src = "";
-      return true;
+      return success;
     }
     
-    let success = true;
     let ext = fileName.slice(fileName.lastIndexOf('.'));
 
     switch (ext) {
@@ -368,7 +370,7 @@ class Viewer {
         break;
       case '':
         this.audMusic.pause();
-        this.audMusic.src = null;
+        this.audMusic.src = "";
         break;
       default:
         console.log("File type not supported: ", fileName)
