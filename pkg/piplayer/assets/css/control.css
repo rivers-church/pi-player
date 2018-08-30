@@ -1,3 +1,32 @@
+body {
+  margin: 0;
+}
+
+td {
+  padding: 1.2rem .5rem;
+}
+
+.selected {
+  color: white;
+  background-color: #9a52c8;
+}
+
+.container {
+  padding-bottom: 7.5rem;
+}
+
+.icon {
+  width: 1%;
+}
+
+.warning {
+  text-align: center;
+}
+
+.warning > h1, .warning > h2 {
+  font-weight: bolder;
+}
+
 #divControls {
   display: grid;
   grid-auto-flow: column;
@@ -16,19 +45,15 @@
   line-height: normal;
 }
 
-.selected {
+#divOverlay {
+  /* display: grid; */
+  align-items: center;
+  justify-items: center;
+  display: none;
+  position: fixed;
+  height: 100%;
+  width: 100%;
+  top: 0;
   color: white;
-  background-color: #9a52c8;
-}
-
-.container {
-  padding-bottom: 7.5rem;
-}
-
-.icon {
-  width: 1%;
-}
-
-td {
-  padding: 1.2rem .5rem;
+  background-color: #000B;
 }

@@ -6,6 +6,7 @@ class Control {
     this.btnStart = document.querySelector('#btnStart');
     this.spCurrent = document.querySelector('#spCurrent');
     this.tblPlaylist = document.querySelector('#tblPlaylist');
+    this.divOverlay = document.querySelector('#divOverlay');
     this.wsPath = "/ws/control";
 
     this.conn = null;
@@ -55,6 +56,9 @@ class Control {
 
     this.conn.addEventListener('open', e => {
       console.log("Connection Opened.");
+
+      // Hide the warning overlay.
+      this.divOverlay.style.display = 'none';
     });
     
     this.conn.addEventListener('error', e => {
@@ -63,6 +67,9 @@ class Control {
   
     this.conn.addEventListener('close', e => {
       console.log("Connection closed.\nTrying to reconnect...");
+
+      // Show the warning overlay.
+      this.divOverlay.style.display = 'grid';
   
       let to = setTimeout(() => this.wsConnect(), 2000);
     });

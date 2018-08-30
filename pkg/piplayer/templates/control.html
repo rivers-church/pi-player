@@ -32,13 +32,6 @@
     </div>
     <div>
       <h2>Playlist</h2>
-      <!-- {{- range $i, $e := .playlist.Items}}
-        <li class="item" tabindex="0" data-index="{{$i}}">
-          <i class="fas fa-{{.Type}}"></i>
-          {{if .Audio}}<i class="fas fa-music"></i>{{end}}
-          <span>{{.Name}}</span>
-        </li>
-      {{- end}} -->
       <table id="tblPlaylist">
         {{- range $i, $e := .playlist.Items}}
           <tr data-index="{{$i}}">
@@ -56,6 +49,12 @@
     <div>
       <a href="/settings">Settings</a>
       <a href="/logout">Log out</a>
+    </div>
+  </div>
+  <div id="divOverlay">
+    <div class="warning">
+      <h1 id="h1OverlayMsg">Connection Lost</h1>
+      <h2>Reconnecting...</h2>
     </div>
   </div>
   <script src="/assets/js/control.js"></script>
