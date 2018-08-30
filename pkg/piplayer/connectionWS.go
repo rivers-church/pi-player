@@ -25,8 +25,8 @@ var upgrader = &websocket.Upgrader{
 // ConnectionWS represents a WebSocket connection.
 type ConnectionWS struct {
 	conn    *websocket.Conn
-	send    chan resMessage
-	receive chan reqMessage
+	send    chan wsMessage
+	receive chan wsMessage
 	active  bool
 }
 
@@ -53,8 +53,8 @@ func (c *ConnectionWS) HandlerWebsocket(p *Player) http.HandlerFunc {
 
 		log.Println("Websocket connection being handled for ", r.URL.Path)
 
-		c.send = make(chan resMessage)
-		c.receive = make(chan reqMessage)
+		c.send = make(chan wsMessage)
+		c.receive = make(chan wsMessage)
 
 		c.active = true
 		go c.write()
@@ -113,7 +113,7 @@ func (c *ConnectionWS) read() {
 	})
 
 	for {
-		var msg reqMessage
+		var msg wsMessage
 		err := c.conn.ReadJSON(&msg)
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {

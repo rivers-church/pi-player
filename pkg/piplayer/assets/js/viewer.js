@@ -85,22 +85,29 @@ class Viewer {
     let msg = JSON.parse(e.data);
     console.log(msg);
 
-    switch (msg.event) {
-      case 'start':
-        this.startItem(msg.message);
-        return;
+    switch(msg.component) {
+      case 'remote':
+        this.remoteMessage(e, msg);
+        break;
+      case 'player':
+        this.playerMessage(e, msg);
+        break;
+      default:
+        console.error(`unsupported component: ${msg.component};\nmessage: ${msg}`);
     }
+  }
 
-    switch (msg.message) {
+  remoteMessage(e, msg) {
+    switch (msg.arguments.keyString) {
       case 'KEY_UP':
       case 'KEY_DOWN':
         this.remoteArrowPress(e, msg);
         break;
       case 'KEY_LEFT':
-        this.remoteArrowLeftPress(e);
+        this.previous(e);
         break;
       case 'KEY_RIGHT':
-        this.remoteArrowRightPress(e);
+        this.next(e);
         break;
       case 'KEY_ENTER':
         this.remoteEnterPress(e);
@@ -109,19 +116,44 @@ class Viewer {
         this.remoteContextMenuPress(e);
         break;
       case 'KEY_PLAYPAUSE':
-        this.remotePlayPress(e);
+        this.playPause(e);
         break;
       case 'KEY_STOP':
         this.remoteStopPress(e);
       case 'KEY_FASTFORWARD':
-        this.remoteSeek(e, 15);
+        this.seek(e, 15);
         break;
       case 'KEY_REWIND':
-        this.remoteSeek(e, -15);
+        this.seek(e, -15);
         break;
       default:
         console.log("Unsupported message received: ", e.data);
         break;
+    }
+  }
+
+  playerMessage(e, msg) {
+    switch (msg.method) {
+      case 'start':
+        this.startItem(msg.message);
+        break;
+      case 'stop':
+        break;
+      case 'play':
+      case 'pause':
+        this.playPause(e);
+        break;
+      case 'seek':
+        this.seek(e, msg.arguments.value);
+        break;
+      case 'previous':
+        this.previous(e);
+        break;
+      case 'next':
+        this.next(e);
+        break;
+      default:
+        console.error(`unsupported method: ${msg.method}\nmessage: ${msg}`);
     }
   }
 
@@ -168,7 +200,7 @@ class Viewer {
     this.arrItems[i + diff].focus();
   }
 
-  remoteArrowLeftPress(e) {
+  previous(e) {
     if (this.playlist.current == 0) {
       this.startItem(this.playlist.items.length - 1);
       return
@@ -177,7 +209,7 @@ class Viewer {
       this.startItem(parseInt(this.playlist.current) - 1);
   }
 
-  remoteArrowRightPress(e) {
+  next(e) {
     if (this.playlist.current >= this.playlist.items.length - 1) {
       this.startItem(0);
       return;
@@ -213,7 +245,7 @@ class Viewer {
     }
   }
 
-  remotePlayPress(e) {
+  playPause(e) {
     let item = this.playlist.items[this.playlist.current];
 
     if (item.Audio != "") {
@@ -247,8 +279,9 @@ class Viewer {
     }
   }
 
-  remoteSeek(e, msg) {
-    this.vidMedia.currentTime += msg;
+  seek(e, value) {
+    value = parseInt(value, 10);
+    this.vidMedia.currentTime += value;
   }
 
   startItem(index) {

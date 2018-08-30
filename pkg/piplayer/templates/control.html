@@ -21,14 +21,13 @@
         <button id="btnStart"><i class="fas fa-play-circle"></i></button>
       </div>
       <div id="divControlsPlayer">
-        <button data-command="pauseResume" title="Play-Pause"><i class="fas fa-play"></i></button>
-        <button data-command="stop" title="Stop"><i class="fas fa-stop"></i></button>
-        <button data-command="seekBack30" title="Rewind"><i class="fas fa-fast-backward"></i></button>
-        <button data-command="seekForward30" title="Fast Forward"><i class="fas fa-fast-forward"></i></button>
-      </div>
-      <div id="divControlPlaylist">
-        <button data-method="previous" title="Previous"><i class="fas fa-step-backward"></i></button>
-        <button data-method="next" title="Next"><i class="fas fa-step-forward"></i></button>
+        <button data-component="player" data-method="play" title="Play"><i class="fas fa-play"></i></button>
+        <button data-component="player" data-method="pause" title="Pause"><i class="fas fa-pause"></i></button>
+        <button data-component="player" data-method="stop" title="Stop"><i class="fas fa-stop"></i></button>
+        <button data-component="player" data-method="seek" data-arguments="{&quot;value&quot;: &quot;-30&quot;}" title="Rewind"><i class="fas fa-fast-backward"></i></button>
+        <button data-component="player" data-method="seek" data-arguments="{&quot;value&quot;:  &quot;30&quot;}" title="Fast Forward"><i class="fas fa-fast-forward"></i></button>
+        <button data-component="player" data-method="previous" title="Previous"><i class="fas fa-step-backward"></i></button>
+        <button data-component="player" data-method="next" title="Next"><i class="fas fa-step-forward"></i></button>
       </div>
     </div>
     <div>

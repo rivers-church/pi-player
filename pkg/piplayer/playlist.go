@@ -71,6 +71,11 @@ func (p *Playlist) handleAPI(plr *Player, w http.ResponseWriter, h *http.Request
 
 		// send update to the control page, if open.
 		if plr.ConnControl.active {
+			m := wsMessage{
+				Success: true,
+				Event:   "setCurrent",
+				Message: index,
+			}
 			plr.ConnControl.send <- m
 		}
 

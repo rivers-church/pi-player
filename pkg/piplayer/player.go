@@ -10,8 +10,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"strconv"
-	"time"
 
 	"github.com/17xande/keylogger"
 	cdp "github.com/knq/chromedp"
@@ -143,24 +141,25 @@ func (p *Player) stop() error {
 
 // Start the file that will be played in the browser. Sends a message to the
 // ConnViewer channel to be sent over the websocket.
-func (p *Player) Start(item *Item, position time.Duration) error {
-	fileName := item.Name()
-
-	if fileName == "" {
-		return errors.New("empty fileName")
+func (p *Player) Start(w *http.ResponseWriter) {
+	// fileName, ok := p.api.message.Arguments["path"]
+	sIndex, ok := p.api.message.Arguments["index"]
+	if !ok {
+		handleAPIError(w, "No intem index or provided")
+		return
 	}
 
-	i := p.playlist.getIndex(fileName)
-
-	res := resMessage{
+	res := wsMessage{
 		Event:   "start",
-		Message: strconv.Itoa(i),
+		Message: sIndex,
 		Success: true,
 	}
 
 	p.ConnViewer.send <- res
 
-	return nil
+	m := &resMessage{Success: true, Event: "StartRequestSent", Message: p.playlist.Current.Name()}
+	json.NewEncoder(*w).Encode(m)
+	return
 }
 
 // startBrowser starts Chromium browser, or Google Chrome with the relevant flags.
@@ -229,111 +228,47 @@ func (p *Player) startBrowser() error {
 	return err
 }
 
+func handleAPIError(w *http.ResponseWriter, message string) {
+	m := &resMessage{
+		Success: false,
+		Message: message,
+	}
+
+	log.Println(m)
+	json.NewEncoder(*w).Encode(m)
+}
+
 // Handles requets to the player api
 func (p *Player) ServeHTTP(w http.ResponseWriter, h *http.Request) {
-	switch p.api.message.Method {
-	case "start":
-	case "playPause":
-	case "stop":
-	case "seek":
-	default:
-		log.Println("unsupported ")
+	supportedAPIMethods := map[string]bool{
+		"start":    true,
+		"stop":     true,
+		"play":     true,
+		"pause":    true,
+		"seek":     true,
+		"next":     true,
+		"previous": true,
 	}
 
-	if p.api.message.Method == "start" {
-		// might need this later
-		fileName, ok := p.api.message.Arguments["path"]
-
-		sIndex, ok := p.api.message.Arguments["index"]
-		if !ok {
-			m := &resMessage{Success: false, Message: "No intem index provided"}
-			log.Println(m.Message)
-			json.NewEncoder(w).Encode(m)
-			return
-		}
-
-		index, err := strconv.Atoi(sIndex)
-		if err != nil {
-			m := &resMessage{Success: false, Message: "Invalid item index provided"}
-			log.Println(m.Message)
-			json.NewEncoder(w).Encode(m)
-			return
-		}
-
-		var position = time.Duration(0)
-		if pos, ok := p.api.message.Arguments["position"]; ok {
-			p, err := time.ParseDuration(pos)
-			if err != nil {
-				m := &resMessage{Success: false, Message: "Error converting video position " + err.Error()}
-				log.Println(m.Message)
-				json.NewEncoder(w).Encode(m)
-				return
-			}
-
-			position = p
-		}
-
-		i := p.playlist.getIndex(fileName)
-		if i == -1 {
-			m := &resMessage{Success: false, Message: "Trying to play a video that's not in the playlist: " + fileName}
-			log.Println(m.Message)
-			json.NewEncoder(w).Encode(m)
-			return
-		}
-
-		err = p.Start(&p.playlist.Items[index], position)
-		if err != nil {
-			m := &resMessage{Success: false, Message: "Error trying to start video: " + err.Error()}
-			log.Println(m.Message)
-			json.NewEncoder(w).Encode(m)
-			return
-		}
-
-		p.playlist.Current = &p.playlist.Items[i]
-
-		m := &resMessage{Success: true, Event: "videoStarted", Message: p.playlist.Current.Name()}
-		json.NewEncoder(w).Encode(m)
+	if _, ok := supportedAPIMethods[p.api.message.Method]; !ok {
+		handleAPIError(&w, "Method not supported: "+p.api.message.Method)
 		return
 	}
 
-	if p.api.message.Method == "next" {
-		err := p.next()
-		if err != nil {
-			m := &resMessage{Success: false, Message: "Error going to next video: " + err.Error()}
-			log.Println(m.Message)
-			json.NewEncoder(w).Encode(m)
-			return
-		}
+	index := p.api.message.Arguments["index"]
 
-		m := &resMessage{
-			Success: true,
-			Event:   "videoStarted",
-			Message: p.playlist.Current.Name(),
-		}
-		json.NewEncoder(w).Encode(m)
-		return
+	res := wsMessage{
+		Component: p.api.message.Component,
+		Method:    p.api.message.Method,
+		Arguments: p.api.message.Arguments,
+		Event:     p.api.message.Method,
+		Message:   index,
+		Success:   true,
 	}
 
-	if p.api.message.Method == "previous" {
-		err := p.previous()
-		if err != nil {
-			m := &resMessage{Success: false, Message: "Error going to previous video: " + err.Error()}
-			log.Println(m.Message)
-			json.NewEncoder(w).Encode(m)
-			return
-		}
+	p.ConnViewer.send <- res
 
-		m := &resMessage{
-			Success: true,
-			Event:   "videoStarted",
-			Message: p.playlist.Current.Name(),
-		}
-		json.NewEncoder(w).Encode(m)
-		return
-	}
-
-	m := &resMessage{Success: false, Message: "Method not supported"}
-	log.Println(m.Message)
+	m := &resMessage{Success: true, Event: "StartRequestSent", Message: index}
 	json.NewEncoder(w).Encode(m)
 	return
 }
@@ -420,45 +355,6 @@ func (p *Player) HandleViewer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	th.ServeHTTP(w, r)
-}
-
-// next starts the next item in the playlist
-func (p *Player) next() error {
-	n, err := p.playlist.getNext()
-	if err != nil {
-		return errors.New("can't go to next item:\n" + err.Error())
-	}
-
-	if p.api.debug {
-		log.Println("going to next item: ", n.Name())
-	}
-
-	err = p.Start(n, time.Duration(0))
-
-	if err == nil {
-		p.playlist.Current = n
-	}
-
-	return err
-}
-
-func (p *Player) previous() error {
-	n, err := p.playlist.getPrevious()
-	if err != nil {
-		return errors.New("can't go to previous item:\n" + err.Error())
-	}
-
-	if p.api.debug {
-		log.Println("going to previous item: ", n.Name())
-	}
-
-	err = p.Start(n, time.Duration(0))
-
-	if err == nil {
-		p.playlist.Current = n
-	}
-
-	return err
 }
 
 // HandleWebSocketMessage handles messages from ConnectionWS that come from the

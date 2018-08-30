@@ -2,7 +2,7 @@ class Control {
   constructor() {
     // make these constants in a module
     this.btns = document.querySelectorAll('#divControlsPlayer button');
-    this.btnsPlaylist = document.querySelectorAll('#divControlPlaylist');
+    // this.btnsPlaylist = document.querySelectorAll('#divControlPlaylist');
     this.btnStart = document.querySelector('#btnStart');
     this.spCurrent = document.querySelector('#spCurrent');
     this.tblPlaylist = document.querySelector('#tblPlaylist');
@@ -27,8 +27,8 @@ class Control {
     this.wsConnect();
 
     this.tblPlaylist.addEventListener('click', this.plSelect.bind(this));
-    this.btns.forEach(btn => btn.addEventListener('click', this.sendCommand.bind(this)));
-    this.btnsPlaylist.forEach(btn => btn.addEventListener('click', this.callMethod.bind(this)));
+    this.btns.forEach(btn => btn.addEventListener('click', this.callMethod.bind(this)));
+    // this.btnsPlaylist.forEach(btn => btn.addEventListener('click', this.callMethod.bind(this)));
     this.btnStart.addEventListener('click', this.startItem.bind(this));
   }
 
@@ -100,10 +100,16 @@ class Control {
   
   callMethod(e) {
     let btn = e.target.closest('button');
+    let args = null;
+
+    if (btn.dataset.arguments) {
+      args = JSON.parse(btn.dataset.arguments);
+    }
   
     let reqBody = {
-      component: "player",
-      method: btn.dataset["method"]
+      component: btn.dataset.component,
+      method: btn.dataset.method,
+      arguments: args,
     };
   
     this.callApi(reqBody)
@@ -129,20 +135,6 @@ class Control {
     if (json.success) {
       console.log("instruction sent successfully. awaiting confirmation in socket.");
     }
-  }
-  
-  sendCommand(e) {
-    let btn = e.target.closest('button');
-    
-    let reqBody = {
-      component: "player",
-      method: "sendCommand",
-      arguments: {
-        command: btn.dataset["command"]
-      }
-    };
-  
-    this.callApi(reqBody);
   }
   
   callApi(reqBody) {

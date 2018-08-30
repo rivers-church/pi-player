@@ -35,9 +35,10 @@ func remoteRead(p *Player, cie chan keylogger.InputEvent) {
 			log.Println("Sending keypress to page and nothing else.")
 		}
 
-		msg := resMessage{
-			Event:   "keyDown",
-			Message: key,
+		msg := wsMessage{
+			Component: "remote",
+			Arguments: map[string]string{"keyString": key},
+			Event:     "keyDown",
 		}
 		p.ConnViewer.send <- msg
 	}
