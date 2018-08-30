@@ -3,147 +3,63 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:f66c2d5198bcb03f974b1979d9b1b2508c134e7339fb1d6ad4b6521a3d985d52"
   name = "github.com/17xande/keylogger"
   packages = ["."]
+  pruneopts = ""
   revision = "6b55ef64dc9b45f20515b23d89a072226924d41a"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/chromedp/cdproto"
-  packages = [
-    ".",
-    "accessibility",
-    "animation",
-    "applicationcache",
-    "audits",
-    "browser",
-    "cachestorage",
-    "cdp",
-    "css",
-    "database",
-    "debugger",
-    "deviceorientation",
-    "dom",
-    "domdebugger",
-    "domsnapshot",
-    "domstorage",
-    "emulation",
-    "headlessexperimental",
-    "heapprofiler",
-    "indexeddb",
-    "input",
-    "inspector",
-    "io",
-    "layertree",
-    "log",
-    "memory",
-    "network",
-    "overlay",
-    "page",
-    "performance",
-    "profiler",
-    "runtime",
-    "security",
-    "serviceworker",
-    "storage",
-    "systeminfo",
-    "target",
-    "tethering",
-    "tracing"
-  ]
-  revision = "dfccfa0568b0f5213f75d5e99a46d97a9f3d1ca4"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/chromedp/chromedp"
-  packages = [
-    "client",
-    "kb",
-    "runner"
-  ]
-  revision = "310d213f6f2630dc62a681d941727e6d10c907a2"
-
-[[projects]]
-  name = "github.com/disintegration/imaging"
-  packages = ["."]
-  revision = "bbcee2f5c9d5e94ca42c8b50ec847fec64a6c134"
-  version = "v1.4.2"
-
-[[projects]]
+  digest = "1:dbbeb8ddb0be949954c8157ee8439c2adfd8dc1c9510eb44a6e58cb68c3dce28"
   name = "github.com/gorilla/context"
   packages = ["."]
+  pruneopts = ""
   revision = "08b5f424b9271eedf6f9f0ce86cb9396ed337a42"
   version = "v1.1.1"
 
 [[projects]]
+  digest = "1:51a1d17ba9fe6648d9fdd5b822baa616d6ec7f28c8669c2091126d206796b5ae"
   name = "github.com/gorilla/securecookie"
   packages = ["."]
+  pruneopts = ""
   revision = "e59506cc896acb7f7bf732d4fdf5e25f7ccd8983"
   version = "v1.1.1"
 
 [[projects]]
+  digest = "1:73a5fcb45a8eb1b1195fa8c1c18a7c7a874ec8f507cd7b39026ab255855b6506"
   name = "github.com/gorilla/sessions"
   packages = ["."]
-  revision = "ca9ada44574153444b00d3fd9c8559e4cc95f896"
-  version = "v1.1"
+  pruneopts = ""
+  revision = "03b6f63cc43ef9c7240a635a5e22b13180e822b8"
+  version = "v1.1.1"
 
 [[projects]]
+  digest = "1:e2766c5ca6578e62dfd0dca4eb40d4e3470c52a92abdf8f66e57d79f4d13ef5f"
   name = "github.com/gorilla/websocket"
   packages = ["."]
-  revision = "ea4d1f681babbce9545c9c5f3d5194a789c89f5b"
-  version = "v1.2.0"
+  pruneopts = ""
+  revision = "3ff3320c2a1756a3691521efc290b4701575147c"
+  version = "v1.3.0"
 
 [[projects]]
   branch = "master"
-  name = "github.com/knq/chromedp"
-  packages = ["."]
-  revision = "310d213f6f2630dc62a681d941727e6d10c907a2"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/knq/snaker"
-  packages = ["."]
-  revision = "d9ad1e7f342a5b58202aa92c5f1106d7bb8b9c73"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/knq/sysutil"
-  packages = ["."]
-  revision = "0218e141a794643e8c0fa283b9cd076fc0df662d"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/mailru/easyjson"
-  packages = [
-    ".",
-    "buffer",
-    "jlexer",
-    "jwriter"
-  ]
-  revision = "8b799c424f57fa123fc63a99d6383bc6e4c02578"
-
-[[projects]]
-  branch = "master"
+  digest = "1:793a79198b755828dec284c6f1325e24e09186f1b7ba818b65c7c35104ed86eb"
   name = "golang.org/x/crypto"
   packages = [
     "bcrypt",
-    "blowfish"
+    "blowfish",
   ]
-  revision = "1a580b3eff7814fc9b40602fd35256c63b50f491"
-
-[[projects]]
-  branch = "master"
-  name = "golang.org/x/image"
-  packages = [
-    "bmp",
-    "tiff",
-    "tiff/lzw"
-  ]
-  revision = "f315e440302883054d0c2bd85486878cb4f8572c"
+  pruneopts = ""
+  revision = "614d502a4dac94afa3a6ce146bd1736da82514c6"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ea34a43f57c18f253626066211901a50cce5fe04880bd0f555761687c4d0105f"
+  input-imports = [
+    "github.com/17xande/keylogger",
+    "github.com/gorilla/sessions",
+    "github.com/gorilla/websocket",
+    "golang.org/x/crypto/bcrypt",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1

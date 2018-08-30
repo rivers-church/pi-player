@@ -12,7 +12,6 @@ import (
 	"os/exec"
 
 	"github.com/17xande/keylogger"
-	cdp "github.com/knq/chromedp"
 )
 
 // Player is the object that renders images to the screen through omxplayer or chromium-browser
@@ -41,7 +40,6 @@ const (
 type Browser struct {
 	command *exec.Cmd
 	running bool
-	cdp     *cdp.CDP
 	ctxt    *context.Context
 	cancel  *context.CancelFunc
 }
