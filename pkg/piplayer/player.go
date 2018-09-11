@@ -365,7 +365,7 @@ func (p *Player) HandleWebSocketMessage() {
 		select {
 		case msg, ok := <-p.ConnViewer.receive:
 			if !ok {
-				log.Println("error receiving websocket message from viewer")
+				log.Println("Error receiving websocket message from viewer")
 				return
 			}
 
@@ -374,7 +374,7 @@ func (p *Player) HandleWebSocketMessage() {
 			}
 		case msg, ok := <-p.ConnControl.receive:
 			if !ok {
-				log.Println("error receiving websocket message from Control")
+				log.Println("Error receiving websocket message from Control")
 				return
 			}
 

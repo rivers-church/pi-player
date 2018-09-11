@@ -40,9 +40,28 @@ type ConnectionWS struct {
 // 	return conn
 // }
 
-// HandlerWebsocket handles websocket connections for the browser viewer.
+// HandlerWebsocket handles websocket connections for the browser viewer and controller.
 func (c *ConnectionWS) HandlerWebsocket(p *Player) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// If connection is already active, then close it gracefully, and create a new one.
+		if c.active {
+			msg := wsMessage{
+				Event:   "disconnect",
+				Success: true,
+				Message: "Another device has taken over the connection. Login again to take it back.",
+			}
+
+			if err := c.conn.WriteJSON(msg); err != nil {
+				log.Printf("Error writting disconnect message: ConnectionWS.HandlerWebsocket: %v\n", err)
+			}
+
+			if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
+				log.Printf("Error writting close message: ConnectionWS.HandlerWebsocket(): %v\n", err)
+			}
+
+			c.conn.Close()
+		}
+
 		var err error
 		c.conn, err = upgrader.Upgrade(w, r, nil)
 		if err != nil {
@@ -69,6 +88,7 @@ func (c *ConnectionWS) write() {
 	defer func() {
 		ticker.Stop()
 		c.conn.Close()
+		c.active = false
 	}()
 
 	// This loop keeps running as long as the channel is open.
@@ -78,7 +98,9 @@ func (c *ConnectionWS) write() {
 		case msg, ok := <-c.send:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
+					log.Printf("Error writting close message: ConnectionWS.write(): %v\n", err)
+				}
 				return
 			}
 			err := c.conn.WriteJSON(msg)
@@ -121,7 +143,6 @@ func (c *ConnectionWS) read() {
 			} else {
 				log.Println("Error trying to read the JSON from the socket: ", err)
 			}
-			close(c.send)
 			close(c.receive)
 			c.active = false
 			break

@@ -20,6 +20,7 @@ td {
 }
 
 .warning {
+  display: none;
   text-align: center;
 }
 

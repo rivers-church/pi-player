@@ -7,6 +7,8 @@ class Control {
     this.spCurrent = document.querySelector('#spCurrent');
     this.tblPlaylist = document.querySelector('#tblPlaylist');
     this.divOverlay = document.querySelector('#divOverlay');
+    this.divReconnect = document.querySelector('#divReconnect');
+    this.divDisconnect = document.querySelector('#divDisconnect');
     this.wsPath = "/ws/control";
 
     this.conn = null;
@@ -56,9 +58,9 @@ class Control {
 
     this.conn.addEventListener('open', e => {
       console.log("Connection Opened.");
+      this.disconnect = false;
 
-      // Hide the warning overlay.
-      this.divOverlay.style.display = 'none';
+      this.warningHide();
     });
     
     this.conn.addEventListener('error', e => {
@@ -66,15 +68,31 @@ class Control {
     });
   
     this.conn.addEventListener('close', e => {
+      if (this.disconnect) {
+        console.log("Disconnected from server. Login again to take back control.");
+        this.warningShow(this.divDisconnect)
+        return;
+      }
+
       console.log("Connection closed.\nTrying to reconnect...");
 
-      // Show the warning overlay.
-      this.divOverlay.style.display = 'grid';
+      this.warningShow(this.divReconnect);
   
       let to = setTimeout(() => this.wsConnect(), 2000);
     });
 
     this.conn.addEventListener('message', this.socketMessage.bind(this));
+  }
+
+  warningShow(warning) {
+    this.divOverlay.style.display = 'grid';
+    warning.style.display = 'block';
+  }
+
+  warningHide() {
+    this.divOverlay.style.display = '';
+    let warnings = Array.from(this.divOverlay.querySelectorAll('.warning'));
+    warnings.forEach(e => e.style.display = '');
   }
 
   socketMessage(e) {
@@ -84,6 +102,9 @@ class Control {
     switch (msg.event) {
       case "setCurrent":
         this.setCurrent(parseInt(msg.message))
+        break;
+      case "disconnect":
+      this.disconnect = true;
         break;
       default:
       console.log("Unsupported message received: ", e.data);
