@@ -315,6 +315,16 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+
+	// On every control page reload, send a message to the viewer
+	// to refresh the items playlist.
+	msg := wsMessage{
+		Component: "playlist",
+		Event:     "newItems",
+		Message:   "control page was refreshed. Get new items.",
+	}
+
+	p.ConnViewer.send <- msg
 	tempControl.ServeHTTP(w, r)
 }
 

@@ -1,7 +1,7 @@
 class Viewer {
   
   constructor() {
-    // make these constants in a module
+    // TODO: make these constants in a module.
     this.menuItemSelector = '.item';
     this.wsPath = '/ws/viewer';
     this.conn = null;
@@ -11,6 +11,7 @@ class Viewer {
       items: []
     };
   
+    this.tmpItem = document.querySelector('#tmpItem');
     this.divContainer = document.querySelector('#container');
     this.ulPlaylist = document.querySelector('#ulPlaylist');
     this.divContainerPlaylist = document.querySelector('#containerPlaylist');
@@ -32,14 +33,6 @@ class Viewer {
     //   e.preventDefault();
     // });
   
-    this.arrItems = Array.from(document.querySelectorAll(this.menuItemSelector));
-  
-    if (this.arrItems.length <= 0) {
-      // No items in the menu. Nothing to do here.
-      console.warn("No items in the playlist, so then not much to do here?")
-      return;
-    }
-
     this.getItems().then(res => {
       this.startItem(0);
     });
@@ -97,8 +90,21 @@ class Viewer {
       case 'player':
         this.playerMessage(e, msg);
         break;
+      case 'playlist':
+        this.playlistMessage(e, msg);
+        break;
       default:
         console.error(`unsupported component: ${msg.component};\nmessage: ${msg}`);
+    }
+  }
+
+  playlistMessage(e, msg) {
+    switch (msg.event) {
+      case "newItems":
+        this.getItems();
+        break;
+      default:
+        console.error(`unsupported playlist method: ${msg.component};\nmessage: ${msg}`);
     }
   }
 
@@ -162,6 +168,7 @@ class Viewer {
     }
   }
 
+  // getItems retrieves an array of items from the API.
   getItems() {
     let reqBody = {
       component: 'playlist',
@@ -175,8 +182,29 @@ class Viewer {
           return;
         }
         this.playlist.items = res.message;
+        this.genItems();
         return res;
       });
+  }
+
+  // genItems re-generates the html for the playlist items.
+  genItems() {
+    // First clear out the current items.
+    this.ulPlaylist.innerHTML = '';
+
+    this.playlist.items.forEach((item, i, arr) => {
+      let cloneItem = document.importNode(this.tmpItem.content, true);
+      let icons = cloneItem.querySelectorAll('i');
+      let spName = cloneItem.querySelector('span.itemName');
+      icons[0].classList.add("fa-" + item.Type);
+      if (item.Audio == "") {
+        icons[1].remove();
+      }
+      spName.textContent = item.Visual;
+      this.ulPlaylist.appendChild(cloneItem);
+    });
+
+    this.arrItems = Array.from(this.ulPlaylist.querySelectorAll(this.menuItemSelector));
   }
 
   remoteArrowPress(e, msg) {
@@ -194,11 +222,12 @@ class Viewer {
       return;
     }
 
-    let diff = msg.message == 'KEY_UP' ? -1 : 1;
+    let up = msg.arguments.keyString == 'KEY_UP';
+    let diff = up ? -1 : 1;
 
-    if (msg.message == 'KEY_UP' && i <= 0) {
+    if (up && i <= 0) {
       i = this.arrItems.length;
-    } else if (msg.message == 'KEY_DOWN' && i >= this.arrItems.length - 1) {
+    } else if (!up && i >= this.arrItems.length - 1) {
       i = -1;
     }
 
