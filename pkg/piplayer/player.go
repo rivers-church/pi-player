@@ -121,22 +121,6 @@ func (p *Player) FirstRun() {
 
 }
 
-// stop quits omxplayer if it's running.
-func (p *Player) stop() error {
-	if p.running {
-		p.quitting = true
-		p.quit = make(chan error)
-		defer close(p.quit)
-		p.pipeIn.Write([]byte("q"))
-		// block till omxplayer exits
-		err := <-p.quit
-		if err != nil && err.Error() != "exit status 3" {
-			return err
-		}
-	}
-	return nil
-}
-
 // Start the file that will be played in the browser. Sends a message to the
 // ConnViewer channel to be sent over the websocket.
 func (p *Player) Start(w *http.ResponseWriter) {
