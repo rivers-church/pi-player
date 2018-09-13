@@ -11,9 +11,9 @@ class Viewer {
       items: []
     };
   
-    this.tmpItem = document.querySelector('#tmpItem');
+    this.tmpItem = document.querySelector('#tmpItemRow');
     this.divContainer = document.querySelector('#container');
-    this.ulPlaylist = document.querySelector('#ulPlaylist');
+    this.tblPlaylist = document.querySelector('#tblPlaylist');
     this.divContainerPlaylist = document.querySelector('#containerPlaylist');
     this.vidMedia = document.querySelector('#vidMedia');
     this.audMusic = document.querySelector('#audMusic');
@@ -193,21 +193,29 @@ class Viewer {
   // genItems re-generates the html for the playlist items.
   genItems() {
     // First clear out the current items.
-    this.ulPlaylist.innerHTML = '';
+    this.tblPlaylist.innerHTML = '';
 
-    this.playlist.items.forEach((item, i, arr) => {
+    this.playlist.items.forEach((item, i) => {
       let cloneItem = document.importNode(this.tmpItem.content, true);
       let icons = cloneItem.querySelectorAll('i');
-      let spName = cloneItem.querySelector('span.itemName');
+      let tdName = cloneItem.querySelector('td.itemName');
+      let trItem = cloneItem.querySelector('tr');
+      trItem.dataset.index = i;
       icons[0].classList.add("fa-" + item.Type);
       if (item.Audio == "") {
         icons[1].remove();
       }
-      spName.textContent = item.Visual;
-      this.ulPlaylist.appendChild(cloneItem);
+
+      tdName.textContent = this.trimExtension(item.Visual);
+      this.tblPlaylist.appendChild(cloneItem);
     });
 
-    this.arrItems = Array.from(this.ulPlaylist.querySelectorAll(this.menuItemSelector));
+    this.arrItems = Array.from(this.tblPlaylist.querySelectorAll(this.menuItemSelector));
+  }
+
+  trimExtension(filename) {
+    let period = filename.lastIndexOf('.');
+    return filename.substring(0, period);
   }
 
   remoteArrowPress(e, msg) {

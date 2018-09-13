@@ -15,16 +15,18 @@
     <video id="vidMedia"></video>
     <audio id="audMusic" loop></audio>
     <div id=containerPlaylist>
-      <ul id="ulPlaylist">
-      </ul>
+      <table id="tblPlaylist">
+      </table>
     </div>
   </div>
-  <template id="tmpItem">
-    <li class="item" tabindex="0" data-index="">
-      <i class="fas"></i>
-      <i class="fas fa-music"></i>
-      <span class="itemName"></span>
-    </li>
+  <template id="tmpItemRow">
+    <tr class="item" tabindex="0" data-index="">
+      <td></td>
+      <td class="icon"><i class="fas"></i></td>
+      <td class="icon"><i class="fas fa-music"></i></td>
+      <td class="itemName"></td>
+      <td></td>
+    </tr>
   </template>
 <script src="/assets/js/viewer.js"></script>
 </body>
