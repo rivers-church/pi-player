@@ -7,6 +7,12 @@ html, body {
   overflow: hidden;
 }
 
+table {
+  font-size: 2rem;
+  font-weight: 500;
+  letter-spacing: 0.1rem;
+}
+
 td {
   padding: .8rem .6rem;
   border: none;
@@ -37,16 +43,6 @@ td {
   height: 100%;
   overflow-y: auto;
   visibility: hidden;
-}
-
-#ulPlaylist {
-  display: grid;
-  list-style: none;
-  padding: 2em;
-  font-size: 1.3em;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-  top: 0em;
 }
 
 #vidMedia {
