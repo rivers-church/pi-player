@@ -137,6 +137,9 @@ class Viewer {
       case 'KEY_REWIND':
         this.seek(e, -15);
         break;
+      case 'KEY_BACK':
+        this.getItems();
+        break;
       default:
         console.log("Unsupported message received: ", e.data);
         break;
