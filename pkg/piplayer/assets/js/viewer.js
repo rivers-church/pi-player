@@ -130,7 +130,7 @@ class Viewer {
         this.playPause(e);
         break;
       case 'KEY_STOP':
-        this.remoteStopPress(e);
+        this.stop(e);
       case 'KEY_FASTFORWARD':
         this.seek(e, 15);
         break;
@@ -310,7 +310,7 @@ class Viewer {
     }
   }
 
-  remoteStopPress(e) {
+  stop(e) {
     let item = this.playlist.items[this.playlist.current];
 
     if (item.Type == "video") {
@@ -322,6 +322,8 @@ class Viewer {
       this.audMusic.pause();
       this.audMusic.currentTime = 0;
     }
+
+    this.previous(e);
   }
 
   seek(e, value) {

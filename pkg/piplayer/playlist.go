@@ -52,6 +52,9 @@ func (p *Playlist) handleAPI(plr *Player, w http.ResponseWriter, h *http.Request
 		}
 
 		index, err := strconv.Atoi(plr.api.message.Arguments["index"])
+		if err != nil {
+			log.Printf("Error converting argument to int: playlist.HandleAPI.setCurrent\n%v", err)
+		}
 
 		if err != nil || index < 0 || index >= len(p.Items) {
 			m = resMessage{
