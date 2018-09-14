@@ -130,7 +130,7 @@ class Viewer {
         this.playPause(e);
         break;
       case 'KEY_STOP':
-        this.stop(e);
+        break;
       case 'KEY_FASTFORWARD':
         this.seek(e, 15);
         break;
@@ -152,6 +152,7 @@ class Viewer {
         this.startItem(msg.message);
         break;
       case 'stop':
+        this.stop();
         break;
       case 'play':
       case 'pause':
@@ -323,7 +324,9 @@ class Viewer {
       this.audMusic.currentTime = 0;
     }
 
-    this.previous(e);
+    // Blackout.
+    this.vidMedia.style.visibility = 'hidden';
+    this.divContainer.style.backgroundImage = null;
   }
 
   seek(e, value) {
