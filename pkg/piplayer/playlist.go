@@ -105,6 +105,7 @@ func (p *Playlist) handleAPI(plr *Player, w http.ResponseWriter, h *http.Request
 func (p *Playlist) fromFolder(folderPath string) error {
 	// remove all items from the current playlist if there are any
 	p.Items = []Item{}
+	p.Name = folderPath
 
 	// read files from a certain folder into a playlist
 	files, err := ioutil.ReadDir(folderPath)
