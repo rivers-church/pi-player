@@ -203,9 +203,14 @@ class Viewer {
       let trItem = cloneItem.querySelector('tr');
       trItem.dataset.index = i;
       icons[0].classList.add("fa-" + item.Type);
-      if (item.Audio == "") {
+      if (item.Cues.clear && item.Cues.clear == "audio") {
+        icons[1].classList.add("fa-bell-slash")
+      } else if (item.Audio != "") {
+        icons[1].classList.add("fa-music");
+      } else {
         icons[1].remove();
       }
+
 
       tdName.textContent = this.trimExtension(item.Visual);
       this.tblPlaylist.appendChild(cloneItem);
@@ -343,7 +348,7 @@ class Viewer {
     this.divContainerPlaylist.style.visibility = 'hidden';
     let item = this.playlist.items[index];
 
-    this.startAudio(item.Audio);
+    this.checkAudio(item);
     let started = this.startVisual(item.Visual);
     if (started) {
       this.playlist.current = index;
@@ -394,31 +399,24 @@ class Viewer {
     return success;
   }
 
-  startAudio(fileName) {
+  checkAudio(item) {
     let success = true;
 
-    if (this.audMusic.src != "" && !this.audMusic.paused) {
+    if (item.Type == "video" || item.Cues.clear && item.Cues.clear == "audio") {
       this.audMusic.pause();
-    }
-
-    if (fileName == "") {
       this.audMusic.src = "";
       return success;
     }
     
-    let ext = fileName.slice(fileName.lastIndexOf('.'));
+    let ext = item.Audio.slice(item.Audio.lastIndexOf('.'));
 
     switch (ext) {
       case '.mp3':
-        this.audMusic.src = `/content/${fileName}`;
+        this.audMusic.src = `/content/${item.Audio}`;
         this.audMusic.play();
         break;
-      case '':
-        this.audMusic.pause();
-        this.audMusic.src = "";
-        break;
       default:
-        console.log("File type not supported: ", fileName)
+        console.log("File type not supported: ", item.Audio)
         success = false;
         break;
     }

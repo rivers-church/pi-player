@@ -12,6 +12,7 @@ type Item struct {
 	Audio  os.FileInfo
 	Visual os.FileInfo
 	Type   string
+	Cues   map[string]string
 }
 
 // ItemString is a simpler representation of an Item,
@@ -20,6 +21,7 @@ type ItemString struct {
 	Audio  string
 	Visual string
 	Type   string
+	Cues   map[string]string
 }
 
 // Name returns the filename of the visual element.
@@ -38,6 +40,7 @@ func (i *Item) String() ItemString {
 	}
 
 	is.Type = i.Type
+	is.Cues = i.Cues
 	return is
 }
 

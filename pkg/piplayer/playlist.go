@@ -115,29 +115,37 @@ func (p *Playlist) fromFolder(folderPath string) error {
 
 	// filter out all files except for supported ones
 	for _, file := range files {
+		c := make(map[string]string)
 		e := path.Ext(file.Name())
 		if e == ".mp4" {
-			p.Items = append(p.Items, Item{Visual: file, Type: "video"})
+			p.Items = append(p.Items, Item{Visual: file, Type: "video", Cues: c})
 		} else if e == ".jpg" || e == ".jpeg" || e == ".png" {
-			p.Items = append(p.Items, Item{Visual: file, Type: "image"})
+			p.Items = append(p.Items, Item{Visual: file, Type: "image", Cues: c})
 		} else if e == ".html" {
-			p.Items = append(p.Items, Item{Visual: file, Type: "browser"})
+			p.Items = append(p.Items, Item{Visual: file, Type: "browser", Cues: c})
 		}
 	}
 
 	// scan for .mp3 files to see if any need to be attached to image files
 	for _, file := range files {
 		e := path.Ext(file.Name())
-		if e == ".mp3" {
-			audioNoExt := file.Name()[0 : len(file.Name())-len(e)]
-			for i, item := range p.Items {
-				visual := item.Visual.Name()
-				visualNoExt := visual[0 : len(visual)-len(path.Ext(visual))]
-				if audioNoExt == visualNoExt {
+		if e != ".mp3" && e != ".mp0" {
+			continue
+		}
+
+		audioBase := file.Name()[0 : len(file.Name())-len(e)]
+		for i, item := range p.Items {
+			visual := item.Visual.Name()
+			visualBase := visual[0 : len(visual)-len(path.Ext(visual))]
+			if audioBase == visualBase {
+				if e == ".mp3" {
 					p.Items[i].Audio = file
-					break
+				} else if e == ".mp0" {
+					p.Items[i].Cues["clear"] = "audio"
 				}
+				break
 			}
+
 		}
 	}
 

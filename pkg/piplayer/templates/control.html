@@ -40,6 +40,9 @@
               {{- if .Audio}}
               <i class="fas fa-music"></i>
               {{- end}}
+              {{- if eq (index .Cues "clear") "audio"}}
+              <i class="fas fa-bell-slash"></i>
+              {{- end}}
             </td>
             <td class="item-name">{{.Name}}</td>
           </tr>
@@ -54,7 +57,7 @@
   <template id="tmpItemRow">
     <tr data-index="">
       <td class="icon"><i class="fas"></i></td>
-      <td class="icon"><i class="fas fa-music"></i></td>
+      <td class="icon"><i class="fas"></i></td>
       <td class="item-name"></td>
     </tr>
   </template>
