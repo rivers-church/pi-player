@@ -94,13 +94,6 @@ func NewPlayer(api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *P
 	return &p
 }
 
-// CleanUp closes other components properly
-func (p *Player) CleanUp() {
-	// TODO: properly implement this cleanup function
-	c := *p.browser.cancel
-	c()
-}
-
 // FirstRun starts the browser on a black screen and gets things going
 func (p *Player) FirstRun() {
 	if p.api.test == "web" {
@@ -317,20 +310,6 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 
 // HandleViewer handles requests to the image viewer page
 func (p *Player) HandleViewer(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query()
-	img := q.Get("img")
-
-	// If no source image is supplied, load the first item in the playlist
-	// Don't think this will work properly with videos yet.
-	// Should probably handle this in the browser.
-	// if img == "" {
-	// 	if err := p.playlist.fromFolder(p.conf.Directory); err != nil {
-	// 		log.Println("Can't read files from directory\n", err)
-	// 	} else {
-	// 		img = p.playlist.Items[0].Name()
-	// 	}
-	// }
-
 	if err := p.playlist.fromFolder(p, p.conf.Directory); err != nil {
 		log.Println("Error tring to read files from directory: ", err)
 		t := template.Must(template.ParseFiles("pkg/piPlayer/templates/error.html"))
@@ -345,7 +324,6 @@ func (p *Player) HandleViewer(w http.ResponseWriter, r *http.Request) {
 		filename: "viewer.html",
 		data: map[string]interface{}{
 			"playlist": p.playlist,
-			"img":      "/content/" + img,
 		},
 	}
 

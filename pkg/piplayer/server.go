@@ -27,7 +27,7 @@ func setupRoutes(content string, p *Player) *http.ServeMux {
 	mux.HandleFunc("/login", LoginHandler(p.conf))
 	mux.HandleFunc("/logout", LogoutHandler)
 	mux.HandleFunc("/control", p.HandleControl)
-	mux.HandleFunc("/settings", p.conf.HandleSettings)
+	mux.HandleFunc("/settings", p.conf.SettingsHandler(p))
 	mux.HandleFunc("/viewer", p.HandleViewer)
 	mux.HandleFunc("/ws/viewer", p.ConnViewer.HandlerWebsocket(p))
 	mux.HandleFunc("/ws/control", p.ConnControl.HandlerWebsocket(p))
@@ -73,18 +73,22 @@ func restart(plr *Player) {
 	if err := plr.Server.Shutdown(ctx); err != nil {
 		log.Printf("Error shutting down server for re-registration of routes: %v\n", err)
 	}
-	defer cancel()
-
-	// TODO: This needs to become a config option
-	plr.Server = NewServer(plr, ":8080")
-	Start(plr.Server)
+	go func() {
+		time.Sleep(5 * time.Second)
+		cancel()
+	}()
 }
 
 // Start the http server.
-func Start(serv *http.Server) {
-	log.Printf("Listening on port %s\n", serv.Addr)
-	err := serv.ListenAndServe()
+func Start(plr *Player) {
+	log.Printf("Listening on port %s\n", plr.Server.Addr)
+	err := plr.Server.ListenAndServe()
 	if err != nil {
 		log.Println("ListenAndServe: ", err)
 	}
+
+	// Restart the server.
+	// TODO: This needs to become a config option
+	plr.Server = NewServer(plr, ":8080")
+	Start(plr)
 }

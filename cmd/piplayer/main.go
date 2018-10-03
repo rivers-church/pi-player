@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/17xande/keylogger"
 	piplayer "github.com/17xande/pi-player/pkg/piplayer"
@@ -16,13 +17,20 @@ func main() {
 	dlv := flag.Bool("dlv", false, "Let the program know if delve is being used to debug so the application directory can be changed.")
 	flag.Parse()
 
+	ex, err := os.Executable()
+	if err != nil {
+		panic(err)
+	}
+	exPath := filepath.Dir(ex)
+
 	if *dlv {
 		os.Chdir("../..")
 	}
 
 	var conf piplayer.Config
 	if err := conf.Load(""); err != nil {
-		log.Fatal("Error loading config.", err)
+		log.Printf("Current directory: %s\n", exPath)
+		log.Fatalf("Error loading config.\n%v", err)
 	}
 
 	dbg := *debug || conf.Debug
@@ -37,12 +45,10 @@ func main() {
 	p := piplayer.NewPlayer(&a, &conf, kl)
 	p.Server = piplayer.NewServer(p, *addr)
 
-	defer p.CleanUp()
-
 	// Start the browser
 	// We have to start it async because the code has
 	// to carry on, so that the server comes online.
 	go p.FirstRun()
 
-	piplayer.Start(p.Server)
+	piplayer.Start(p)
 }

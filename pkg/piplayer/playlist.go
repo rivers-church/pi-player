@@ -113,9 +113,6 @@ func (p *Playlist) fromFolder(plr *Player, folderPath string) error {
 		return errors.New("can't read folder for items: " + err.Error())
 	}
 
-	// Restart the server.
-	restart(plr)
-
 	// Filter out all files except for supported ones.
 	for _, file := range files {
 		c := make(map[string]string)
