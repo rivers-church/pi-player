@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"log"
-	"net/http"
 	"os"
 
 	"github.com/17xande/keylogger"
@@ -36,60 +35,14 @@ func main() {
 	a := piplayer.NewAPIHandler(dbg, test)
 	kl := keylogger.NewKeyLogger(conf.Remote.Name)
 	p := piplayer.NewPlayer(&a, &conf, kl)
+	p.Server = piplayer.NewServer(p, *addr)
 
 	defer p.CleanUp()
-
-	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("pkg/piplayer/assets"))))
-	http.Handle("/content/", http.StripPrefix("/content/", http.FileServer(http.Dir(conf.Directory))))
-	http.HandleFunc("/login", piplayer.LoginHandler(&conf))
-	http.HandleFunc("/logout", piplayer.LogoutHandler)
-	http.HandleFunc("/control", p.HandleControl)
-	http.HandleFunc("/settings", conf.HandleSettings)
-	http.HandleFunc("/viewer", p.HandleViewer)
-	http.HandleFunc("/ws/viewer", p.ConnViewer.HandlerWebsocket(p))
-	http.HandleFunc("/ws/control", p.ConnControl.HandlerWebsocket(p))
-	http.HandleFunc("/api", a.Handle(p))
-	http.HandleFunc("/", handlerHome)
 
 	// Start the browser
 	// We have to start it async because the code has
 	// to carry on, so that the server comes online.
 	go p.FirstRun()
 
-	log.Printf("Listening on port %s\n", *addr)
-	err := http.ListenAndServe(*addr, nil)
-	if err != nil {
-		log.Fatal("ListenAndServe: ", err)
-	}
-
-}
-
-// Handles requests to the index page as well as any other requests
-// that don't match any other paths
-func handlerHome(w http.ResponseWriter, r *http.Request) {
-
-	if r.URL.Path != "/" {
-		http.Error(w, "Not found", 404)
-		log.Printf("Not found: %s", r.URL)
-		return
-	}
-	if r.Method != "GET" {
-		http.Error(w, "Method not allowed", 405)
-		log.Printf("Method not allowed: %s", r.URL)
-		return
-	}
-	_, loggedIn, err := piplayer.CheckLogin(w, r)
-	if err != nil {
-		log.Println("error trying to retrieve session on login page:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if loggedIn {
-		http.Redirect(w, r, "/control", http.StatusFound)
-	} else {
-		http.Redirect(w, r, "/login", http.StatusFound)
-	}
-
-	t := piplayer.NewTemplateHandler("index.html")
-	t.ServeHTTP(w, r)
+	piplayer.Start(p.Server)
 }

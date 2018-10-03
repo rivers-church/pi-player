@@ -18,9 +18,9 @@ type Playlist struct {
 }
 
 // NewPlaylist creates a new playlist with media in the designated folder.
-func NewPlaylist(dir string) (Playlist, error) {
+func NewPlaylist(p *Player, dir string) (Playlist, error) {
 	pl := Playlist{Name: dir}
-	err := pl.fromFolder(dir)
+	err := pl.fromFolder(p, dir)
 	return pl, err
 }
 
@@ -86,7 +86,7 @@ func (p *Playlist) handleAPI(plr *Player, w http.ResponseWriter, h *http.Request
 			log.Println("set current item index to:", index)
 		}
 	case "getItems":
-		if err := p.fromFolder(p.Name); err != nil {
+		if err := p.fromFolder(plr, p.Name); err != nil {
 			log.Printf("Api call failed. Can't get items from folder %s\n%v", p.Name, err)
 		}
 
@@ -102,18 +102,21 @@ func (p *Playlist) handleAPI(plr *Player, w http.ResponseWriter, h *http.Request
 	json.NewEncoder(w).Encode(m)
 }
 
-func (p *Playlist) fromFolder(folderPath string) error {
-	// remove all items from the current playlist if there are any
+func (p *Playlist) fromFolder(plr *Player, folderPath string) error {
+	// Remove all items from the current playlist if there are any.
 	p.Items = []Item{}
 	p.Name = folderPath
 
-	// read files from a certain folder into a playlist
+	// Read files from a certain folder into a playlist.
 	files, err := ioutil.ReadDir(folderPath)
 	if err != nil {
 		return errors.New("can't read folder for items: " + err.Error())
 	}
 
-	// filter out all files except for supported ones
+	// Restart the server.
+	restart(plr)
+
+	// Filter out all files except for supported ones.
 	for _, file := range files {
 		c := make(map[string]string)
 		e := path.Ext(file.Name())

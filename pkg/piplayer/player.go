@@ -18,6 +18,8 @@ import (
 type Player struct {
 	ConnViewer  ConnectionWS
 	ConnControl ConnectionWS
+	Server      *http.Server
+	serveMux    *http.ServeMux
 	api         *APIHandler
 	command     *exec.Cmd
 	pipeIn      io.WriteCloser
@@ -62,7 +64,7 @@ var commandList = map[string]string{
 	"seekForward600":  "\x1b[A",
 }
 
-// NewPlayer creates a new Player
+// NewPlayer creates a new Player server *http.Server, router *mux.Router
 func NewPlayer(api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *Player {
 	p := Player{
 		api:         api,
@@ -191,6 +193,7 @@ func (p *Player) startBrowser() error {
 
 	p.browser.command.Stdin = os.Stdin
 	if p.api.debug {
+
 		p.browser.command.Stdout = os.Stdout
 	}
 	p.browser.command.Stderr = os.Stderr
@@ -268,7 +271,7 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = p.playlist.fromFolder(p.conf.Directory)
+	err = p.playlist.fromFolder(p, p.conf.Directory)
 
 	if err != nil {
 		log.Println("Error tring to read files from directory: ", err)
@@ -328,7 +331,7 @@ func (p *Player) HandleViewer(w http.ResponseWriter, r *http.Request) {
 	// 	}
 	// }
 
-	if err := p.playlist.fromFolder(p.conf.Directory); err != nil {
+	if err := p.playlist.fromFolder(p, p.conf.Directory); err != nil {
 		log.Println("Error tring to read files from directory: ", err)
 		t := template.Must(template.ParseFiles("pkg/piPlayer/templates/error.html"))
 		err := t.Execute(w, err)
