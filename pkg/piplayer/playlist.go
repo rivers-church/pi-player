@@ -6,15 +6,21 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"path"
 	"strconv"
 )
 
-// Playlist stores the media items that can be played
+// Playlist stores the media items that can be played.
 type Playlist struct {
 	Name    string
 	Items   []Item
 	Current *Item
+}
+
+// Presentation is used to read the presentation.json file for added cues.
+type Presentation struct {
+	Items []ItemString
 }
 
 // NewPlaylist creates a new playlist with media in the designated folder.
@@ -146,6 +152,32 @@ func (p *Playlist) fromFolder(plr *Player, folderPath string) error {
 				break
 			}
 
+		}
+	}
+
+	// look for presentation file for added cues.
+	file := path.Join(folderPath, "presentation.json")
+	if _, err := os.Stat(file); !os.IsNotExist(err) {
+		data, err := ioutil.ReadFile(file)
+		if err != nil {
+			log.Printf("Error trying to read presentation file '%s': %v", file, err)
+			return nil
+		}
+
+		var presentation Presentation
+
+		json.Unmarshal(data, &presentation)
+
+		// Loop through presentation data and attach cues to items.
+		for _, presItem := range presentation.Items {
+			for _, playItem := range p.Items {
+				if presItem.Visual == playItem.Visual.Name() {
+					for k, v := range presItem.Cues {
+						playItem.Cues[k] = v
+					}
+					break
+				}
+			}
 		}
 	}
 

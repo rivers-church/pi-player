@@ -352,6 +352,10 @@ class Viewer {
     let started = this.startVisual(item.Visual);
     if (started) {
       this.playlist.current = index;
+      if (item.Cues.timeout) {
+        const to = parseInt(item.Cues.timeout, 10);
+        setTimeout(this.next.bind(this), to * 1000);
+      }
     }
 
     // Notify the server that a new item has started.
