@@ -6,6 +6,7 @@ class Viewer {
     this.wsPath = '/ws/viewer';
     this.conn = null;
     this.arrItems = null;
+    this.timeoutID = null;
     this.playlist = {
       current: null,
       items: []
@@ -345,6 +346,11 @@ class Viewer {
       return;
     }
 
+    // Cancel previous timeout if there was one.
+    if (this.timeoutID) {
+      clearTimeout(this.timeoutID);
+    }
+
     this.divContainerPlaylist.style.visibility = 'hidden';
     let item = this.playlist.items[index];
 
@@ -354,7 +360,7 @@ class Viewer {
       this.playlist.current = index;
       if (item.Cues.timeout) {
         const to = parseInt(item.Cues.timeout, 10);
-        setTimeout(this.next.bind(this), to * 1000);
+        this.timeoutID = setTimeout(this.next.bind(this), to * 1000);
       }
     }
 
