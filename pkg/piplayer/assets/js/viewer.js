@@ -384,6 +384,7 @@ class Viewer {
 
     switch (ext) {
       case '.mp4':
+      case '.webm':
         this.vidMedia.src = `/content/${fileName}`;
         this.vidMedia.style.visibility = 'visible';
         this.vidMedia.play();

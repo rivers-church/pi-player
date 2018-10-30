@@ -123,7 +123,7 @@ func (p *Playlist) fromFolder(plr *Player, folderPath string) error {
 	for _, file := range files {
 		c := make(map[string]string)
 		e := path.Ext(file.Name())
-		if e == ".mp4" {
+		if e == ".mp4" || e == ".webm" {
 			p.Items = append(p.Items, Item{Visual: file, Type: "video", Cues: c})
 		} else if e == ".jpg" || e == ".jpeg" || e == ".png" {
 			p.Items = append(p.Items, Item{Visual: file, Type: "image", Cues: c})
