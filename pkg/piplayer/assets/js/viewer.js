@@ -378,7 +378,7 @@ class Viewer {
     });
   }
 
-  startVisual(fileName) {
+  async startVisual(fileName) {
     let success = true;
     let ext = fileName.slice(fileName.lastIndexOf('.'));
 
@@ -387,7 +387,11 @@ class Viewer {
       case '.webm':
         this.vidMedia.src = `/content/${fileName}`;
         this.vidMedia.style.visibility = 'visible';
-        this.vidMedia.play();
+        try {
+          let res = await this.vidMedia.play();
+        } catch (err) {
+          console.error(`can't start video: ${err}`);
+        }
         // Blackout the background.
         this.divContainer.style.backgroundImage = null;
         break;
