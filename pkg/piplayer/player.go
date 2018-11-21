@@ -155,27 +155,30 @@ func (p *Player) startBrowser() error {
 		"--no-first-run",
 		"--enable-experimental-web-platform-features",
 		"--javascript-harmony",
+		"--autoplay-policy=no-user-gesture-required",
 		"--remote-debugging-port=9222",
 
 		// Experimental gpu enabling flags for higher video playback performance
-		"--ignore-gpu-blacklist",
-		"--enable-gpu-rasterization",
-		"--enable-native-gpu-memory-buffers",
-		"--enable-checker-imaging",
-		"--disable-quic",
-		"--enable-tcp-fast-open",
-		"--disable-gpu-compositing",
-		"--enable-fast-unload",
-		"--enable-experimental-canvas-features",
-		"--enable-scroll-prediction",
-		"--enable-simple-cache-backend",
-		"--answers-in-suggest",
-		"--ppapi-flash-path=/usr/lib/chromium-browser/libpepflashplayer.so",
-		"--ppapi-flash-args=enable_stagevideo_auto=0",
-		"--ppapi-flash-version=",
-		"--max-tiles-for-interest-area=512",
-		"--num-raster-threads=4",
-		"--default-tile-height=512",
+		/*
+			"--ignore-gpu-blacklist",
+			"--enable-gpu-rasterization",
+			"--enable-native-gpu-memory-buffers",
+			"--enable-checker-imaging",
+			"--disable-quic",
+			"--enable-tcp-fast-open",
+			"--disable-gpu-compositing",
+			"--enable-fast-unload",
+			"--enable-experimental-canvas-features",
+			"--enable-scroll-prediction",
+			"--enable-simple-cache-backend",
+			"--answers-in-suggest",
+			"--ppapi-flash-path=/usr/lib/chromium-browser/libpepflashplayer.so",
+			"--ppapi-flash-args=enable_stagevideo_auto=0",
+			"--ppapi-flash-version=",
+			"--max-tiles-for-interest-area=512",
+			"--num-raster-threads=4",
+			"--default-tile-height=512",
+		*/
 		// End of experimental flags
 
 		"http://localhost:8080/viewer",
@@ -271,6 +274,32 @@ func (p *Player) ServeHTTP(w http.ResponseWriter, h *http.Request) {
 	m := &resMessage{Success: true, Event: "StartRequestSent", Message: index}
 	json.NewEncoder(w).Encode(m)
 	return
+}
+
+// HandleTest susan
+func (p *Player) HandleTest(w http.ResponseWriter, r *http.Request) {
+	err := p.playlist.fromFolder(p, p.conf.Directory)
+
+	if err != nil {
+		log.Println("Error tring to read files from directory: ", err)
+		t := template.Must(template.ParseFiles("pkg/piplayer/templates/error.html"))
+		err := t.Execute(w, err)
+		if err != nil {
+			log.Println("Error trying to render error page. #fail.", err)
+		}
+		return
+	}
+
+	tempTest := TemplateHandler{
+		filename: "test.html",
+		data: map[string]interface{}{
+			"location":  p.conf.Location,
+			"directory": p.conf.Directory,
+			"playlist":  p.playlist,
+			"error":     err,
+		},
+	}
+	tempTest.ServeHTTP(w, r)
 }
 
 // HandleControl Scan the folder for new files every time the page reloads and display contents

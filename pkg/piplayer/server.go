@@ -27,6 +27,7 @@ func setupRoutes(content string, p *Player) *http.ServeMux {
 	mux.HandleFunc("/login", LoginHandler(p.conf))
 	mux.HandleFunc("/logout", LogoutHandler)
 	mux.HandleFunc("/control", p.HandleControl)
+	mux.HandleFunc("/test", p.HandleTest)
 	mux.HandleFunc("/settings", p.conf.SettingsHandler(p))
 	mux.HandleFunc("/viewer", p.HandleViewer)
 	mux.HandleFunc("/ws/viewer", p.ConnViewer.HandlerWebsocket(p))
