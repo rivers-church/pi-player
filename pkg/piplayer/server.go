@@ -23,7 +23,7 @@ func setupRoutes(content string, p *Player) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	mux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("pkg/piplayer/assets"))))
-	mux.Handle("/content/", http.StripPrefix("/content/", http.FileServer(http.Dir(content))))
+	mux.HandleFunc("/content/", etagWrapper(content))
 	mux.HandleFunc("/login", LoginHandler(p.conf))
 	mux.HandleFunc("/logout", LogoutHandler)
 	mux.HandleFunc("/control", p.HandleControl)
@@ -36,6 +36,15 @@ func setupRoutes(content string, p *Player) *http.ServeMux {
 	mux.HandleFunc("/", handlerHome)
 
 	return mux
+}
+
+// etagWrapper calculates an Etag value for the requested content.
+func etagWrapper(content string) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		fs := http.StripPrefix("/content/", http.FileServer(http.Dir(content)))
+
+		fs.ServeHTTP(w, r)
+	}
 }
 
 // Handles requests to the index page as well as any other requests
