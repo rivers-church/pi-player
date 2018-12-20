@@ -14,6 +14,16 @@ import (
 	"github.com/17xande/keylogger"
 )
 
+// Player2 represents the entire program. It's the shell that holds the
+// components together. The other components are the Streamer, Playlist,
+// and Remote
+type Player2 interface {
+	Start()
+	Stop()
+	Next()
+	Previous()
+}
+
 // Player is the object that renders images to the screen through omxplayer or chromium-browser
 type Player struct {
 	ConnViewer  ConnectionWS
@@ -229,6 +239,11 @@ func (p *Player) startBrowser() error {
 	var err error
 
 	return err
+}
+
+// Next goes to the next item in the playlist.
+func (p *Player) Next() error {
+	return nil
 }
 
 func handleAPIError(w *http.ResponseWriter, message string) {
