@@ -13,14 +13,14 @@ const (
 // It is the code that actually plays a media file.
 // Eg: OMXPlayer, VLC and Chrome.
 type Streamer interface {
-	Open(string) error
+	Open(file string, test string, debug bool) error
 	Close() error
 	Play() error
 	Pause() error
-	PlaybackRate(int) error
-	Seek(int) error
-	Chapter(int) error
-	Volume(int) error
-	AudioStream(int) error
-	SubtitleStream(int) error
+	PlaybackRate(rate int) error
+	Seek(seconds int) error
+	Chapter(chapter int) error
+	Volume(volume int) error
+	AudioStream(stream int) error
+	SubtitleStream(stream int) error
 }

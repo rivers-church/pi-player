@@ -41,6 +41,7 @@ type Player struct {
 	quit        chan error
 	browser     Browser
 	keylogger   *keylogger.KeyLogger
+	streamer    Streamer
 }
 
 const (
@@ -83,6 +84,11 @@ func NewPlayer(api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *P
 		ConnViewer:  ConnectionWS{},
 		ConnControl: ConnectionWS{},
 		playlist:    &Playlist{Name: conf.Directory},
+		// TODO: Make this a config setting.
+		streamer: &Chrome{
+			ConnViewer:  ConnectionWS{},
+			ConnControl: ConnectionWS{},
+		},
 	}
 
 	if api.debug {
