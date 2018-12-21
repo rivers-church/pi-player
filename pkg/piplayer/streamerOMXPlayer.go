@@ -7,15 +7,6 @@ import (
 	"os/exec"
 )
 
-const (
-	statusStopped  = 0
-	statusStarting = 1
-	statusPaused   = 2
-	statusPlaying  = 3
-	statusClosing  = 4
-	statusError    = -1
-)
-
 // OMXPlayer uses OMXPlayer to stream H.264 files to the screen.
 // It implements the Streamer interface.
 type OMXPlayer struct {

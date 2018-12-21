@@ -236,9 +236,8 @@ func (p *Player) startBrowser() error {
 	// not sure if this is appropriate here. Not sure if context is
 	// absolutely needed actually. I'm not gracefully terminating things
 	// defer cancel()
-	var err error
 
-	return err
+	return nil
 }
 
 // Next goes to the next item in the playlist.
