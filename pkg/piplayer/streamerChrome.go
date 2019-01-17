@@ -61,7 +61,7 @@ var defaultFlags = []string{
 }
 
 // Open starts Chrome in the relevant page with the relevant flags.
-func (c *Chrome) Open(file string, test string, debug bool) error {
+func (c *Chrome) Open(file string, status chan string, test string, debug bool) error {
 	// If Chrome is already running ignore and return error
 	if c.status == statusStopped {
 		return errors.New("cannot start Chrome, it's already running")

@@ -3,6 +3,7 @@ package piplayer
 import (
 	"errors"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 )
@@ -16,10 +17,11 @@ type OMXPlayer struct {
 	cmd          *exec.Cmd
 	cmdStdinPipe io.WriteCloser
 	playbackRate int
+	audioOutput  string
 }
 
 // Open starts a video file in the OMXPlayer streamer.
-func (o *OMXPlayer) Open(filename string, audioOutput string, loop bool, debug bool, player *Player) error {
+func (o *OMXPlayer) Open(filename string, status chan string, test string, debug bool) error {
 	o.status = statusStarting
 
 	// Attempt to close OMXPlayer in case it's already running.
@@ -27,15 +29,22 @@ func (o *OMXPlayer) Open(filename string, audioOutput string, loop bool, debug b
 		return err
 	}
 
+	// Default audioOutput to "both".
+	if o.audioOutput == "" {
+		log.Printf("WARNING: 'audioOutput not configured. Defaulting to \"both\"'\n")
+		o.audioOutput = "both"
+	}
+
 	flags := []string{
 		"-b",
-		"-o", audioOutput,
+		"-o", o.audioOutput,
 		filename,
 	}
 
-	if loop {
-		flags = append(flags, "--loop")
-	}
+	// TODO: Check for loop
+	// if loop {
+	// 	flags = append(flags, "--loop")
+	// }
 
 	var err error
 	o.cmd = exec.Command("omxplayer", flags...)
@@ -59,13 +68,13 @@ func (o *OMXPlayer) Open(filename string, audioOutput string, loop bool, debug b
 	o.playbackRate = 1
 
 	// Listen for when OMX player ends in a new goroutine
-	go o.wait(player)
+	go o.wait(status)
 
 	return nil
 }
 
 // wait waits for OMXPlayer to end so it can clean things up.
-func (o *OMXPlayer) wait(player *Player) error {
+func (o *OMXPlayer) wait(status chan string) error {
 	// Block till the command/process is finished.
 	err := o.cmd.Wait()
 	prevStatus := o.status
@@ -74,8 +83,9 @@ func (o *OMXPlayer) wait(player *Player) error {
 	if prevStatus == statusClosing {
 		o.closing <- err
 	} else {
-		// Start the next item.
-		err = player.Next()
+		// Start the next item by sending a next message
+		// on the status channel, back to the Player interface.
+		status <- "next"
 	}
 
 	return err
@@ -172,7 +182,7 @@ func (o *OMXPlayer) Chapter(index int) error {
 }
 
 // Volume sets the video volume.
-func (o *OMXPlayer) Volume(vol float64) error {
+func (o *OMXPlayer) Volume(vol int) error {
 	// TODO: everything
 	return nil
 }

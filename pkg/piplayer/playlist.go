@@ -24,14 +24,14 @@ type Presentation struct {
 }
 
 // NewPlaylist creates a new playlist with media in the designated folder.
-func NewPlaylist(p *Player, dir string) (Playlist, error) {
+func NewPlaylist(p *player, dir string) (Playlist, error) {
 	pl := Playlist{Name: dir}
 	err := pl.fromFolder(p, dir)
 	return pl, err
 }
 
 // Handles requests to the playlist api
-func (p *Playlist) handleAPI(plr *Player, w http.ResponseWriter, h *http.Request) {
+func (p *Playlist) handleAPI(plr *player, w http.ResponseWriter, h *http.Request) {
 	var m resMessage
 
 	switch plr.api.message.Method {
@@ -108,7 +108,7 @@ func (p *Playlist) handleAPI(plr *Player, w http.ResponseWriter, h *http.Request
 	json.NewEncoder(w).Encode(m)
 }
 
-func (p *Playlist) fromFolder(plr *Player, folderPath string) error {
+func (p *Playlist) fromFolder(plr *player, folderPath string) error {
 	// Remove all items from the current playlist if there are any.
 	p.Items = []Item{}
 	p.Name = folderPath

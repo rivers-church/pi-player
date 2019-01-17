@@ -1,5 +1,7 @@
 package piplayer
 
+import "fmt"
+
 const (
 	statusStopped  = 0
 	statusStarting = 1
@@ -13,7 +15,7 @@ const (
 // It is the code that actually plays a media file.
 // Eg: OMXPlayer, VLC and Chrome.
 type Streamer interface {
-	Open(file string, test string, debug bool) error
+	Open(file string, status chan string, test string, debug bool) error
 	Close() error
 	Play() error
 	Pause() error
@@ -23,4 +25,23 @@ type Streamer interface {
 	Volume(volume int) error
 	AudioStream(stream int) error
 	SubtitleStream(stream int) error
+}
+
+// NewStreamer creates a new streamer object based on the type supplied.
+func NewStreamer(name string, audioOutput string) (s Streamer, err error) {
+	switch name {
+	case "chrome":
+		s = &Chrome{
+			ConnViewer:  ConnectionWS{},
+			ConnControl: ConnectionWS{},
+		}
+	case "omx":
+		s = &OMXPlayer{
+			audioOutput: audioOutput,
+		}
+	default:
+		err = fmt.Errorf("cannot create streamer. Unsupported streamer name: %s", name)
+	}
+
+	return
 }

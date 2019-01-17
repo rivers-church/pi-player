@@ -14,7 +14,7 @@ type remote struct {
 
 var directions = []string{"UP", "DOWN", "HOLD"}
 
-func remoteRead(p *Player, cie chan keylogger.InputEvent) {
+func remoteRead(p *player, cie chan keylogger.InputEvent) {
 	var ie keylogger.InputEvent
 
 	if p.api.debug {
