@@ -238,3 +238,9 @@ func (c *Chrome) SubtitleStream(s int) error {
 	res := <-c.ConnViewer.receive
 	return handleRes(res)
 }
+
+// Listen does nothing for now.
+func (c *Chrome) Listen(s chan string) error {
+	// TODO: This whole implementation. I'm not sure if the Chrome streamer needs this?
+	return nil
+}

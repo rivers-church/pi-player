@@ -14,19 +14,19 @@ import (
 	"github.com/17xande/keylogger"
 )
 
-// Player represents the entire program. It's the shell that holds the
+// Player2 represents the entire program. It's the shell that holds the
 // components together. The other components are the Streamer, Playlist,
 // and Remote
-type Player interface {
+type Player2 interface {
 	Start(i Item)
-	Stop()
-	Next()
-	Previous()
+	Stop() error
+	Next() error
+	Previous() error
 	Listen(s chan string)
 }
 
-// player is the object that renders images to the screen through omxplayer or chromium-browser
-type player struct {
+// Player is the object that renders images to the screen through omxplayer or chromium-browser
+type Player struct {
 	ConnViewer  ConnectionWS
 	ConnControl ConnectionWS
 	Server      *http.Server
@@ -76,9 +76,9 @@ var commandList = map[string]string{
 	"seekForward600":  "\x1b[A",
 }
 
-// newPlayer creates a new Player server *http.Server, router *mux.Router
-func newPlayer(api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *player {
-	p := player{
+// NewPlayer creates a new Player server *http.Server, router *mux.Router
+func NewPlayer(api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *Player {
+	p := Player{
 		api:         api,
 		conf:        conf,
 		keylogger:   keylogger,
@@ -112,7 +112,7 @@ func newPlayer(api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *p
 }
 
 // FirstRun starts the browser on a black screen and gets things going
-func (p *player) FirstRun() {
+func (p *Player) FirstRun() {
 	if p.api.test == "web" {
 		return
 	}
@@ -135,7 +135,7 @@ func (p *player) FirstRun() {
 
 // Start the file that will be played in the browser. Sends a message to the
 // ConnViewer channel to be sent over the websocket.
-func (p *player) Start(w *http.ResponseWriter) {
+func (p *Player) Start(w *http.ResponseWriter) {
 	// fileName, ok := p.api.message.Arguments["path"]
 	sIndex, ok := p.api.message.Arguments["index"]
 	if !ok {
@@ -157,7 +157,7 @@ func (p *player) Start(w *http.ResponseWriter) {
 }
 
 // startBrowser starts Chromium browser, or Google Chrome with the relevant flags.
-func (p *player) startBrowser() error {
+func (p *Player) startBrowser() error {
 	if p.browser.running {
 		return errors.New("Error: Browser already running, cannot start another instance")
 	}
@@ -248,7 +248,14 @@ func (p *player) startBrowser() error {
 }
 
 // Next goes to the next item in the playlist.
-func (p *player) Next() error {
+func (p *Player) Next() error {
+	// TODO: everything
+	return nil
+}
+
+// Previous goes to the previous item in the playlist.
+func (p *Player) Previous() error {
+	// TODO: everything
 	return nil
 }
 
@@ -262,8 +269,14 @@ func handleAPIError(w *http.ResponseWriter, message string) {
 	json.NewEncoder(*w).Encode(m)
 }
 
+// Listen should listen to something, I forgot what
+func (p *Player) Listen(s chan string) {
+	// TODO: everything
+	return
+}
+
 // Handles requets to the player api
-func (p *player) ServeHTTP(w http.ResponseWriter, h *http.Request) {
+func (p *Player) ServeHTTP(w http.ResponseWriter, h *http.Request) {
 	supportedAPIMethods := map[string]bool{
 		"start":    true,
 		"stop":     true,
@@ -298,7 +311,7 @@ func (p *player) ServeHTTP(w http.ResponseWriter, h *http.Request) {
 }
 
 // HandleTest susan
-func (p *player) HandleTest(w http.ResponseWriter, r *http.Request) {
+func (p *Player) HandleTest(w http.ResponseWriter, r *http.Request) {
 	err := p.playlist.fromFolder(p, p.conf.Directory)
 
 	if err != nil {
@@ -324,7 +337,7 @@ func (p *player) HandleTest(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleControl Scan the folder for new files every time the page reloads and display contents
-func (p *player) HandleControl(w http.ResponseWriter, r *http.Request) {
+func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 	_, loggedIn, err := CheckLogin(w, r)
 	if err != nil {
 		log.Println("error trying to retrieve session on login page:", err)
@@ -385,7 +398,7 @@ func (p *player) HandleControl(w http.ResponseWriter, r *http.Request) {
 
 // HandleViewer handles requests to the image viewer page
 // This handler has a dependency on Playlist.
-func (p *player) HandleViewer(w http.ResponseWriter, r *http.Request) {
+func (p *Player) HandleViewer(w http.ResponseWriter, r *http.Request) {
 	if err := p.playlist.fromFolder(p, p.conf.Directory); err != nil {
 		log.Println("Error tring to read files from directory: ", err)
 		t := template.Must(template.ParseFiles("pkg/piPlayer/templates/error.html"))
@@ -412,7 +425,7 @@ func (p *player) HandleViewer(w http.ResponseWriter, r *http.Request) {
 // the only streamer that will require this is the Chrome streamer.
 // Wait, actually no, because the OMXStreamer needs to be used in tandem with the Chrome streamer...
 // The VLC streamer shouldn't, so then should we have the option of multiple streamers???
-func (p *player) HandleWebSocketMessage() {
+func (p *Player) HandleWebSocketMessage() {
 	if p.api.debug {
 		log.Println("Listening to websocket messages from browser")
 	}

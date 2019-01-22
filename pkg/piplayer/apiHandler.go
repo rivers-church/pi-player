@@ -20,7 +20,7 @@ func NewAPIHandler(debug bool, test *string) APIHandler {
 }
 
 // Handle handles all calls to the API
-func (a *APIHandler) Handle(p *player) http.HandlerFunc {
+func (a *APIHandler) Handle(p *Player) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -57,7 +57,7 @@ func (a *APIHandler) Handle(p *player) http.HandlerFunc {
 	}
 }
 
-func (a *APIHandler) handleMessage(p *player, w http.ResponseWriter, r *http.Request) {
+func (a *APIHandler) handleMessage(p *Player, w http.ResponseWriter, r *http.Request) {
 	if a.debug {
 		log.Printf("message received: %#v\n", a.message)
 	}

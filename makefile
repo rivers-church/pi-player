@@ -1,14 +1,14 @@
 # variables
 BINARY_NAME=pi-player
-CMD_MAIN=cmd/piplayer/main.go
+CMD_MAIN=main.go
 
 build:
-	go build -o $(BINARY_NAME) $(CMD_MAIN)
+	go build
 
 upgrade:
 	sudo systemctl stop pi-player
 	git pull
-	go build -o $(BINARY_NAME) $(CMD_MAIN)
+	go build
 	sudo systemctl start pi-player
 
 run-pi: build

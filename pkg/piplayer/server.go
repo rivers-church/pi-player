@@ -8,7 +8,7 @@ import (
 )
 
 // NewServer returns a new http.Server for the piplayer interface.
-func NewServer(p *player, addr string) *http.Server {
+func NewServer(p *Player, addr string) *http.Server {
 
 	mux := setupRoutes(p.conf.Directory, p)
 	serv := http.Server{Addr: addr, Handler: mux}
@@ -19,7 +19,7 @@ func NewServer(p *player, addr string) *http.Server {
 // setupRoutes registers the routes for the server, accepting a new directory where
 // the content can be found. This will be called whenever there is a change of content
 // given from the settings page.
-func setupRoutes(content string, p *player) *http.ServeMux {
+func setupRoutes(content string, p *Player) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	mux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("pkg/piplayer/assets"))))
@@ -80,7 +80,7 @@ func handlerHome(w http.ResponseWriter, r *http.Request) {
 }
 
 // Restart the http server.
-func restart(plr *player) {
+func restart(plr *Player) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	if err := plr.Server.Shutdown(ctx); err != nil {
 		log.Printf("Error shutting down server for re-registration of routes: %v\n", err)
@@ -92,7 +92,7 @@ func restart(plr *player) {
 }
 
 // Start the http server.
-func Start(plr *player) {
+func Start(plr *Player) {
 	log.Printf("Listening on port %s\n", plr.Server.Addr)
 	err := plr.Server.ListenAndServe()
 	if err != nil {

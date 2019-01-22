@@ -47,7 +47,7 @@ func (conf *Config) Save(path string) error {
 }
 
 // SettingsHandler handles requests to the settings page
-func (conf *Config) SettingsHandler(p *player) http.HandlerFunc {
+func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		_, loggedIn, err := CheckLogin(w, r)
 		if err != nil {

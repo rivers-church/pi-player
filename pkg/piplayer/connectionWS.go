@@ -41,7 +41,7 @@ type ConnectionWS struct {
 // }
 
 // HandlerWebsocket handles websocket connections for the browser viewer and controller.
-func (c *ConnectionWS) HandlerWebsocket(p *player) http.HandlerFunc {
+func (c *ConnectionWS) HandlerWebsocket(p *Player) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// If connection is already active, then close it gracefully, and create a new one.
 		if c.active {
