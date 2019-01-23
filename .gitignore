@@ -1,5 +1,10 @@
 .DS_Store
 pi-player
+# ignore snap things
+pi-player_*.snap
+prime
+snap/.snapcraft
+# end of snap things
 launch.json
 debug
 node_modules
