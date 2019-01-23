@@ -1,0 +1,19 @@
+name: pi-player
+version: git
+summary: A web-based video, image and sound player written in go.
+description: |
+  pi-player turns your device into a basic media player.
+
+grade: devel
+confinement: devmode
+
+parts:
+  pi-player:
+    pugin: go
+    go-importpath: github.com/17xande/pi-player
+    source: .
+    source-type: git
+
+apps:
+  pi-player:
+    command: pi-player --debug
