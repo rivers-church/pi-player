@@ -18,7 +18,8 @@ type Chrome struct {
 }
 
 const (
-	defaultProgram = "chromium-browser"
+	// defaultProgram = "chromium-browser"
+	defaultProgram = "chromium"
 	viewerPage     = "http://localhost:8080/viewer"
 )
 
