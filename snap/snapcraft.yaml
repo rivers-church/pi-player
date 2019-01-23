@@ -1,20 +1,22 @@
 name: pi-player # you probably want to 'snapcraft register <name>'
-# base: core18 # the base snap is the execution environment for this snap
+base: core18 # the base snap is the execution environment for this snap
 version: git #'0.0.1' # just for humans, typically '1.2+git' or '1.3.2'
-summary: A web-based video, image and sound player written in go. # 79 char long summary
+summary: Turns your device into a basic media player. # 79 char long summary
 description: |
-  pi-player turns your device into a basic media player.
+  pi-player is a web-based video, image and sound player written in go. Requires Chromium.
 
 grade: devel # must be 'stable' to release into candidate/stable channels
 confinement: devmode # use 'strict' once you have the right plugs and slots
 
 parts:
   pi-player:
-    plugin: go
-    # go-importpath: github.com/17xande/pi-player
+    plugin: go # NOTE: this plugin doesn't install 'gcc' which is required to compile this project.
+               #       It needs to be manually installed in the 'core18' VM/Container.
+    go-channel: latest/stable
+    go-importpath: github.com/17xande/pi-player
     source: .
     source-type: git
 
 apps:
   pi-player:
-    command: pi-player --debug
+    command: pi-player
