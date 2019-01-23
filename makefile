@@ -5,6 +5,10 @@ CMD_MAIN=main.go
 build:
 	go build
 
+# build with a docker container
+docker:
+	sudo docker run --rm -v "$$PWD":/usr/pi-player -w /usr/pi-player golang go build -v
+
 upgrade:
 	sudo systemctl stop pi-player
 	git pull
