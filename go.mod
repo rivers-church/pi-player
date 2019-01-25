@@ -7,4 +7,5 @@ require (
 	github.com/gorilla/sessions v1.1.3
 	github.com/gorilla/websocket v1.4.0
 	golang.org/x/crypto v0.0.0-20190122013713-64072686203f
+	golang.org/x/sys v0.0.0-20190124100055-b90733256f2e
 )
