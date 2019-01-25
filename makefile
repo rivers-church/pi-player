@@ -13,12 +13,8 @@ endef
 build:
 	go build
 
-build-cross:
+docker-cross-compile:
 	sudo docker run --rm -v "$$PWD":/usr/$(BINARY_NAME) -w /usr/$(BINARY_NAME) golang /bin/sh -c '$(CROSS_COMPILE_LOOP)'
-
-# build with a docker container
-docker:
-	sudo docker run --rm -v "$$PWD":/usr/$(BINARY_NAME) -w /usr/$(BINARY_NAME) golang go build -v
 
 upgrade:
 	sudo systemctl stop pi-player
