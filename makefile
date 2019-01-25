@@ -5,7 +5,11 @@ CMD_MAIN=main.go
 define CROSS_COMPILE_LOOP
 for GOOS in darwin linux; do \
 	for GOARCH in 386 amd64 arm64; do \
-		go build -v -o dist/$(BINARY_NAME)-$$GOOS-$$GOARCH; \
+		FNAME=$(BINARY_NAME)-$$GOOS-$$GOARCH; \
+		go build -v -o dist/$$FNAME; \
+		cd dist; \
+		tar -czvf $$FNAME.tar.gz $$FNAME; \
+		cd ..; \
 	done; \
 done
 endef
