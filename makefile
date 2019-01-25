@@ -2,12 +2,23 @@
 BINARY_NAME=pi-player
 CMD_MAIN=main.go
 
+define CROSS_COMPILE_LOOP
+for GOOS in darwin linux; do \
+	for GOARCH in 386 amd64 arm64; do \
+		go build -v -o dist/$(BINARY_NAME)-$$GOOS-$$GOARCH; \
+	done; \
+done
+endef
+
 build:
 	go build
 
+build-cross:
+	sudo docker run --rm -v "$$PWD":/usr/$(BINARY_NAME) -w /usr/$(BINARY_NAME) golang /bin/sh -c '$(CROSS_COMPILE_LOOP)'
+
 # build with a docker container
 docker:
-	sudo docker run --rm -v "$$PWD":/usr/pi-player -w /usr/pi-player golang go build -v
+	sudo docker run --rm -v "$$PWD":/usr/$(BINARY_NAME) -w /usr/$(BINARY_NAME) golang go build -v
 
 upgrade:
 	sudo systemctl stop pi-player
