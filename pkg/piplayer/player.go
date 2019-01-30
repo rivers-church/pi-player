@@ -201,7 +201,7 @@ func (p *Player) startBrowser() error {
 		"http://localhost:8080/viewer",
 	}
 
-	browser := "chromium-browser"
+	browser := "chromium"
 
 	if p.api.test == "linux" {
 		flags = []string{
