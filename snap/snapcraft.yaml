@@ -12,11 +12,20 @@ parts:
   pi-player:
     plugin: go
     go-channel: stable
+    # we need gcc to run the CGO things to read keyboard input.
+    build-packages:
+      - gcc
     source-type: git
     source: https://github.com/17xande/pi-player
     go-importpath: github.com/17xande/pi-player
-    build-packages:
-      - gcc
+    # include static files in pkg folder
+    # but exclude .go files, they will already be compiled.
+    filesets:
+      pkg:
+        - pkg/*
+        - -pkg/*.go
+    prime:
+      - pkg
 
 apps:
   pi-player:
