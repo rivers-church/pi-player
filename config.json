@@ -1,12 +1,9 @@
 {
-  "Location": "Mac Test",
-  "Directory": "/media/networklocation",
+  "Location": "Rename Me",
+  "Directory": ".",
   "AudioOutput": "both",
+  "Streamer": "",
   "Debug": false,
-  "Login": {
-    "Username": "admin",
-    "Password": "$2a$14$Zz4SxxNGXm8GU7NRh3lSkuVPSulrxHGBvdhm1S3O/FpRbiVukCQY6"
-  },
   "Remote": {
     "Name": "\"HBGIC Technology Co., Ltd. USB Keyboard Mouse\"",
     "Vendor": 8786,
