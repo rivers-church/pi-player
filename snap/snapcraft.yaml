@@ -22,8 +22,8 @@ parts:
     # but exclude .go files, they will already be compiled.
     filesets:
       pkg:
-        - pkg/*
-        - -pkg/*.go
+        - /root/project/pkg/*
+        - -/root/project/pkg/*.go
     stage:
       - pkg
 
