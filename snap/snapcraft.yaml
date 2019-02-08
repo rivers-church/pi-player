@@ -24,7 +24,7 @@ parts:
       pkg:
         - pkg/*
         - -pkg/*.go
-    prime:
+    stage:
       - pkg
 
 apps:
