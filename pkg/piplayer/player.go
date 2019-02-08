@@ -25,7 +25,7 @@ type Player2 interface {
 	Listen(s chan string)
 }
 
-// Player is the object that renders images to the screen through omxplayer or chromium-browser
+// Player is the object that renders images to the screen through omxplayer or chromium
 type Player struct {
 	ConnViewer  ConnectionWS
 	ConnControl ConnectionWS
@@ -50,7 +50,7 @@ const (
 	statusLive = 0
 )
 
-// Browser represents the chromium-browser process that is used to display web pages and still images to the screen
+// Browser represents the chromium process that is used to display web pages and still images to the screen
 type Browser struct {
 	command *exec.Cmd
 	running bool

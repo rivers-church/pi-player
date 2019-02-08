@@ -22,7 +22,8 @@ Wait for network connection on boot to allow the Pi to automatically mount a net
 `Localisation Options > A bunch of stuff here.`
 
 Install additional packages:\
-`sudo apt install git vim chromium-browser libgtk-3-0 xorg ttf-freefont usbmount`
+`sudo apt install git vim libgtk-3-0 xorg ttf-freefont usbmount`
+`snap install chromium`
 
 ### Setup network location mount on boot
 
