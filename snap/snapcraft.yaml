@@ -15,17 +15,19 @@ parts:
     # we need gcc to run the CGO things to read keyboard input.
     build-packages:
       - gcc
-    source-type: git
     source: https://github.com/17xande/pi-player
+    source-type: git
+    source-depth: 1
     go-importpath: github.com/17xande/pi-player
-    # include static files in pkg folder
-    # but exclude .go files, they will already be compiled.
+
     filesets:
-      pkg:
-        - /root/project/pkg/*
-        - -/root/project/pkg/*.go
-    stage:
-      - pkg
+      static:
+      - "../src/pkg/piplayer/templates/*"
+      - "../src/pkg/piplayer/assets/css/*"
+      - "../src/pkg/piplayer/assets/js/*"
+
+    prime:
+      - "$static"
 
 apps:
   pi-player:
