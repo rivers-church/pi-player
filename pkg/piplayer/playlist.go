@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"regexp"
 	"strconv"
 )
 
@@ -170,12 +171,17 @@ func (p *Playlist) fromFolder(plr *Player, folderPath string) error {
 
 		// Loop through presentation data and attach cues to items.
 		for _, presItem := range presentation.Items {
+			// Create regex to match on file names.
+			r, err := regexp.Compile(presItem.Visual)
+			if err != nil {
+				log.Printf("Could not compile regex with text '%s', comparing using visual name only.", presItem.Visual)
+			}
 			for _, playItem := range p.Items {
-				if presItem.Visual == playItem.Visual.Name() {
+				// If the regex can't compile, use the file name, otherwise use the regex.
+				if (err != nil && presItem.Visual == playItem.Visual.Name()) || r.MatchString(playItem.Visual.Name()) {
 					for k, v := range presItem.Cues {
 						playItem.Cues[k] = v
 					}
-					break
 				}
 			}
 		}
