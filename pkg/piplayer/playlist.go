@@ -178,7 +178,12 @@ func (p *Playlist) fromFolder(plr *Player, folderPath string) error {
 			}
 			for _, playItem := range p.Items {
 				// If the regex can't compile, use the file name, otherwise use the regex.
-				if (err != nil && presItem.Visual == playItem.Visual.Name()) || r.MatchString(playItem.Visual.Name()) {
+				if err != nil && presItem.Visual == playItem.Visual.Name() {
+					for k, v := range presItem.Cues {
+						playItem.Cues[k] = v
+					}
+					break
+				} else if err == nil && r.MatchString(playItem.Visual.Name()) {
 					for k, v := range presItem.Cues {
 						playItem.Cues[k] = v
 					}
