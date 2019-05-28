@@ -9,3 +9,4 @@ launch.json
 debug
 node_modules
 config.json
+.vscode
