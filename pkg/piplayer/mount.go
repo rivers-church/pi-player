@@ -80,9 +80,10 @@ func (m *mount) mount() error {
 		return nil
 	}
 
-	if err := m.unmount(); err != nil {
-		log.Printf("Error trying to unmount share (%s):\n%v\n", m.URL, err)
-	}
+	// TODO: handle unmounting properly outside of this method.
+	// if err := m.unmount(); err != nil {
+	// 	log.Printf("Error trying to unmount share (%s):\n%v\n", m.URL, err)
+	// }
 
 	cmd := exec.Command("gio", "mount", m.URL.String())
 	p, err := cmd.StdinPipe()

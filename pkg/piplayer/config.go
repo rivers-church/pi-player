@@ -71,6 +71,7 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 					"audioOutput": conf.AudioOutput,
 					"debug":       conf.Debug,
 					"username":    conf.Login.Username,
+					"mount":       conf.Mount,
 				},
 			}
 			tempControl.ServeHTTP(w, r)
@@ -98,29 +99,6 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 			log.Printf("Received settings post: location: %s\n", location)
 		}
 
-		if mountURL != "" && mountURL != conf.Mount.URL.String() {
-			u, err := url.Parse(mountURL)
-			var su sURL
-			if err != nil {
-				log.Printf("Error parsing URL (%s)\n%v\n", mountURL, err)
-			} else {
-				su.URL = u
-				newMount := mount{
-					URL:      su,
-					Username: mountUsername,
-					Domain:   mountDomain,
-					Password: mountPassword,
-				}
-
-				if err := newMount.mount(); err != nil {
-					log.Println("error mounting new folder location")
-				} else {
-					conf.Mount = newMount
-				}
-			}
-			restart(p)
-		}
-
 		if location != "" {
 			conf.Location = location
 		}
@@ -137,6 +115,29 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 				conf.Login.Username = username
 				conf.Login.Password = password
 			}
+		}
+
+		if mountURL != "" && mountURL != conf.Mount.URL.String() {
+			u, err := url.Parse(mountURL)
+			var su sURL
+			if err != nil {
+				log.Printf("Error parsing URL (%s)\n%v\n", mountURL, err)
+			} else {
+				su.URL = u
+				newMount := mount{
+					URL:      su,
+					Username: mountUsername,
+					Domain:   mountDomain,
+					Password: mountPassword,
+				}
+
+				if err := newMount.mount(); err != nil {
+					log.Println("SettingsHandler: Error mounting new folder location:\n", err)
+				} else {
+					conf.Mount = newMount
+				}
+			}
+			restart(p)
 		}
 
 		conf.Debug = debug == "on"
