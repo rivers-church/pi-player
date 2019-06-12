@@ -84,7 +84,7 @@ func NewPlayer(api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *P
 		keylogger:   keylogger,
 		ConnViewer:  ConnectionWS{},
 		ConnControl: ConnectionWS{},
-		playlist:    &Playlist{Name: conf.Directory},
+		playlist:    &Playlist{Name: conf.Mount.URL.String()},
 		// TODO: Make this a config setting.
 		streamer: &Chrome{
 			ConnViewer:  ConnectionWS{},
@@ -312,10 +312,10 @@ func (p *Player) ServeHTTP(w http.ResponseWriter, h *http.Request) {
 
 // HandleTest susan
 func (p *Player) HandleTest(w http.ResponseWriter, r *http.Request) {
-	err := p.playlist.fromFolder(p, p.conf.Directory)
+	err := p.playlist.fromFolder(p, p.conf.Mount.Dir)
 
 	if err != nil {
-		log.Println("Error tring to read files from directory: ", err)
+		log.Println("HandleTest: Error trying to read files from directory:\n", err)
 		t := template.Must(template.ParseFiles("pkg/piplayer/templates/error.html"))
 		err := t.Execute(w, err)
 		if err != nil {
@@ -327,10 +327,10 @@ func (p *Player) HandleTest(w http.ResponseWriter, r *http.Request) {
 	tempTest := TemplateHandler{
 		filename: "test.html",
 		data: map[string]interface{}{
-			"location":  p.conf.Location,
-			"directory": p.conf.Directory,
-			"playlist":  p.playlist,
-			"error":     err,
+			"location": p.conf.Location,
+			"Mount":    p.conf.Mount.URL,
+			"playlist": p.playlist,
+			"error":    err,
 		},
 	}
 	tempTest.ServeHTTP(w, r)
@@ -349,10 +349,10 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = p.playlist.fromFolder(p, p.conf.Directory)
+	err = p.playlist.fromFolder(p, p.conf.Mount.Dir)
 
 	if err != nil {
-		log.Println("Error tring to read files from directory: ", err)
+		log.Println("HandleControl: Error trying to read files from directory:\n", err)
 		t := template.Must(template.ParseFiles("pkg/piplayer/templates/error.html"))
 		err := t.Execute(w, err)
 		if err != nil {
@@ -364,10 +364,10 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 	tempControl := TemplateHandler{
 		filename: "control.html",
 		data: map[string]interface{}{
-			"location":  p.conf.Location,
-			"directory": p.conf.Directory,
-			"playlist":  p.playlist,
-			"error":     err,
+			"location": p.conf.Location,
+			"Mount":    p.conf.Mount.URL,
+			"playlist": p.playlist,
+			"error":    err,
 		},
 	}
 
@@ -399,8 +399,8 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 // HandleViewer handles requests to the image viewer page
 // This handler has a dependency on Playlist.
 func (p *Player) HandleViewer(w http.ResponseWriter, r *http.Request) {
-	if err := p.playlist.fromFolder(p, p.conf.Directory); err != nil {
-		log.Println("Error tring to read files from directory: ", err)
+	if err := p.playlist.fromFolder(p, p.conf.Mount.Dir); err != nil {
+		log.Println("HandleViewer: Error trying to read files from directory:\n", err)
 		t := template.Must(template.ParseFiles("pkg/piPlayer/templates/error.html"))
 		err := t.Execute(w, err)
 		if err != nil {

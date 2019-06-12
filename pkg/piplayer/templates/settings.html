@@ -16,8 +16,14 @@
       <form action="/settings" method="POST" id="frmSettings">
         <label for="txtLocation">Location</label>
         <input type="text" id="txtLocation" name="location" value="{{.location}}">
-        <label for="txtDirectory">Directory</label>
-        <input type="text" id="txtDirectory" name="directory" value="{{.directory}}">
+        <label for="txtMountURL">Mount URL</label>
+        <input type="text" id="txtMountURL" name="mountURL" value="{{.mount.URL}}">
+        <label for="txtMountUsername">Mount Username</label>
+        <input type="text" id="txtMountUsername" name="mountUsername" value="{{.mount.Username}}">
+        <label for="txtMountDomain">Mount Domain</label>
+        <input type="text" id="txtMountDomain" name="mountDomain" value="{{.mount.Domain}}">
+        <label for="txtMountPassword">Mount Password</label>
+        <input type="password" id="txtMountPassword" name="mountPassword" value="{{.mount.Password}}">
         <label for="txtUsername">Username</label>
         <input type="text" id="txtUsername" name="username" value="{{.username}}">
         <label for="txtPassword">Password</label>

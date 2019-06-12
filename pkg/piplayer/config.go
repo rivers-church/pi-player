@@ -5,12 +5,13 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 )
 
 // Config holds the configuration of the pi-player
 type Config struct {
 	Location    string
-	Directory   string
+	Mount       mount
 	AudioOutput string
 	Streamer    string
 	Debug       bool
@@ -65,8 +66,8 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 			tempControl := TemplateHandler{
 				filename: "settings.html",
 				data: map[string]interface{}{
-					"location":    conf.Location,
-					"directory":   conf.Directory,
+					"location": conf.Location,
+					// "directory":   conf.Directory,
 					"audioOutput": conf.AudioOutput,
 					"debug":       conf.Debug,
 					"username":    conf.Login.Username,
@@ -84,19 +85,39 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 			log.Println("Error trying to parse form in settings page.\n", err)
 		}
 		location := r.PostFormValue("location")
-		directory := r.PostFormValue("directory")
+		mountURL := r.PostFormValue("mountURL")
+		mountUsername := r.PostFormValue("mountUsername")
+		mountDomain := r.PostFormValue("mountDomain")
+		mountPassword := r.PostFormValue("mountPassword")
 		audioOutput := r.PostFormValue("audioOutput")
 		username := r.PostFormValue("username")
 		password := r.PostFormValue("password")
 		debug := r.PostFormValue("debug")
 
 		if conf.Debug {
-			log.Printf("Received settings post: location: %s, directory: %s\n", location, directory)
+			log.Printf("Received settings post: location: %s\n", location)
 		}
 
-		if directory != "" && conf.Directory != directory {
-			conf.Directory = directory
-			// Restart the server.
+		if mountURL != "" && mountURL != conf.Mount.URL.String() {
+			u, err := url.Parse(mountURL)
+			var su sURL
+			if err != nil {
+				log.Printf("Error parsing URL (%s)\n%v\n", mountURL, err)
+			} else {
+				su.URL = u
+				newMount := mount{
+					URL:      su,
+					Username: mountUsername,
+					Domain:   mountDomain,
+					Password: mountPassword,
+				}
+
+				if err := newMount.mount(); err != nil {
+					log.Println("error mounting new folder location")
+				} else {
+					conf.Mount = newMount
+				}
+			}
 			restart(p)
 		}
 

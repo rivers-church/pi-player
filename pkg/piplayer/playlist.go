@@ -3,6 +3,7 @@ package piplayer
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -109,15 +110,18 @@ func (p *Playlist) handleAPI(plr *Player, w http.ResponseWriter, h *http.Request
 	json.NewEncoder(w).Encode(m)
 }
 
-func (p *Playlist) fromFolder(plr *Player, folderPath string) error {
+func (p *Playlist) fromFolder(plr *Player, dir string) error {
 	// Remove all items from the current playlist if there are any.
 	p.Items = []Item{}
-	p.Name = folderPath
+	p.Name = dir
 
 	// Read files from a certain folder into a playlist.
-	files, err := ioutil.ReadDir(folderPath)
+	if !exists(dir) {
+		return fmt.Errorf("fromFOlder: Can't read files from directory '%s' because it does not exist", dir)
+	}
+	files, err := ioutil.ReadDir(dir)
 	if err != nil {
-		return errors.New("can't read folder for items: " + err.Error())
+		return errors.New("fromFolder: Can't read folder for items: " + err.Error())
 	}
 
 	// Filter out all files except for supported ones.
@@ -157,7 +161,7 @@ func (p *Playlist) fromFolder(plr *Player, folderPath string) error {
 	}
 
 	// look for presentation file for added cues.
-	file := path.Join(folderPath, "presentation.json")
+	file := path.Join(dir, "presentation.json")
 	if _, err := os.Stat(file); !os.IsNotExist(err) {
 		data, err := ioutil.ReadFile(file)
 		if err != nil {
