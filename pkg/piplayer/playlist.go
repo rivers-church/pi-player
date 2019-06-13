@@ -117,7 +117,7 @@ func (p *Playlist) fromFolder(plr *Player, dir string) error {
 
 	// Read files from a certain folder into a playlist.
 	if !exists(dir) {
-		return fmt.Errorf("fromFOlder: Can't read files from directory '%s' because it does not exist", dir)
+		return fmt.Errorf("fromFolder: Can't read files from directory '%s' because it does not exist", dir)
 	}
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {

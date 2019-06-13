@@ -31,6 +31,10 @@
       </div>
     </div>
     <div>
+      <a href="/settings">Settings</a>
+      <a href="/logout">Log out</a>
+    </div>
+    <div>
       <h2>Playlist</h2>
       <table id="tblPlaylist">
         {{- range $i, $e := .playlist.Items}}
@@ -48,10 +52,6 @@
           </tr>
         {{- end}}
       </table>
-    </div>
-    <div>
-      <a href="/settings">Settings</a>
-      <a href="/logout">Log out</a>
     </div>
   </div>
   <template id="tmpItemRow">

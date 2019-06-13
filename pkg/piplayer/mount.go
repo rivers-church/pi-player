@@ -28,7 +28,11 @@ type mount struct {
 }
 
 func (u sURL) MarshalJSON() ([]byte, error) {
-	return json.Marshal(u.URL.String())
+	un, err := url.PathUnescape(u.URL.String())
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(un)
 }
 
 func (u *sURL) UnmarshalJSON(data []byte) error {
@@ -46,6 +50,7 @@ func (u *sURL) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// mounted checks if the mountpoint defined is mounted.
 func (m *mount) mounted() bool {
 	var share string
 	i := strings.Index(m.URL.Path[1:], "/")
@@ -60,6 +65,7 @@ func (m *mount) mounted() bool {
 	return exists(mnt)
 }
 
+// exists checks if a directory exists.
 func exists(path string) bool {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return false
@@ -67,6 +73,7 @@ func exists(path string) bool {
 	return true
 }
 
+// unmount a gvfs drive using the `gio`command.
 func (m *mount) unmount() error {
 	cmd := exec.Command("gio", "mount", "-u", m.URL.String())
 	if err := cmd.Run(); err != nil {
@@ -75,15 +82,11 @@ func (m *mount) unmount() error {
 	return nil
 }
 
+// mount a network drive in gvfs using the `gio` command.
 func (m *mount) mount() error {
 	if m.mounted() {
 		return nil
 	}
-
-	// TODO: handle unmounting properly outside of this method.
-	// if err := m.unmount(); err != nil {
-	// 	log.Printf("Error trying to unmount share (%s):\n%v\n", m.URL, err)
-	// }
 
 	cmd := exec.Command("gio", "mount", m.URL.String())
 	p, err := cmd.StdinPipe()
@@ -103,8 +106,6 @@ func (m *mount) mount() error {
 	}
 
 	cmd.Wait()
-
-	// TODO: unmount previous mount
 
 	return nil
 }

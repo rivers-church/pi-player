@@ -401,7 +401,7 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 func (p *Player) HandleViewer(w http.ResponseWriter, r *http.Request) {
 	if err := p.playlist.fromFolder(p, p.conf.Mount.Dir); err != nil {
 		log.Println("HandleViewer: Error trying to read files from directory:\n", err)
-		t := template.Must(template.ParseFiles("pkg/piPlayer/templates/error.html"))
+		t := template.Must(template.ParseFiles("pkg/piplayer/templates/error.html"))
 		err := t.Execute(w, err)
 		if err != nil {
 			log.Println("Error trying to render error page. #fail.", err)
