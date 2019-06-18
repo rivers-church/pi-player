@@ -1,0 +1,22 @@
+[Unit]
+Description=Pi Player
+# network must be ready
+After=network.target
+
+[Service]
+Type=simple
+# if you've created a specific user or group, you can put them here.
+#User=piplayerservice
+#Group=piplayerservice
+LimitNOFILE=1024
+
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=60
+StartLimitInterval=60
+
+WorkingDirectory=/home/pi/dev/go/pi-player
+ExecStart=/home/pi/dev/go/pi-player/pi-player
+
+[Install]
+WantedBy=multi-user.target
