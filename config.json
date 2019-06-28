@@ -1,6 +1,11 @@
 {
   "Location": "Rename Me",
-  "Directory": ".",
+  "Mount": {
+    "URL": "smb://host/dir",
+    "Username": "username",
+    "Domain": "domain",
+    "Password": "password"
+  },
   "AudioOutput": "both",
   "Streamer": "",
   "Debug": false,
