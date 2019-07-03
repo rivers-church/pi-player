@@ -89,18 +89,21 @@ func (m *mount) mount() error {
 	}
 
 	cmd := exec.Command("gio", "mount", m.URL.String())
-	p, err := cmd.StdinPipe()
+	ip, err := cmd.StdinPipe()
 	if err != nil {
-		log.Println("error tring to get SdtinPipe for mount command")
+		log.Println("mount(): error trying to get StdinPipe for mount command")
 		return err
 	}
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
 	if err := cmd.Start(); err != nil {
-		log.Println("error trying to start mount command")
+		log.Println("mount(): error trying to start mount command")
 		return err
 	}
 
 	auth := m.Username + "\n" + m.Domain + "\n" + m.Password + "\n"
-	if _, err := p.Write([]byte(auth)); err != nil {
+	if _, err := ip.Write([]byte(auth)); err != nil {
 		log.Println("error authenticating mount")
 		return err
 	}
