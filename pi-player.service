@@ -5,14 +5,13 @@ After=network.target
 
 [Service]
 Type=simple
-# change to your user and group.
-User=user
-Group=user
+# if using custom user and group, define here.
+#User=user
+#Group=user
 LimitNOFILE=1024
 
 Restart=on-failure
 RestartSec=10
-StartLimitIntervalSec=60
 StartLimitInterval=60
 
 # change to your install directory.

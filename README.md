@@ -1,10 +1,6 @@
 # Pi-Player
 
-A simple remotely controlled video and image player for Raspberry Pi.
-
-## TODO
-
-The setup guide below is overly complicated and probably has many faults. It will be simplified in the future.
+A simple remotely controlled video and image player for a linux based computer. Currently working on Ubuntu 19.04 and Raspbian.
 
 ## Raspberry Pi OS Setup
 
@@ -26,24 +22,28 @@ Wait for network connection on boot to allow the Pi to automatically mount a net
 `Localisation Options > A bunch of stuff here.`
 
 Install additional packages:\
-`sudo apt install vim snapd`
+`sudo apt install vim git snapd`
 Reboot to complete snapd installation
 `sudo reboot`
 
 Install Go language
 `sudo snap install go --classic`
 
+Install Chromium if not already installed. Note that Raspian comes with a different Chromium installation, so you might have to `sudo apt remove chromium-browser`
+`sudo snap install chromium`
+
 Get the pi-player project:
 `mkdir -p ~/Software`
 `cd ~/Software`
 `git clone https://github.com/17xande/pi-player`\
 
-Build Project bu running `make`.\
+Build Project by running `make`.\
 Setup the app to start on boot:\
 ```bash
-cp pi-player.service /lib/systemd/system/.
-sudo systemctl daemon-reload
-sudo systemctl enable pi-player
+mkdir -p ~/.config/systemd/user
+cp pi-player.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable pi-player
 ```
 
 Add the crrentuser to the video group so that they can play videos,
@@ -64,7 +64,7 @@ Access the server from a browset to make sure it's running properly. Use the fol
 `<device-ip-address>:8080/control`
 
 
-Reboot the Pi and make sure that the program still runs on boot correctly.
+Reboot the PC and make sure that the program still runs on boot correctly.
 
 TODO:
 GIO USB mount support
