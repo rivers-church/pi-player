@@ -22,7 +22,7 @@ Wait for network connection on boot to allow the Pi to automatically mount a net
 `Localisation Options > A bunch of stuff here.`
 
 Install additional packages:\
-`sudo apt install vim git snapd`
+`sudo apt install vim git snapd unclutter`
 Reboot to complete snapd installation
 `sudo reboot`
 
@@ -44,6 +44,13 @@ mkdir -p ~/.config/systemd/user
 cp pi-player.service ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user enable pi-player
+```
+
+Setup `unclutter` to start on boot:\
+```bash
+cp unclutter.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable unclutter
 ```
 
 Add the crrentuser to the video group so that they can play videos,
