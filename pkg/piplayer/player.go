@@ -222,10 +222,6 @@ func (p *Player) startBrowser() error {
 	}
 
 	p.browser.command = exec.Command(browser, flags...)
-	if p.api.test == "" {
-		p.browser.command.Env = []string{"DISPLAY=:0.0"}
-	}
-
 	p.browser.command.Stdin = os.Stdin
 	if p.api.debug {
 

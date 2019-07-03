@@ -88,10 +88,6 @@ func (c *Chrome) Open(file string, status chan string, test string, debug bool) 
 
 	flags = append(flags, viewerPage)
 	c.cmd = exec.Command(program, flags...)
-	if test != "" {
-		c.cmd.Env = []string{"DISPLAY=:0.0"}
-	}
-
 	c.cmd.Stdin = os.Stdin
 	c.cmd.Stderr = os.Stderr
 	if debug {
