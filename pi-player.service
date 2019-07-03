@@ -2,21 +2,24 @@
 Description=Pi Player
 # network must be ready
 After=network.target
+PartOf=graphical-session.target
 
 [Service]
 Type=simple
 # if using custom user and group, define here.
 #User=user
 #Group=user
-LimitNOFILE=1024
 
 Restart=on-failure
 RestartSec=10
 StartLimitInterval=60
 
+Environment="DISPLAY=:0"
 # change to your install directory.
 WorkingDirectory=/home/user/dev/go/pi-player
+ExecStartPre=/bin/sleep 15
 ExecStart=/home/user/dev/go/pi-player/pi-player
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
+WantedBy=graphical-session.target
