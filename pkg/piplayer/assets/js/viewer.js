@@ -29,9 +29,33 @@ class Viewer {
       return;
     }
   
-    // Ignore all keyboard input on the Pi browser.
     // document.addEventListener("keydown", e => {
-    //   e.preventDefault();
+    //   event.preventDefault();
+    //   // console.log(e);
+    // });
+
+    // navigator.mediaSession.setActionHandler('previoustrack', e => {
+    //   console.log('previoustrack', e);
+    // });
+
+    // navigator.mediaSession.setActionHandler('nexttrack', e => {
+    //   console.log('nexttrack', e);
+    // });
+
+    // navigator.mediaSession.setActionHandler('seekbackward', e => {
+    //   console.log('seekbackward', e);
+    // });
+
+    // navigator.mediaSession.setActionHandler('seekforward', e => {
+    //   console.log('seekforward', e);
+    // });
+
+    // navigator.mediaSession.setActionHandler('play', e => {
+    //   console.log('play', e);
+    // });
+
+    // navigator.mediaSession.setActionHandler('pause', e => {
+    //   console.log('pause', e);
     // });
   
     this.getItems().then(res => {
@@ -128,7 +152,8 @@ class Viewer {
         this.remoteContextMenuPress(e);
         break;
       case 'KEY_PLAYPAUSE':
-        this.playPause(e);
+      // disable this because the in-browser pause button is doing it's own thang
+//         this.playPause(e);
         break;
       case 'KEY_STOP':
         break;

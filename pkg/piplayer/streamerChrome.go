@@ -43,9 +43,9 @@ var defaultFlags = []string{
 		"--enable-native-gpu-memory-buffers",
 		"--enable-checker-imaging",
 		"--disable-quic",
-		"--enable-tcp-fast-open",
-		"--disable-gpu-compositing",
-		"--enable-fast-unload",
+		"--enable-tcp-fast-openhardware-media-key-handling
+		"--disable-gpu-composithardware-media-key-handling
+		"--enable-fast-unload",hardware-media-key-handling
 		"--enable-experimental-canvas-features",
 		"--enable-scroll-prediction",
 		"--enable-simple-cache-backend",
