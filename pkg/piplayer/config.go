@@ -64,7 +64,7 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 		if r.Method == "GET" {
 			mu, err := url.PathUnescape(conf.Mount.URL.String())
 			if err != nil {
-				log.Println("SettingsHandler: Error unescaping URL '%s'\n", conf.Mount.URL)
+				log.Printf("SettingsHandler: Error unescaping URL '%s'\n", conf.Mount.URL)
 			}
 			tempControl := TemplateHandler{
 				filename: "settings.html",

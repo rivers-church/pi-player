@@ -1,5 +1,5 @@
-github.com/17xande/keylogger v0.0.0-20190704082832-6890ef0fe3cf h1:avHe5paBFDWRjoihVOXwLMyXjgAzw/g8zNatCs3y8lE=
-github.com/17xande/keylogger v0.0.0-20190704082832-6890ef0fe3cf/go.mod h1:20xSX/RcAa/0qIEyd31Dstq83e+yNrGyZtzwrOZvcy4=
+github.com/17xande/keylogger v0.0.3 h1:ssxmrQVvWCQcW1KK82uOZZsYJSHzjQCq8bp0hiWDC0E=
+github.com/17xande/keylogger v0.0.3/go.mod h1:aURaiYC8mUUeKWg0ZZgX3lzmeMbW7COYnCJnnLb+q48=
 github.com/gorilla/context v1.1.1 h1:AWwleXJkX/nhcU9bZSnZoi3h/qGYqQAGhq6zZe/aQW8=
 github.com/gorilla/context v1.1.1/go.mod h1:kBGZzfjB9CEq2AlWe17Uuf7NDRt0dE0s8S51q0aT7Yg=
 github.com/gorilla/securecookie v1.1.1 h1:miw7JPhV+b/lAHSXz4qd/nN9jRiAFV5FwjeKyCS8BvQ=
