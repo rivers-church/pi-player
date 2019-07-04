@@ -29,10 +29,10 @@ class Viewer {
       return;
     }
   
-    // document.addEventListener("keydown", e => {
-    //   event.preventDefault();
-    //   // console.log(e);
-    // });
+    document.addEventListener("keydown", e => {
+      event.preventDefault();
+      // console.log(e);
+    });
 
     // navigator.mediaSession.setActionHandler('previoustrack', e => {
     //   console.log('previoustrack', e);
@@ -152,8 +152,7 @@ class Viewer {
         this.remoteContextMenuPress(e);
         break;
       case 'KEY_PLAYPAUSE':
-      // disable this because the in-browser pause button is doing it's own thang
-//         this.playPause(e);
+        this.playPause(e);
         break;
       case 'KEY_STOP':
         break;
