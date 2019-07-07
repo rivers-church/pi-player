@@ -16,9 +16,9 @@ StartLimitInterval=60
 
 Environment="DISPLAY=:0"
 # change to your install directory.
-WorkingDirectory=/home/user/dev/go/pi-player
+WorkingDirectory=/home/sandtonvisuals/Software/pi-player
 ExecStartPre=/bin/sleep 15
-ExecStart=/home/user/dev/go/pi-player/pi-player
+ExecStart=/home/sandtonvisuals/Software/pi-player/pi-player
 
 [Install]
 WantedBy=default.target
