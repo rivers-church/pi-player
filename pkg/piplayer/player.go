@@ -84,12 +84,18 @@ func NewPlayer(api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *P
 		keylogger:   keylogger,
 		ConnViewer:  ConnectionWS{},
 		ConnControl: ConnectionWS{},
-		playlist:    &Playlist{Name: conf.Mount.URL.String()},
 		// TODO: Make this a config setting.
 		streamer: &Chrome{
 			ConnViewer:  ConnectionWS{},
 			ConnControl: ConnectionWS{},
 		},
+	}
+
+	var err error
+	p.playlist, err = NewPlaylist(&p, conf.Mount.Dir)
+	if err != nil {
+		log.Printf("error trying to create playlist. Bailing out:\n%s\n", err)
+		return nil
 	}
 
 	if api.debug {
@@ -304,32 +310,6 @@ func (p *Player) ServeHTTP(w http.ResponseWriter, h *http.Request) {
 	m := &resMessage{Success: true, Event: "StartRequestSent", Message: index}
 	json.NewEncoder(w).Encode(m)
 	return
-}
-
-// HandleTest susan
-func (p *Player) HandleTest(w http.ResponseWriter, r *http.Request) {
-	err := p.playlist.fromFolder(p, p.conf.Mount.Dir)
-
-	if err != nil {
-		log.Println("HandleTest: Error trying to read files from directory:\n", err)
-		t := template.Must(template.ParseFiles("pkg/piplayer/templates/error.html"))
-		err := t.Execute(w, err)
-		if err != nil {
-			log.Println("Error trying to render error page. #fail.", err)
-		}
-		return
-	}
-
-	tempTest := TemplateHandler{
-		filename: "test.html",
-		data: map[string]interface{}{
-			"location": p.conf.Location,
-			"Mount":    p.conf.Mount.URL,
-			"playlist": p.playlist,
-			"error":    err,
-		},
-	}
-	tempTest.ServeHTTP(w, r)
 }
 
 // HandleControl Scan the folder for new files every time the page reloads and display contents

@@ -50,6 +50,10 @@ func (u *sURL) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+func (m *mount) loadDir() {
+	m.Dir = fmt.Sprintf(gvfsStr, sharesDir, m.URL.Host, m.URL.Path[1:])
+}
+
 // mounted checks if the mountpoint defined is mounted.
 func (m *mount) mounted() bool {
 	var share string
@@ -61,7 +65,6 @@ func (m *mount) mounted() bool {
 	}
 
 	mnt := fmt.Sprintf(gvfsStr, sharesDir, m.URL.Host, share)
-	m.Dir = fmt.Sprintf(gvfsStr, sharesDir, m.URL.Host, m.URL.Path[1:])
 	return exists(mnt)
 }
 

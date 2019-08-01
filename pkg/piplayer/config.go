@@ -30,7 +30,13 @@ func (conf *Config) Load(path string) error {
 		return err
 	}
 
-	return json.Unmarshal(data, &conf)
+	err = json.Unmarshal(data, &conf)
+	if err != nil {
+		return err
+	}
+	conf.Mount.loadDir()
+
+	return nil
 }
 
 // Save reads the config struct, marshalls it and writes it to the config file

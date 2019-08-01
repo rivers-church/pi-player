@@ -11,6 +11,8 @@ import (
 	"path"
 	"regexp"
 	"strconv"
+
+	"github.com/fsnotify/fsnotify"
 )
 
 // Playlist stores the media items that can be played.
@@ -18,6 +20,7 @@ type Playlist struct {
 	Name    string
 	Items   []Item
 	Current *Item
+	watcher *fsnotify.Watcher
 }
 
 // Presentation is used to read the presentation.json file for added cues.
@@ -26,10 +29,20 @@ type Presentation struct {
 }
 
 // NewPlaylist creates a new playlist with media in the designated folder.
-func NewPlaylist(p *Player, dir string) (Playlist, error) {
+func NewPlaylist(p *Player, dir string) (*Playlist, error) {
 	pl := Playlist{Name: dir}
-	err := pl.fromFolder(p, dir)
-	return pl, err
+
+	var err error
+	pl.watcher, err = fsnotify.NewWatcher()
+	if err != nil {
+		return &pl, err
+	}
+	go pl.watch(p)
+	if p.conf.Debug {
+		log.Println("staring directory watcher for dir:", dir)
+	}
+	err = pl.watcher.Add(dir)
+	return &pl, err
 }
 
 // Handles requests to the playlist api
@@ -197,6 +210,37 @@ func (p *Playlist) fromFolder(plr *Player, dir string) error {
 	}
 
 	return nil
+}
+
+// watch for changes in the supplied directory
+func (p *Playlist) watch(plr *Player) {
+	defer p.watcher.Close()
+	for {
+		select {
+		case event, ok := <-p.watcher.Events:
+			// This means a file changed in the folder.
+			if !ok {
+				log.Println("issue getting file change event. Stopping watcher.")
+				return
+			}
+			if plr.conf.Debug {
+				log.Println("file change event:", event)
+			}
+			// Send a message to the viewer to get new items.
+			msg := wsMessage{
+				Component: "playlist",
+				Event:     "newItems",
+				Message:   "detected file change. Get new items.",
+			}
+			plr.ConnViewer.send <- msg
+		case err, ok := <-p.watcher.Errors:
+			if !ok {
+				log.Println("issue getting file change error. Stopping watcher.")
+				return
+			}
+			log.Println("error:", err)
+		}
+	}
 }
 
 func (p *Playlist) getIndex(fileName string) int {
