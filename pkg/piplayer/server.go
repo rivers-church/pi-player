@@ -9,10 +9,6 @@ import (
 
 // NewServer returns a new http.Server for the piplayer interface.
 func NewServer(p *Player, addr string) *http.Server {
-	if err := p.conf.Mount.mount(); err != nil {
-		log.Println("NewServer: Error trying to mount folder:\n", err)
-	}
-
 	mux := setupRoutes(p.conf.Mount.Dir, p)
 	serv := http.Server{Addr: addr, Handler: mux}
 

@@ -156,9 +156,9 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 							log.Printf("Debug: Mount for '%s' successful. Unmounting old '%s' mount.\n", newMount.Dir, conf.Mount.Dir)
 						}
 						// if the new folder was mounted successfully, unmount old folder.
-						if err := conf.Mount.unmount(); err != nil {
-							log.Printf("SettingsHandler: Error unmounting old directory:\n%s\n", err)
-						}
+						// if err := conf.Mount.unmount(); err != nil {
+						// 	log.Printf("SettingsHandler: Error unmounting old directory:\n%s\n", err)
+						// }
 						conf.Mount = newMount
 						restart(p)
 					}

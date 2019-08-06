@@ -32,6 +32,10 @@ type Presentation struct {
 func NewPlaylist(p *Player, dir string) (*Playlist, error) {
 	pl := Playlist{Name: dir}
 
+	if err := p.conf.Mount.mount(); err != nil {
+		log.Println("NewServer: Error trying to mount folder:\n", err)
+	}
+
 	var err error
 	pl.watcher, err = fsnotify.NewWatcher()
 	if err != nil {
