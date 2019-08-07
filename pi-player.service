@@ -14,10 +14,10 @@ Restart=on-failure
 RestartSec=10
 StartLimitInterval=60
 
-Environment="DISPLAY=:0"
+Environment=DISPLAY=:0
+Enviromnent=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin
 # change to your install directory.
 WorkingDirectory=/home/sandtonvisuals/Software/pi-player
-ExecStartPre=/bin/sleep 15
 ExecStart=/home/sandtonvisuals/Software/pi-player/pi-player
 
 [Install]
