@@ -93,3 +93,9 @@ TODO:
 GIO USB mount support
 
 Restart the Pi again and make sure everything boots up and works as expected. A black screen should be displayed once the Pi has booted and you should have control from the webpage `<ip-address>:8080/control`
+
+## GUI Changes
+- Set Background to black.
+- Set Dock to small.
+- Set Dock to autohide.
+- Hide Desktop icons.
