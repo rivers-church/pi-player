@@ -23,7 +23,17 @@ var upgrader = &websocket.Upgrader{
 }
 
 // ConnectionWS represents a WebSocket connection.
-type ConnectionWS struct {
+type ConnectionWS interface {
+	HandlerWebsocket(*Player) http.HandlerFunc
+	read()
+	write()
+	getChanSend() chan wsMessage
+	getChanReceive() chan wsMessage
+	isActive() bool
+}
+
+// connWS represents a WebSocket connection.
+type connWS struct {
 	conn    *websocket.Conn
 	send    chan wsMessage
 	receive chan wsMessage
@@ -40,8 +50,25 @@ type ConnectionWS struct {
 // 	return conn
 // }
 
+// NewConnWS returns a new websocket connection struct.
+func NewConnWS() ConnectionWS {
+	return &connWS{}
+}
+
+func (c *connWS) getChanSend() chan wsMessage {
+	return c.send
+}
+
+func (c *connWS) getChanReceive() chan wsMessage {
+	return c.receive
+}
+
+func (c *connWS) isActive() bool {
+	return c.active
+}
+
 // HandlerWebsocket handles websocket connections for the browser viewer and controller.
-func (c *ConnectionWS) HandlerWebsocket(p *Player) http.HandlerFunc {
+func (c *connWS) HandlerWebsocket(p *Player) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// If connection is already active, then close it gracefully, and create a new one.
 		if c.active {
@@ -83,7 +110,7 @@ func (c *ConnectionWS) HandlerWebsocket(p *Player) http.HandlerFunc {
 }
 
 // write sends data to the websocket.
-func (c *ConnectionWS) write() {
+func (c *connWS) write() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
@@ -124,7 +151,7 @@ func (c *ConnectionWS) write() {
 }
 
 // read reads the messages from the socket.
-func (c *ConnectionWS) read() {
+func (c *connWS) read() {
 	defer c.conn.Close()
 
 	c.conn.SetReadLimit(maxMessageSize)

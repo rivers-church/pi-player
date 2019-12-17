@@ -32,8 +32,8 @@ func NewStreamer(name string, audioOutput string) (s Streamer, err error) {
 	switch name {
 	case "chrome":
 		s = &Chrome{
-			ConnViewer:  ConnectionWS{},
-			ConnControl: ConnectionWS{},
+			ConnViewer:  &connWS{},
+			ConnControl: &connWS{},
 		}
 	case "omx":
 		s = &OMXPlayer{

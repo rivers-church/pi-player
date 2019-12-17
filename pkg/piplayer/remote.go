@@ -21,6 +21,8 @@ func remoteRead(p *Player, cie chan keylogger.InputEvent) {
 		log.Println("starting remote read for this device")
 	}
 
+	send := p.ConnViewer.getChanSend()
+
 	for {
 		ie = <-cie
 		// ignore events that are not EV_KEY events that are KEY_DOWN presses
@@ -40,6 +42,6 @@ func remoteRead(p *Player, cie chan keylogger.InputEvent) {
 			Arguments: map[string]string{"keyString": key},
 			Event:     "keyDown",
 		}
-		p.ConnViewer.send <- msg
+		send <- msg
 	}
 }

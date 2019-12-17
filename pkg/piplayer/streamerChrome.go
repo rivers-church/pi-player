@@ -128,9 +128,10 @@ func (c *Chrome) Play() error {
 	}
 
 	// TODO: create convenience method that sends and waits?
-	c.ConnViewer.send <- msg
+	send := c.ConnViewer.getChanSend()
+	send <- msg
 	// Wait for response
-	res := <-c.ConnViewer.receive
+	res := <-c.ConnViewer.getChanReceive()
 	return handleRes(res)
 }
 
@@ -141,8 +142,9 @@ func (c *Chrome) Pause() error {
 		Method:    "pause",
 	}
 
-	c.ConnViewer.send <- msg
-	res := <-c.ConnViewer.receive
+	send := c.ConnViewer.getChanSend()
+	send <- msg
+	res := <-c.ConnViewer.getChanReceive()
 	return handleRes(res)
 }
 
@@ -156,8 +158,9 @@ func (c *Chrome) PlaybackRate(rate int) error {
 		},
 	}
 
-	c.ConnViewer.send <- msg
-	res := <-c.ConnViewer.receive
+	send := c.ConnViewer.getChanSend()
+	send <- msg
+	res := <-c.ConnViewer.getChanReceive()
 	return handleRes(res)
 }
 
@@ -171,8 +174,9 @@ func (c *Chrome) Seek(seconds int) error {
 		},
 	}
 
-	c.ConnViewer.send <- msg
-	res := <-c.ConnViewer.receive
+	send := c.ConnViewer.getChanSend()
+	send <- msg
+	res := <-c.ConnViewer.getChanReceive()
 	return handleRes(res)
 }
 
@@ -186,8 +190,9 @@ func (c *Chrome) Chapter(chp int) error {
 		},
 	}
 
-	c.ConnViewer.send <- msg
-	res := <-c.ConnViewer.receive
+	send := c.ConnViewer.getChanSend()
+	send <- msg
+	res := <-c.ConnViewer.getChanReceive()
 	return handleRes(res)
 }
 
@@ -201,8 +206,9 @@ func (c *Chrome) Volume(v int) error {
 		},
 	}
 
-	c.ConnViewer.send <- msg
-	res := <-c.ConnViewer.receive
+	send := c.ConnViewer.getChanSend()
+	send <- msg
+	res := <-c.ConnViewer.getChanReceive()
 	return handleRes(res)
 }
 
@@ -216,8 +222,9 @@ func (c *Chrome) AudioStream(a int) error {
 		},
 	}
 
-	c.ConnViewer.send <- msg
-	res := <-c.ConnViewer.receive
+	send := c.ConnViewer.getChanSend()
+	send <- msg
+	res := <-c.ConnViewer.getChanReceive()
 	return handleRes(res)
 }
 
@@ -231,8 +238,9 @@ func (c *Chrome) SubtitleStream(s int) error {
 		},
 	}
 
-	c.ConnViewer.send <- msg
-	res := <-c.ConnViewer.receive
+	send := c.ConnViewer.getChanSend()
+	send <- msg
+	res := <-c.ConnViewer.getChanReceive()
 	return handleRes(res)
 }
 

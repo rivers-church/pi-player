@@ -82,12 +82,12 @@ func NewPlayer(api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *P
 		api:         api,
 		conf:        conf,
 		keylogger:   keylogger,
-		ConnViewer:  ConnectionWS{},
-		ConnControl: ConnectionWS{},
+		ConnViewer:  &connWS{},
+		ConnControl: &connWS{},
 		// TODO: Make this a config setting.
 		streamer: &Chrome{
-			ConnViewer:  ConnectionWS{},
-			ConnControl: ConnectionWS{},
+			ConnViewer:  &connWS{},
+			ConnControl: &connWS{},
 		},
 	}
 
@@ -155,7 +155,8 @@ func (p *Player) Start(w *http.ResponseWriter) {
 		Success: true,
 	}
 
-	p.ConnViewer.send <- res
+	send := p.ConnViewer.getChanSend()
+	send <- res
 
 	m := &resMessage{Success: true, Event: "StartRequestSent", Message: p.playlist.Current.Name()}
 	json.NewEncoder(*w).Encode(m)
@@ -305,7 +306,8 @@ func (p *Player) ServeHTTP(w http.ResponseWriter, h *http.Request) {
 		Success:   true,
 	}
 
-	p.ConnViewer.send <- res
+	send := p.ConnViewer.getChanSend()
+	send <- res
 
 	m := &resMessage{Success: true, Event: "StartRequestSent", Message: index}
 	json.NewEncoder(w).Encode(m)
@@ -365,7 +367,8 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 		Message:   "control page was refreshed. Get new items.",
 	}
 
-	p.ConnViewer.send <- msg
+	send := p.ConnViewer.getChanSend()
+	send <- msg
 	tempControl.ServeHTTP(w, r)
 }
 
@@ -405,9 +408,12 @@ func (p *Player) HandleWebSocketMessage() {
 	if p.api.debug {
 		log.Println("Listening to websocket messages from browser")
 	}
+
+	receive := p.ConnViewer.getChanReceive()
+
 	for {
 		select {
-		case msg, ok := <-p.ConnViewer.receive:
+		case msg, ok := <-receive:
 			if !ok {
 				log.Println("Error receiving websocket message from viewer")
 				return
@@ -416,7 +422,7 @@ func (p *Player) HandleWebSocketMessage() {
 			if p.api.debug {
 				log.Println("got a message from ConnectionWS", msg)
 			}
-		case msg, ok := <-p.ConnControl.receive:
+		case msg, ok := <-receive:
 			if !ok {
 				log.Println("Error receiving websocket message from Control")
 				return
