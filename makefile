@@ -14,8 +14,11 @@ for GOOS in darwin linux; do \
 done
 endef
 
+# Builds the application.
+.PHONY: build
 build:
-	go build
+	@echo "Building..."
+	@go build
 
 docker-cross-compile:
 	sudo docker run --rm -v "$$PWD":/usr/$(BINARY_NAME) -w /usr/$(BINARY_NAME) golang /bin/sh -c '$(CROSS_COMPILE_LOOP)'
