@@ -409,11 +409,12 @@ func (p *Player) HandleWebSocketMessage() {
 		log.Println("Listening to websocket messages from browser")
 	}
 
-	receive := p.ConnViewer.getChanReceive()
+	recViewer := p.ConnViewer.getChanReceive()
+	recControl := p.ConnControl.getChanReceive()
 
 	for {
 		select {
-		case msg, ok := <-receive:
+		case msg, ok := <-recViewer:
 			if !ok {
 				log.Println("Error receiving websocket message from viewer")
 				return
@@ -422,7 +423,7 @@ func (p *Player) HandleWebSocketMessage() {
 			if p.api.debug {
 				log.Println("got a message from ConnectionWS", msg)
 			}
-		case msg, ok := <-receive:
+		case msg, ok := <-recControl:
 			if !ok {
 				log.Println("Error receiving websocket message from Control")
 				return
