@@ -1,6 +1,7 @@
 package piplayer
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/17xande/keylogger"
@@ -31,6 +32,7 @@ func remoteRead(p *Player, cie chan keylogger.InputEvent) {
 		}
 
 		key := ie.KeyString()
+		fmt.Println(ie.Code, ie.Value, ie.Type)
 
 		if p.api.debug {
 			log.Println("Key:", key, directions[ie.Value])
@@ -44,4 +46,8 @@ func remoteRead(p *Player, cie chan keylogger.InputEvent) {
 		}
 		send <- msg
 	}
+}
+
+func (p *Player) handleRemote(e keylogger.InputEvent) {
+
 }

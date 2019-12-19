@@ -24,7 +24,7 @@ var upgrader = &websocket.Upgrader{
 
 // ConnectionWS represents a WebSocket connection.
 type ConnectionWS interface {
-	HandlerWebsocket(*Player) http.HandlerFunc
+	HandlerWebsocket(p *Player) http.HandlerFunc
 	read()
 	write()
 	getChanSend() chan wsMessage
@@ -52,6 +52,8 @@ type connWS struct {
 
 // NewConnWS returns a new websocket connection struct.
 func NewConnWS() ConnectionWS {
+	// NOTE: interfaces are always pointers...
+	// So I have to return a pointer here.
 	return &connWS{}
 }
 
