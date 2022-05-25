@@ -140,15 +140,18 @@ class Viewer {
         this.remoteArrowPress(e, msg);
         break;
       case 'KEY_LEFT':
+      case 'KEY_PAGEUP':
         this.previous(e);
         break;
       case 'KEY_RIGHT':
+      case 'KEY_PAGEDOWN':
         this.next(e);
         break;
       case 'KEY_ENTER':
         this.remoteEnterPress(e);
         break;
       case 'KEY_CONTEXT_MENU':
+      case 'KEY_DOT':
         this.remoteContextMenuPress(e);
         break;
       case 'KEY_PLAYPAUSE':
