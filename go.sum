@@ -1,5 +1,5 @@
-github.com/17xande/keylogger v0.0.4 h1:plhYdZPmkVy88DwMYS2rqfk8VsRx5jE2dKvZ08Ods7o=
-github.com/17xande/keylogger v0.0.4/go.mod h1:pkp8kCetS2JtMk5GmXvfLIQTmXmtTiphd/9v/63nHWk=
+github.com/17xande/keylogger v0.0.6 h1:mSJZY+0Ag2NY04VYXJiUnxFqXcDOIx/yr9KIoHWOZyM=
+github.com/17xande/keylogger v0.0.6/go.mod h1:LbdFIus1lk9gco+5Zw8oa71nWBUTojip5bQG1uJF6G8=
 github.com/fsnotify/fsnotify v1.5.4 h1:jRbGcIw6P2Meqdwuo0H1p6JVLbL5DHKAKlYndzMwVZI=
 github.com/fsnotify/fsnotify v1.5.4/go.mod h1:OVB6XrOHzAwXMpEM7uPOzcehqUV2UqJxmVXmkdnm1bU=
 github.com/gorilla/securecookie v1.1.1 h1:miw7JPhV+b/lAHSXz4qd/nN9jRiAFV5FwjeKyCS8BvQ=
