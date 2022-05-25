@@ -53,7 +53,7 @@ func (u *sURL) UnmarshalJSON(data []byte) error {
 }
 
 func (m *mount) loadDir() {
-	if runtime.GOOS != "unix" {
+	if runtime.GOOS != "linux" {
 		m.Dir = m.URL.Path
 		return
 	}
@@ -84,8 +84,8 @@ func exists(path string) bool {
 
 // unmount a gvfs drive using the `gio`command.
 func (m *mount) unmount() error {
-	if runtime.GOOS != "unix" {
-		return errors.New("can't unmount on non-unix environment in this build")
+	if runtime.GOOS != "linux" {
+		return errors.New("can't unmount on non-linux environment in this build")
 	}
 	cmd := exec.Command("gio", "mount", "-u", m.URL.String())
 	if err := cmd.Run(); err != nil {
@@ -100,8 +100,8 @@ func (m *mount) mount() error {
 		return nil
 	}
 
-	if runtime.GOOS != "unix" {
-		return errors.New("can't mount on non-unix environment in this build")
+	if runtime.GOOS != "linux" {
+		return errors.New("can't mount on non-linux environment in this build")
 	}
 
 	cmd := exec.Command("gio", "mount", m.URL.String())
