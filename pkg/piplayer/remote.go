@@ -45,9 +45,10 @@ func remoteRead(p *Player, cie chan keylogger.InputEvent) {
 			Event:     "keyDown",
 		}
 		send <- msg
+		log.Println("Message sent")
 	}
 }
 
-func (p *Player) handleRemote(e keylogger.InputEvent) {
+// func (p *Player) handleRemote(e keylogger.InputEvent) {
 
-}
+// }

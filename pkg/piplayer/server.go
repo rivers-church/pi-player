@@ -57,7 +57,7 @@ func handlerHome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != "GET" {
-		http.Error(w, "Method not allowed", 405)
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		log.Printf("Method not allowed: %s", r.URL)
 		return
 	}

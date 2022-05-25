@@ -83,16 +83,16 @@ func exists(path string) bool {
 }
 
 // unmount a gvfs drive using the `gio`command.
-func (m *mount) unmount() error {
-	if runtime.GOOS != "linux" {
-		return errors.New("can't unmount on non-linux environment in this build")
-	}
-	cmd := exec.Command("gio", "mount", "-u", m.URL.String())
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-	return nil
-}
+// func (m *mount) unmount() error {
+// 	if runtime.GOOS != "linux" {
+// 		return errors.New("can't unmount on non-linux environment in this build")
+// 	}
+// 	cmd := exec.Command("gio", "mount", "-u", m.URL.String())
+// 	if err := cmd.Run(); err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }
 
 // mount a network drive in gvfs using the `gio` command.
 func (m *mount) mount() error {

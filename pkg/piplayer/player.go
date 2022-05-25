@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"html/template"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -30,24 +29,24 @@ type Player struct {
 	ConnViewer  ConnectionWS
 	ConnControl ConnectionWS
 	Server      *http.Server
-	serveMux    *http.ServeMux
-	api         *APIHandler
-	command     *exec.Cmd
-	pipeIn      io.WriteCloser
-	playlist    *Playlist
-	conf        *Config
-	running     bool
-	quitting    bool
-	status      int
-	quit        chan error
-	browser     Browser
-	keylogger   *keylogger.KeyLogger
-	streamer    Streamer
+	// serveMux    *http.ServeMux
+	api *APIHandler
+	// command     *exec.Cmd
+	// pipeIn      io.WriteCloser
+	playlist *Playlist
+	conf     *Config
+	// running     bool
+	// quitting    bool
+	// status      int
+	// quit        chan error
+	browser   Browser
+	keylogger *keylogger.KeyLogger
+	streamer  Streamer
 }
 
 const (
-	statusMenu = 1
-	statusLive = 0
+// statusMenu = 1
+// statusLive = 0
 )
 
 // Browser represents the chromium process that is used to display web pages and still images to the screen
@@ -58,23 +57,23 @@ type Browser struct {
 	cancel  *context.CancelFunc
 }
 
-var commandList = map[string]string{
-	"speedIncrease":   "1",
-	"speedDecrease":   "2",
-	"rewind":          "<",
-	"fastForward":     ">",
-	"chapterPrevious": "i",
-	"chapterNext":     "o",
-	"exit":            "q",
-	"quit":            "q",
-	"pauseResume":     "p",
-	"volumeDecrease":  "-",
-	"volumeIncrease":  "+",
-	"seekBack30":      "\x1b[D",
-	"seekForward30":   "\x1b[C",
-	"seekBack600":     "\x1b[B",
-	"seekForward600":  "\x1b[A",
-}
+// var commandList = map[string]string{
+// 	"speedIncrease":   "1",
+// 	"speedDecrease":   "2",
+// 	"rewind":          "<",
+// 	"fastForward":     ">",
+// 	"chapterPrevious": "i",
+// 	"chapterNext":     "o",
+// 	"exit":            "q",
+// 	"quit":            "q",
+// 	"pauseResume":     "p",
+// 	"volumeDecrease":  "-",
+// 	"volumeIncrease":  "+",
+// 	"seekBack30":      "\x1b[D",
+// 	"seekForward30":   "\x1b[C",
+// 	"seekBack600":     "\x1b[B",
+// 	"seekForward600":  "\x1b[A",
+// }
 
 // NewPlayer creates a new Player server *http.Server, router *mux.Router
 func NewPlayer(api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *Player {
@@ -82,8 +81,8 @@ func NewPlayer(api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *P
 		api:         api,
 		conf:        conf,
 		keylogger:   keylogger,
-		ConnViewer:  &connWS{},
-		ConnControl: &connWS{},
+		ConnViewer:  NewConnWS(),
+		ConnControl: NewConnWS(),
 		// TODO: Make this a config setting.
 		streamer: &Chrome{
 			ConnViewer:  &connWS{},
@@ -160,13 +159,12 @@ func (p *Player) Start(w *http.ResponseWriter) {
 
 	m := &resMessage{Success: true, Event: "StartRequestSent", Message: p.playlist.Current.Name()}
 	json.NewEncoder(*w).Encode(m)
-	return
 }
 
 // startBrowser starts Chromium browser, or Google Chrome with the relevant flags.
 func (p *Player) startBrowser() error {
 	if p.browser.running {
-		return errors.New("Error: Browser already running, cannot start another instance")
+		return errors.New("error: Browser already running, cannot start another instance")
 	}
 
 	flags := []string{
@@ -275,7 +273,6 @@ func handleAPIError(w *http.ResponseWriter, message string) {
 // Listen should listen to something, I forgot what
 func (p *Player) Listen(s chan string) {
 	// TODO: everything
-	return
 }
 
 // Handles requets to the player api
@@ -311,7 +308,6 @@ func (p *Player) ServeHTTP(w http.ResponseWriter, h *http.Request) {
 
 	m := &resMessage{Success: true, Event: "StartRequestSent", Message: index}
 	json.NewEncoder(w).Encode(m)
-	return
 }
 
 // HandleControl Scan the folder for new files every time the page reloads and display contents

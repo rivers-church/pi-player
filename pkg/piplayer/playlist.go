@@ -251,47 +251,47 @@ func (p *Playlist) watch(plr *Player) {
 	}
 }
 
-func (p *Playlist) getIndex(fileName string) int {
-	for i, item := range p.Items {
-		if item.Name() == fileName {
-			return i
-		}
-	}
+// func (p *Playlist) getIndex(fileName string) int {
+// 	for i, item := range p.Items {
+// 		if item.Name() == fileName {
+// 			return i
+// 		}
+// 	}
 
-	return -1
-}
+// 	return -1
+// }
 
-func (p *Playlist) getNext() (*Item, error) {
-	if p.Current == nil {
-		return nil, errors.New("no current item, can't get next")
-	}
+// func (p *Playlist) getNext() (*Item, error) {
+// 	if p.Current == nil {
+// 		return nil, errors.New("no current item, can't get next")
+// 	}
 
-	i := p.getIndex(p.Current.Name())
-	if i == -1 {
-		return nil, errors.New("can't find index of this item: " + p.Current.Name())
-	}
-	if i+1 > len(p.Items)-1 {
-		return &p.Items[0], nil
-	}
+// 	i := p.getIndex(p.Current.Name())
+// 	if i == -1 {
+// 		return nil, errors.New("can't find index of this item: " + p.Current.Name())
+// 	}
+// 	if i+1 > len(p.Items)-1 {
+// 		return &p.Items[0], nil
+// 	}
 
-	return &p.Items[i+1], nil
-}
+// 	return &p.Items[i+1], nil
+// }
 
-func (p *Playlist) getPrevious() (*Item, error) {
-	if p.Current == nil {
-		return nil, errors.New("no current item, can't get previous")
-	}
+// func (p *Playlist) getPrevious() (*Item, error) {
+// 	if p.Current == nil {
+// 		return nil, errors.New("no current item, can't get previous")
+// 	}
 
-	i := p.getIndex(p.Current.Name())
-	if i == -1 {
-		return nil, errors.New("can't find index of this item: " + p.Current.Name())
-	}
-	if i-1 < 0 {
-		return &p.Items[len(p.Items)-1], nil
-	}
+// 	i := p.getIndex(p.Current.Name())
+// 	if i == -1 {
+// 		return nil, errors.New("can't find index of this item: " + p.Current.Name())
+// 	}
+// 	if i-1 < 0 {
+// 		return &p.Items[len(p.Items)-1], nil
+// 	}
 
-	return &p.Items[i-1], nil
-}
+// 	return &p.Items[i-1], nil
+// }
 
 func (p *Playlist) itemsString() []ItemString {
 	var res []ItemString

@@ -120,7 +120,6 @@ func LoginHandler(conf *Config) http.HandlerFunc {
 			},
 		}
 		tempControl.ServeHTTP(w, r)
-		return
 	}
 }
 

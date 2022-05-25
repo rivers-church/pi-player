@@ -4,14 +4,15 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"strconv"
 )
 
 // Chrome represents Google Chrome as the video stream playback software.
 // It implements the streamer interface.
 type Chrome struct {
-	Supports    []string
-	status      int
-	closing     chan error
+	Supports []string
+	status   int
+	// closing     chan error
 	cmd         *exec.Cmd
 	ConnViewer  ConnectionWS
 	ConnControl ConnectionWS
@@ -154,7 +155,7 @@ func (c *Chrome) PlaybackRate(rate int) error {
 		Component: "player",
 		Method:    "playbackRate",
 		Arguments: map[string]string{
-			"rate": string(rate),
+			"rate": strconv.Itoa(rate),
 		},
 	}
 
@@ -170,7 +171,7 @@ func (c *Chrome) Seek(seconds int) error {
 		Component: "player",
 		Method:    "seek",
 		Arguments: map[string]string{
-			"seconds": string(seconds),
+			"seconds": strconv.Itoa(seconds),
 		},
 	}
 
@@ -186,7 +187,7 @@ func (c *Chrome) Chapter(chp int) error {
 		Component: "player",
 		Method:    "chapter",
 		Arguments: map[string]string{
-			"chapter": string(chp),
+			"chapter": strconv.Itoa(chp),
 		},
 	}
 
@@ -202,7 +203,7 @@ func (c *Chrome) Volume(v int) error {
 		Component: "player",
 		Method:    "volume",
 		Arguments: map[string]string{
-			"rate": string(v),
+			"rate": strconv.Itoa(v),
 		},
 	}
 
@@ -218,7 +219,7 @@ func (c *Chrome) AudioStream(a int) error {
 		Component: "player",
 		Method:    "audioStream",
 		Arguments: map[string]string{
-			"rate": string(a),
+			"rate": strconv.Itoa(a),
 		},
 	}
 
@@ -234,7 +235,7 @@ func (c *Chrome) SubtitleStream(s int) error {
 		Component: "player",
 		Method:    "subtitleStream",
 		Arguments: map[string]string{
-			"rate": string(s),
+			"rate": strconv.Itoa(s),
 		},
 	}
 

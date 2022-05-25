@@ -5,12 +5,11 @@ import (
 	"log"
 	"net/http"
 	"path/filepath"
-	"sync"
 )
 
 // TemplateHandler handles rendering html templates
 type TemplateHandler struct {
-	once     sync.Once
+	// once     sync.Once
 	filename string
 	templ    *template.Template
 	data     map[string]interface{}

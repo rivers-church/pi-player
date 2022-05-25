@@ -54,7 +54,10 @@ type connWS struct {
 func NewConnWS() ConnectionWS {
 	// NOTE: interfaces are always pointers...
 	// So I have to return a pointer here.
-	return &connWS{}
+	return &connWS{
+		send:    make(chan wsMessage),
+		receive: make(chan wsMessage),
+	}
 }
 
 func (c *connWS) getChanSend() chan wsMessage {
@@ -101,8 +104,8 @@ func (c *connWS) HandlerWebsocket(p *Player) http.HandlerFunc {
 
 		log.Println("Websocket connection being handled for ", r.URL.Path)
 
-		c.send = make(chan wsMessage)
-		c.receive = make(chan wsMessage)
+		// c.send = make(chan wsMessage)
+		// c.receive = make(chan wsMessage)
 
 		c.active = true
 		go c.write()
@@ -113,6 +116,8 @@ func (c *connWS) HandlerWebsocket(p *Player) http.HandlerFunc {
 
 // write sends data to the websocket.
 func (c *connWS) write() {
+	log.Printf("Starting write() goroutine\n")
+
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
@@ -134,7 +139,7 @@ func (c *connWS) write() {
 			}
 			err := c.conn.WriteJSON(msg)
 			if err != nil {
-				log.Println("Error trying to write JSON to the socket: ", err)
+				log.Printf("Error trying to write JSON to the socket: %v\n", err)
 				// this probably means that the connection is broken,
 				// so close the channel and break out of the loop.
 				close(c.send)
@@ -144,7 +149,7 @@ func (c *connWS) write() {
 		case <-ticker.C:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				log.Println("Error trying to send ping message")
+				log.Printf("Error trying to send ping message: %v\n", err)
 				// not sure what else needs to be done here.
 				return
 			}
