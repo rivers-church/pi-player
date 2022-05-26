@@ -51,12 +51,6 @@ systemctl --user daemon-reload
 systemctl --user enable unclutter
 ```
 
-Add the current user to the video group so that they can play videos,
-and to the input group so that they can read the USB remote events:
-```bash
-usermod -a -G video,input $(whoami)
-```
-
 Test project:
 ```bash
 systemctl --user start pi-player
@@ -107,3 +101,11 @@ Restart the Pi again and make sure everything boots up and works as expected. A 
 - When there are security updates: Download and install automatically.
 - When there are other updates: Display every two weeks.
 - Notify me of a new Ubuntu version: Never.
+
+### Unlock the keyring:
+We need to do this because we are automatically logging in.
+- Open passwords and Keys.
+- Right click on Passwords/Login.
+- Click on Change password.
+- Enter your current password.
+- When asked for a new password, leave it empty.
