@@ -1,57 +1,41 @@
 # Pi-Player
 
-A simple remotely controlled video and image player for a linux based computer. Currently working on Ubuntu 19.04 and Raspbian.
-
-## Raspberry Pi OS Setup
-
-**OS: [Raspbian Stretch with desktop](https://www.raspberrypi.org/downloads/raspbian/)**\
-OR Just regular Ubuntu Desktop on any old machine. v19.04 works.
-
-### Initial Setup
-
-After first boot, follow the instructions to setup the location, screen overscan and network things.\
-This should also update the OS.
-
-If the OS update didn't complete successfully, do it manually from the command line:
-```bash
-sudo apt update && sudo apt upgrade -y
-```
-Set relevant system settings with `sudo raspi-config`
-
-Wait for network connection on boot to allow the Pi to automatically mount a network location before logging in\
-`Boot Options > Wait for Network at Boot > Yes`
-
-`Boot Options > Spash Screen > No`
-`Interfacing Options > P2 SSH > Yes`
-`Localisation Options > A bunch of stuff here.`
+A simple remotely controlled video and image player for a linux based computer. Currently working on Ubuntu 22.04. Not currently working in Raspbian.
 
 Install additional packages:
 ```bash
-sudo apt install vim git snapd unclutter openssh-server make
-```
-Reboot to complete snapd installation\
-```bash
-sudo reboot
+sudo apt install neovim git unclutter ssh
 ```
 
-Install Go language
+Enable ssh:
+```bash
+sudo systemctl start ssh
+sudo systemctl enable ssh
+```
+
+If you'll be changing code on the device, install Go language:
 ```bash
 sudo snap install go --classic
 ```
 
-Install Chromium if not already installed. Note that Raspian comes with a different Chromium installation, so you might have to `sudo apt remove chromium-browser`
+Install Chromium:
 ```bash
 sudo snap install chromium
 ```
 
-Get the pi-player project:\
+Get the pi-player project:
 ```bash
 mkdir -p ~/Software
 cd ~/Software
 git clone https://github.com/17xande/pi-player
 ```
 
-Build Project by running `make`.\
+Change directory to `pi-player` and build the module:
+```bash
+cd pi-player
+go build
+```
+
 Setup the app to start on boot:
 ```bash
 mkdir -p ~/.config/systemd/user
@@ -94,8 +78,32 @@ GIO USB mount support
 
 Restart the Pi again and make sure everything boots up and works as expected. A black screen should be displayed once the Pi has booted and you should have control from the webpage `<ip-address>:8080/control`
 
-## GUI Changes
-- Set Background to black.
-- Set Dock to small.
+## System Preferences Changes
+- Set bluetooth off.
+- Set Background to black or other picture.
+- Set Appearance to Dark.
 - Set Dock to autohide.
-- Hide Desktop icons.
+- Set notifications to Do Not Disturb.
+- Set Lock screen notifications to disabled.
+- Privacy settings:
+    - Set Connectivity checking to disabled.
+    - Set Screen/Blank screen delay to never.
+    - Set Screen/Automatic screen lock to disabled.
+    - Set Screen/Lock screen on suspend to disabled.
+    - Set Screen/Show notifications on lock screen to disabled.
+- Set Sharing/remote desktop to On:
+    - Set Remote control to enabled.
+- Set Sound/System volume to 100%.
+- Set Sound/Volume levels/System sounds to 0%.
+- Set Power/Power mode to Performance.
+- Set Power/Screen blank to Never.
+- Set Power/Automatic Suspend to Off.
+- Set Displays/refresh rate to 50Hz.
+- Set Date & Time/Automatic Timezone to enabled.
+
+### Open Software & updates and make the following changes under Updates:
+- Subscribed to: Security updates only.
+- Automatically check for updates: Every two weeks.
+- When there are security updates: Download and install automatically.
+- When there are other updates: Display every two weeks.
+- Notify me of a new Ubuntu version: Never.
