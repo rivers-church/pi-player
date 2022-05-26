@@ -400,34 +400,34 @@ func (p *Player) HandleViewer(w http.ResponseWriter, r *http.Request) {
 // the only streamer that will require this is the Chrome streamer.
 // Wait, actually no, because the OMXStreamer needs to be used in tandem with the Chrome streamer...
 // The VLC streamer shouldn't, so then should we have the option of multiple streamers???
-func (p *Player) HandleWebSocketMessage() {
-	if p.api.debug {
-		log.Println("Listening to websocket messages from browser")
-	}
+// func (p *Player) HandleWebSocketMessage() {
+// 	if p.api.debug {
+// 		log.Println("Listening to websocket messages from browser")
+// 	}
 
-	recViewer := p.ConnViewer.getChanReceive()
-	recControl := p.ConnControl.getChanReceive()
+// 	recViewer := p.ConnViewer.getChanReceive()
+// 	recControl := p.ConnControl.getChanReceive()
 
-	for {
-		select {
-		case msg, ok := <-recViewer:
-			if !ok {
-				log.Println("Error receiving websocket message from viewer")
-				return
-			}
+// 	for {
+// 		select {
+// 		case msg, ok := <-recViewer:
+// 			if !ok {
+// 				log.Println("Error receiving websocket message from viewer")
+// 				return
+// 			}
 
-			if p.api.debug {
-				log.Println("got a message from ConnectionWS", msg)
-			}
-		case msg, ok := <-recControl:
-			if !ok {
-				log.Println("Error receiving websocket message from Control")
-				return
-			}
+// 			if p.api.debug {
+// 				log.Println("got a message from ConnectionWS", msg)
+// 			}
+// 		case msg, ok := <-recControl:
+// 			if !ok {
+// 				log.Println("Error receiving websocket message from Control")
+// 				return
+// 			}
 
-			if p.api.debug {
-				log.Println("got a message from ConnectionWS", msg)
-			}
-		}
-	}
-}
+// 			if p.api.debug {
+// 				log.Println("got a message from ConnectionWS", msg)
+// 			}
+// 		}
+// 	}
+// }
