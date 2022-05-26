@@ -78,10 +78,9 @@ func (c *connWS) HandlerWebsocket(p *Player) http.HandlerFunc {
 		// If connection is already active, then close it gracefully, and create a new one.
 		if c.active {
 			msg := wsMessage{
-				Component: "connection",
-				Event:     "disconnect",
-				Success:   true,
-				Message:   "Another device has taken over the connection. Login again to take it back.",
+				Event:   "disconnect",
+				Success: true,
+				Message: "Another device has taken over the connection. Login again to take it back.",
 			}
 
 			if err := c.conn.WriteJSON(msg); err != nil {
@@ -93,9 +92,6 @@ func (c *connWS) HandlerWebsocket(p *Player) http.HandlerFunc {
 			}
 
 			c.conn.Close()
-			// close(c.send)
-			// close(c.receive)
-			return
 		}
 
 		var err error
@@ -146,6 +142,7 @@ func (c *connWS) write() {
 				log.Printf("Error trying to write JSON to the socket: %v\n", err)
 				// this probably means that the connection is broken,
 				// so close the channel and break out of the loop.
+				close(c.send)
 				c.active = false
 				return
 			}
@@ -176,13 +173,11 @@ func (c *connWS) read() {
 		err := c.conn.ReadJSON(&msg)
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("websocket unexpectadly closed, returning out of read() function: %v", err)
-			} else if websocket.IsCloseError(err) {
-				log.Printf("websocket closed, returning out of read() function.")
+				log.Println("Error, websocket closed: ", err)
 			} else {
-				log.Printf("error trying to read the JSON from the socket, returning out of read() function: %v", err)
+				log.Println("Error trying to read the JSON from the socket: ", err)
 			}
-
+			close(c.receive)
 			c.active = false
 			break
 		}
