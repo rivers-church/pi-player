@@ -30,7 +30,7 @@ class Viewer {
     }
   
     document.addEventListener("keydown", e => {
-      event.preventDefault();
+      e.preventDefault();
       // console.log(e);
     });
 
@@ -118,8 +118,24 @@ class Viewer {
       case 'playlist':
         this.playlistMessage(e, msg);
         break;
+      case 'connection':
+        this.connectionMessage(e, msg);
+        break;
       default:
         console.error(`unsupported component: ${msg.component};\nmessage: ${msg}`);
+        console.dir(msg);
+    }
+  }
+
+  connectionMessage(e, msg) {
+    switch(msg.event) {
+      case "disconnect":
+        console.warn(`server requested websocket disconnection. Closing connection now.`);
+        this.conn.close();
+        location.href = '/';
+      break;
+      default:
+        console.error(`unsupported connection method: ${msg.component};\nmessage: ${msg}`);
     }
   }
 

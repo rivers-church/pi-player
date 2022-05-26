@@ -111,7 +111,7 @@ func NewPlayer(api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *P
 	}
 
 	// Listen for websocket messages from the browser.
-	go p.HandleWebSocketMessage()
+	// go p.HandleWebSocketMessage()
 
 	return &p
 }
