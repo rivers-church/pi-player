@@ -77,6 +77,10 @@ func (c *connWS) HandlerWebsocket(p *Player) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// If connection is already active, then close it gracefully, and create a new one.
 		if c.active {
+			if p.conf.Debug {
+				log.Printf("new websocket connection request while previous request was active. Closing current connection.")
+			}
+
 			msg := wsMessage{
 				Component: "connection",
 				Event:     "disconnect",
@@ -84,18 +88,19 @@ func (c *connWS) HandlerWebsocket(p *Player) http.HandlerFunc {
 				Message:   "Another device has taken over the connection. Login again to take it back.",
 			}
 
+			c.active = false
+
 			if err := c.conn.WriteJSON(msg); err != nil {
-				log.Printf("Error writting disconnect message: ConnectionWS.HandlerWebsocket: %v\n", err)
+				log.Printf("error writting disconnect message: ConnectionWS.HandlerWebsocket: %v\n", err)
 			}
 
 			if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
-				log.Printf("Error writting close message: ConnectionWS.HandlerWebsocket(): %v\n", err)
+				log.Printf("error writting close message: ConnectionWS.HandlerWebsocket(): %v\n", err)
 			}
 
 			c.conn.Close()
 			// close(c.send)
 			// close(c.receive)
-			return
 		}
 
 		var err error
@@ -113,8 +118,8 @@ func (c *connWS) HandlerWebsocket(p *Player) http.HandlerFunc {
 
 		c.active = true
 		go c.write()
-		go c.read()
-		go p.HandleWebSocketMessage()
+		// go c.read()
+		// go p.HandleWebSocketMessage()
 	}
 }
 
@@ -124,6 +129,7 @@ func (c *connWS) write() {
 
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
+		log.Printf("Something is wrong in the write() function. Closing websocket.")
 		ticker.Stop()
 		c.conn.Close()
 		c.active = false
@@ -134,26 +140,26 @@ func (c *connWS) write() {
 		select {
 		// Send a message from the send channel to the websocket.
 		case msg, ok := <-c.send:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
+				log.Printf("Something is wrong reading from the send channel. Closing websocket.")
 				if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
-					log.Printf("Error writting close message: ConnectionWS.write(): %v\n", err)
+					log.Printf("error writting close message: ConnectionWS.write(): %v\n", err)
 				}
 				return
 			}
+			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			err := c.conn.WriteJSON(msg)
 			if err != nil {
-				log.Printf("Error trying to write JSON to the socket: %v\n", err)
+				log.Printf("error trying to write JSON to the socket: %v\n", err)
 				// this probably means that the connection is broken,
-				// so close the channel and break out of the loop.
-				c.active = false
 				return
 			}
 		case <-ticker.C:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				log.Printf("Error trying to send ping message: %v\n", err)
-				// not sure what else needs to be done here.
+				log.Printf("error trying to send ping message. Exiting goroutine: %v\n", err)
+				// There are more elegant ways to handle a closed connection.
+				// We could have a cancel channel here that ends this goroutine cleanly.
 				return
 			}
 		}
@@ -176,11 +182,11 @@ func (c *connWS) read() {
 		err := c.conn.ReadJSON(&msg)
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("websocket unexpectadly closed, returning out of read() function: %v", err)
+				log.Printf("websocket unexpectadly closed, returning out of read() function: %v\n", err)
 			} else if websocket.IsCloseError(err) {
-				log.Printf("websocket closed, returning out of read() function.")
+				log.Printf("websocket closed, returning out of read() function.\n")
 			} else {
-				log.Printf("error trying to read the JSON from the socket, returning out of read() function: %v", err)
+				log.Printf("error trying to read the JSON from the socket, returning out of read() function: %v\n", err)
 			}
 
 			c.active = false
