@@ -65,7 +65,7 @@ class Viewer {
   }
 
   wsConnect() {
-    let u = 'ws://' + document.location.host + this.wsPath;
+    let u = `ws://${document.location.host + this.wsPath}`;
     this.conn = new WebSocket(u);
 
     this.conn.addEventListener('open', e => {
@@ -79,7 +79,7 @@ class Viewer {
     this.conn.addEventListener('close', e => {
       console.log("Connection closed.\nTrying to reconnect...");
   
-      let to = setTimeout(() => this.wsConnect(), 2000);
+      let to = setTimeout(() => this.wsConnect(), 5 * 1000);
     });
 
     this.conn.addEventListener('message', this.socketMessage.bind(this));
@@ -130,9 +130,7 @@ class Viewer {
   connectionMessage(e, msg) {
     switch(msg.event) {
       case "disconnect":
-        console.warn(`server requested websocket disconnection. Closing connection now.`);
-        this.conn.close();
-        location.href = '/';
+        console.warn(`server requested websocket disconnection. Connection should be closed any second now.`);
       break;
       default:
         console.error(`unsupported connection method: ${msg.component};\nmessage: ${msg}`);

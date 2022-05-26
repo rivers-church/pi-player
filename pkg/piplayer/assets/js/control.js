@@ -105,9 +105,10 @@ class Control {
         break;
       case "disconnect":
       this.disconnect = true;
+      console.warn(`server requested websocket disconnection. Connection should be closed any second now.`)
         break;
       default:
-      console.log("Unsupported message received: ", e.data);
+      console.log(`Unsupported message received: ${e.data}`);
     }
   }
 
