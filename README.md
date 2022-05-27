@@ -23,6 +23,11 @@ Install Chromium:
 sudo snap install chromium
 ```
 
+Add the crrentuser to the input group so that they can read the USB remote events:
+```bash
+usermod -a -G input $(whoami)
+```
+
 Get the pi-player project:
 ```bash
 mkdir -p ~/Software
