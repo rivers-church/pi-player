@@ -57,7 +57,13 @@ func (m *mount) loadDir() {
 		m.Dir = m.URL.Path
 		return
 	}
-	m.Dir = fmt.Sprintf(gvfsStr, sharesDir, m.URL.Host, m.URL.Path[1:])
+
+	if m.URL.Scheme == "smb" {
+		m.Dir = fmt.Sprintf(gvfsStr, sharesDir, m.URL.Host, m.URL.Path[1:])
+		return
+	}
+
+	m.Dir = m.URL.Path
 }
 
 // mounted checks if the mountpoint defined is mounted.

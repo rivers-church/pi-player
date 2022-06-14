@@ -30,25 +30,28 @@ type Presentation struct {
 
 // NewPlaylist creates a new playlist with media in the designated folder.
 func NewPlaylist(p *Player, dir string) (*Playlist, error) {
-	pl := Playlist{Name: dir}
+	pl := &Playlist{Name: dir}
 
-	if err := p.conf.Mount.mount(); err != nil {
-		log.Println("NewServer: Error trying to mount folder:\n", err)
+	if p.conf.Mount.URL.Scheme == "smb" {
+		if err := p.conf.Mount.mount(); err != nil {
+			//log.Printf("error trying to mount folder: %v\n", err)
+			return nil, fmt.Errorf("error trying to mount folder: %v", err)
+		}
 	}
 
 	var err error
 	pl.watcher, err = fsnotify.NewWatcher()
 	if err != nil {
-		return &pl, err
+		return nil, fmt.Errorf("error creating watcher: %v", err)
 	}
 
 	go pl.watch(p)
 
 	if p.conf.Debug {
-		log.Println("starting directory watcher for dir:", dir)
+		log.Printf("starting directory watcher for dir: %s\n", dir)
 	}
 	err = pl.watcher.Add(dir)
-	return &pl, err
+	return pl, err
 }
 
 // Handles requests to the playlist api

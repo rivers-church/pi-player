@@ -33,7 +33,7 @@ func main() {
 
 	if dbg {
 		log.Println("Debug mode enabled")
-		log.Println("Config file -> Directory: ", conf)
+		log.Println("Config file:", conf)
 	}
 
 	a := piplayer.NewAPIHandler(dbg, test)
