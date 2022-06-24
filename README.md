@@ -2,6 +2,7 @@
 
 A simple remotely controlled video and image player for a linux based computer. Currently working on Ubuntu 22.04. Not currently working in Raspbian.
 
+## Ubuntu Linux Setup:
 Install additional packages:
 ```bash
 sudo apt install neovim git unclutter ssh
