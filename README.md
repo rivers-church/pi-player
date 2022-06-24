@@ -5,6 +5,7 @@ A simple remotely controlled video and image player for a linux based computer. 
 Install additional packages:
 ```bash
 sudo apt install neovim git unclutter ssh
+sudo snap install chromium
 ```
 
 Enable ssh:
@@ -13,56 +14,35 @@ sudo systemctl start ssh
 sudo systemctl enable ssh
 ```
 
-If you'll be changing code on the device, install Go language:
-```bash
-sudo snap install go --classic
-```
-
-Install Chromium:
-```bash
-sudo snap install chromium
-```
-
 Add the crrentuser to the input group so that they can read the USB remote events:
 ```bash
-usermod -a -G input $(whoami)
+sudo usermod -a -G input $(whoami)
 ```
-
-Get the pi-player project:
+If you'll be changing code on the device, get the tools and source code:
 ```bash
+sudo snap install go --classic
 mkdir -p ~/Software
 cd ~/Software
 git clone https://github.com/17xande/pi-player
-```
-
-Change directory to `pi-player` and build the module:
-```bash
+# build the project.
 cd pi-player
 go build
 ```
 
-Setup the app to start on boot:
+Setup the app and `unclutter` to start on boot:
+NOTE: update the home path in the `pi-player.service` file to reflect your home folder.
 ```bash
 mkdir -p ~/.config/systemd/user
-cp pi-player.service ~/.config/systemd/user/
+cp services/*.service ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user enable pi-player
-```
-
-Setup `unclutter` to start on boot:
-```bash
-cp unclutter.service ~/.config/systemd/user/
-systemctl --user daemon-reload
 systemctl --user enable unclutter
 ```
 
 Test project:
 ```bash
 systemctl --user start pi-player
-```
-
-Check the status of the running service:
-```bash
+# Check the status of the running service:
 systemctl --user status pi-player
 ```
 
@@ -71,9 +51,6 @@ Access the server from a browset to make sure it's running properly. Use the fol
 
 
 Reboot the PC and make sure that the program still runs on boot correctly.
-
-TODO:
-GIO USB mount support
 
 Restart the Pi again and make sure everything boots up and works as expected. A black screen should be displayed once the Pi has booted and you should have control from the webpage `<ip-address>:8080/control`
 
@@ -86,17 +63,20 @@ Restart the Pi again and make sure everything boots up and works as expected. A 
 - Set Lock screen notifications to disabled.
 - Privacy settings:
     - Set Connectivity checking to disabled.
-    - Set Screen/Blank screen delay to never.
-    - Set Screen/Automatic screen lock to disabled.
-    - Set Screen/Lock screen on suspend to disabled.
-    - Set Screen/Show notifications on lock screen to disabled.
+    - Screen settings:
+      - Set Blank screen delay to never.
+      - Set Automatic screen lock to disabled.
+      - Set Lock screen on suspend to disabled.
+      - Set Show notifications on lock screen to disabled.
 - Set Sharing/remote desktop to On:
     - Set Remote control to enabled.
-- Set Sound/System volume to 100%.
-- Set Sound/Volume levels/System sounds to 0%.
-- Set Power/Power mode to Performance.
-- Set Power/Screen blank to Never.
-- Set Power/Automatic Suspend to Off.
+- Sound Settings:
+  - Set System volume to 100%.
+  - Set Volume levels/System sounds to 0%.
+- Power Settings:
+  - Set Power mode to Performance.
+  - Set Screen blank to Never.
+  - Set Automatic Suspend to Off.
 - Set Displays/refresh rate to 50Hz.
 - Set Date & Time/Automatic Timezone to enabled.
 
@@ -106,6 +86,32 @@ Restart the Pi again and make sure everything boots up and works as expected. A 
 - When there are security updates: Download and install automatically.
 - When there are other updates: Display every two weeks.
 - Notify me of a new Ubuntu version: Never.
+
+### Setup Samba shares if required:
+```bash
+sudo apt install samba
+# setup user account. Note: this user has to already exist locally.
+sudo smbpasswd -a sandtonvisuals
+# enter password for this user. It can be the same password as the local user.
+
+# creat directory that will be shared.
+mkdir -p ~/Documents/media
+# edit the samba configuration file.
+sudo vim /etc/samba/smb.conf
+```
+
+At the bottom of the file, add the following:
+```samba
+[media]
+    comment = Twinkle 2 media
+    path = /home/sandtonvisuals/documents/media
+    read only = no
+    browsable = yes
+```
+```bash
+# restart the samba service
+sudo systemctl restart smbd
+```
 
 ### Unlock the keyring:
 We need to do this because we are automatically logging in.
