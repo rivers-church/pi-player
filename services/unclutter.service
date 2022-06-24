@@ -6,4 +6,4 @@ Type=simple
 ExecStart=unclutter -idle 1 -jitter 3
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
