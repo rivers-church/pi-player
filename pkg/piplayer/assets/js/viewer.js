@@ -166,6 +166,7 @@ class Viewer {
         break;
       case 'KEY_CONTEXT_MENU':
       case 'KEY_DOT':
+      case 'KEY_COMPOSE':
         this.remoteContextMenuPress(e);
         break;
       case 'KEY_PLAYPAUSE':
