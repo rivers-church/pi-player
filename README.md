@@ -58,28 +58,46 @@ Restart the Pi again and make sure everything boots up and works as expected. A 
 ## System Preferences Changes
 - Set bluetooth off.
 - Set Background to black or other picture.
+  - `gsettings set org.gnome.desktop.background picture-uri ""`
+  - `gsettings set org.gnome.desktop.background picture-uri-dark ""`
+  - `gsettings set org.gnome.desktop.background primary-color '#000000'`
 - Set Appearance to Dark.
+  - `gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'`
 - Set Dock to autohide.
+  - `gsettings set org.gnome.shell.extensions.dash-to-dock dock-fixed false`
 - Set notifications to Do Not Disturb.
+  - `gsettings set org.gnome.desktop.notifications show-banners false`
 - Set Lock screen notifications to disabled.
+  - `gsettings set org.gnome.desktop.notifications show-in-lock-screen false`
+- Stop showing update notifications.
+  - `gsettings set com.ubuntu.update-notifier no-show-notifications true`
 - Privacy settings:
     - Set Connectivity checking to disabled.
+      - This one can't be changed with gsettings.
     - Screen settings:
       - Set Blank screen delay to never.
+        - `gsettings set org.gnome.desktop.screensaver lock-delay 0`
       - Set Automatic screen lock to disabled.
+        - `gsettings set org.gnome.desktop.screensaver lock-enabled false`
       - Set Lock screen on suspend to disabled.
+        - `gsettings set org.gnome.desktop.screensaver ubuntu-lock-on-suspend false`
       - Set Show notifications on lock screen to disabled.
+        - `gsettings set org.gnome.desktop.notifications show-in-lock-screen false`
 - Set Sharing/remote desktop to On:
     - Set Remote control to enabled.
-- Sound Settings:
+      - `gsettings set org.gnome.desktop.remote-desktop.rdp enable true`
+      - `gsettings set org.gnome.desktop.remote-desktop.vnc view-only false`
+- Sound Settings (Can't update these via gsettings):
   - Set System volume to 100%.
   - Set Volume levels/System sounds to 0%.
 - Power Settings:
-  - Set Power mode to Performance.
+  - Set Power mode to Performance. (some machines don't have this)
   - Set Screen blank to Never.
+    - `gsettings set org.gnome.desktop.session idle-delay 0`
   - Set Automatic Suspend to Off.
-- Set Displays/refresh rate to 50Hz.
-- Set Date & Time/Automatic Timezone to enabled.
+     `gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 'nothing'`
+- Set Displays/refresh rate to 50Hz (Can't do it via gsettings).
+- Set Date & Time/Automatic Timezone to enabled (Can't do it via gsettings).
 
 ### Open Software & updates and make the following changes under Updates:
 - Subscribed to: Security updates only.
@@ -121,3 +139,4 @@ We need to do this because we are automatically logging in.
 - Click on Change password.
 - Enter your current password.
 - When asked for a new password, leave it empty.
+- Click Ok to confirm.
