@@ -5,5 +5,11 @@ Description=Unclutter the desktop by removing the mouse, on startup.
 Type=simple
 ExecStart=unclutter -idle 1 -jitter 3
 
+Restart=on-failure
+RestartSec=10
+StartLimitInterval=60
+
 [Install]
 WantedBy=default.target
+WantedBy=graphical-session.target
+
