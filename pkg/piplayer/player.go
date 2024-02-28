@@ -100,15 +100,8 @@ func NewPlayer(api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *P
 	if api.debug {
 		log.Println("initializing remote")
 	}
-
-	chans, err := keylogger.Read()
-	if err != nil {
-		log.Println("error trying to read the remote files: ", err)
-	}
-
-	for _, ie := range chans {
-		go remoteRead(&p, ie)
-	}
+	// TODO: get context from caller?
+	go remoteRead(context.Background(), &p)
 
 	// Listen for websocket messages from the browser.
 	// go p.HandleWebSocketMessage()
