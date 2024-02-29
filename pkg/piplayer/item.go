@@ -1,7 +1,7 @@
 package piplayer
 
 import (
-	"os"
+	"io/fs"
 	"path/filepath"
 )
 
@@ -9,8 +9,8 @@ import (
 // it can have a visual element, an audio element, or both.
 // more elements such as timers can be added later.
 type Item struct {
-	Audio  os.FileInfo
-	Visual os.FileInfo
+	Audio  fs.DirEntry
+	Visual fs.DirEntry
 	Type   string
 	Cues   map[string]string
 }

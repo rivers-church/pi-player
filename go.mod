@@ -1,7 +1,7 @@
 module github.com/17xande/pi-player
 
 require (
-	github.com/17xande/keylogger v1.1.1
+	github.com/17xande/keylogger v1.2.0
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/gorilla/sessions v1.2.2
 	github.com/gorilla/websocket v1.5.1

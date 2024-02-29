@@ -2,10 +2,10 @@ package piplayer
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 )
 
 // Config holds the configuration of the pi-player
@@ -25,7 +25,7 @@ func (conf *Config) Load(path string) error {
 		path = "config.json"
 	}
 
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func (conf *Config) Save(path string) error {
 		return err
 	}
 
-	return ioutil.WriteFile(path, jconf, 0600)
+	return os.WriteFile(path, jconf, 0600)
 }
 
 // SettingsHandler handles requests to the settings page

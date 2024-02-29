@@ -1,6 +1,7 @@
 package piplayer
 
 import (
+	"io/fs"
 	"os"
 	"reflect"
 	"testing"
@@ -38,6 +39,14 @@ func (fi) IsDir() (r bool) {
 
 func (fi) Sys() interface{} {
 	return nil
+}
+
+func (fi) Info() (fs.FileInfo, error) {
+	return nil, nil
+}
+
+func (fi) Type() fs.FileMode {
+	return 0
 }
 
 func TestName(t *testing.T) {

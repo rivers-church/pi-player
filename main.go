@@ -37,7 +37,7 @@ func main() {
 	}
 
 	a := piplayer.NewAPIHandler(dbg, test)
-	kl := keylogger.NewKeyLogger(conf.Remote.Name)
+	kl := keylogger.NewKeyLogger(conf.Remote.Names)
 	p := piplayer.NewPlayer(&a, &conf, kl)
 	p.Server = piplayer.NewServer(p, *addr)
 

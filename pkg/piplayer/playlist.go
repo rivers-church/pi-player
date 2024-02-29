@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"path"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/fsnotify/fsnotify"
 )
@@ -142,7 +142,8 @@ func (p *Playlist) fromFolder(plr *Player, dir string) error {
 	if !exists(dir) {
 		return fmt.Errorf("fromFolder: Can't read files from directory '%s' because it does not exist", dir)
 	}
-	files, err := ioutil.ReadDir(dir)
+	// files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		return errors.New("fromFolder: Can't read folder for items: " + err.Error())
 	}
@@ -150,7 +151,7 @@ func (p *Playlist) fromFolder(plr *Player, dir string) error {
 	// Filter out all files except for supported ones.
 	for _, file := range files {
 		c := make(map[string]string)
-		e := path.Ext(file.Name())
+		e := strings.ToLower(path.Ext(file.Name()))
 		if e == ".mp4" || e == ".webm" {
 			p.Items = append(p.Items, Item{Visual: file, Type: "video", Cues: c})
 		} else if e == ".jpg" || e == ".jpeg" || e == ".png" {
@@ -186,7 +187,7 @@ func (p *Playlist) fromFolder(plr *Player, dir string) error {
 	// look for presentation file for added cues.
 	file := path.Join(dir, "presentation.json")
 	if _, err := os.Stat(file); !os.IsNotExist(err) {
-		data, err := ioutil.ReadFile(file)
+		data, err := os.ReadFile(file)
 		if err != nil {
 			log.Printf("Error trying to read presentation file '%s': %v", file, err)
 			return nil

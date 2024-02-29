@@ -10,7 +10,7 @@ import (
 )
 
 type remote struct {
-	Name    string
+	Names   []string
 	Vendor  uint16
 	Product uint16
 }
@@ -22,7 +22,7 @@ func remoteRead(ctx context.Context, p *Player) {
 		if p.api.debug {
 			log.Println("starting remote read for this device")
 		}
-		if err := Listen(ctx, p.conf.Remote.Name, p); err != nil {
+		if err := Listen(ctx, p.conf.Remote.Names, p); err != nil {
 			if p.api.debug {
 				log.Printf("error listening to device, retrying in 3 seconds: %v\n", err)
 				time.Sleep(3 * time.Second)
@@ -34,12 +34,12 @@ func remoteRead(ctx context.Context, p *Player) {
 
 // Listen to all the Input Devices supplied.
 // Return an error if there is a problem, or if one of the devices disconnects.
-func Listen(ctx context.Context, dev string, p *Player) []error {
-errs := make([]error, 3)
+func Listen(ctx context.Context, devs []string, p *Player) []error {
+	errs := make([]error, 3)
 	send := p.ConnViewer.getChanSend()
-	kl := keylogger.NewKeyLogger(dev)
+	kl := keylogger.NewKeyLogger(devs)
 	if len(kl.GetDevices()) <= 0 {
-		return []error{fmt.Errorf("device '%s' not found", dev)}
+		return []error{fmt.Errorf("device '%s' not found", devs)}
 	}
 
 	for _, d := range kl.GetDevices() {

@@ -1,5 +1,5 @@
-github.com/17xande/keylogger v1.1.1 h1:0Wh03owVd1dntZwagU5ttP0/kGVGFt5RQA53JDWA97I=
-github.com/17xande/keylogger v1.1.1/go.mod h1:U4v5NQG1SN9uopDlcHCF68HpP0u87m33I03fFrQppq4=
+github.com/17xande/keylogger v1.2.0 h1:OqpERgBKyUuic3IKBgBTwT9PTtdA+KWSPkvHj89bmAc=
+github.com/17xande/keylogger v1.2.0/go.mod h1:U4v5NQG1SN9uopDlcHCF68HpP0u87m33I03fFrQppq4=
 github.com/fsnotify/fsnotify v1.7.0 h1:8JEhPFa5W2WU7YfeZzPNqzMP6Lwt7L2715Ggo0nosvA=
 github.com/fsnotify/fsnotify v1.7.0/go.mod h1:40Bi/Hjc2AVfZrqy+aj+yEI+/bRxZnMJyTJwOpGvigM=
 github.com/google/gofuzz v1.2.0 h1:xRy4A+RhZaiKjJ1bPfwQ8sedCA+YS2YcCHW6ec7JMi0=
