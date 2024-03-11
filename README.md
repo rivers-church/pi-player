@@ -2,6 +2,8 @@
 
 A simple remotely controlled video and image player for a linux based computer. Currently working on Ubuntu 22.04. Not currently working in Raspbian.
 
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/17xande/pi-player/go.yml)
+
 ## Ubuntu Linux Setup:
 Install additional packages:
 ```bash
