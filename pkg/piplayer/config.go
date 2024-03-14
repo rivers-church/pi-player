@@ -73,7 +73,8 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 				log.Printf("SettingsHandler: Error unescaping URL '%s'\n", conf.Mount.URL)
 			}
 			tempControl := TemplateHandler{
-				filename: "settings.html",
+				filename:      "settings.html",
+				statTemplates: p.api.statTemplates,
 				data: map[string]interface{}{
 					"location": conf.Location,
 					// "directory":   conf.Directory,

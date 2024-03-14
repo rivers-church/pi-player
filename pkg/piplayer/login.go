@@ -46,7 +46,7 @@ func CheckLogin(w http.ResponseWriter, r *http.Request) (*sessions.Session, bool
 }
 
 // LoginHandler handles login requests
-func LoginHandler(conf *Config) http.HandlerFunc {
+func LoginHandler(p *Player) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		session, loggedIn, err := CheckLogin(w, r)
 		if err != nil {
@@ -67,7 +67,7 @@ func LoginHandler(conf *Config) http.HandlerFunc {
 			tempControl := TemplateHandler{
 				filename: "login.html",
 				data: map[string]interface{}{
-					"location": conf.Location,
+					"location": p.conf.Location,
 				},
 			}
 			tempControl.ServeHTTP(w, r)
@@ -79,7 +79,7 @@ func LoginHandler(conf *Config) http.HandlerFunc {
 
 		// process POST request
 		xForward := r.Header.Get("x-forwarded-for")
-		if conf.Debug {
+		if p.conf.Debug {
 			log.Println("attempted login request from:", xForward, r.RemoteAddr)
 		}
 		if err := r.ParseForm(); err != nil {
@@ -89,22 +89,22 @@ func LoginHandler(conf *Config) http.HandlerFunc {
 		password := r.PostFormValue("password")
 
 		// if there's no login entry in the config file, add the default login details
-		if conf.Login.Username == "" {
-			if conf.Debug {
+		if p.conf.Login.Username == "" {
+			if p.conf.Debug {
 				log.Println("no login details found in config file, creating default login details now.")
 			}
 			var err error
-			if conf.Login, err = newLogin(); err != nil {
+			if p.conf.Login, err = newLogin(); err != nil {
 				log.Println("error trying to save default username and password")
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			if err := conf.Save(""); err != nil {
+			if err := p.conf.Save(""); err != nil {
 				log.Println("error trying to save config file:", err)
 			}
 		}
 
-		if username == conf.Login.Username && checkHash(password, conf.Login.Password) {
+		if username == p.conf.Login.Username && checkHash(password, p.conf.Login.Password) {
 			// user successfully logged in
 			session.Values["x-forwarded-for"] = xForward
 			session.Save(r, w)
@@ -113,9 +113,10 @@ func LoginHandler(conf *Config) http.HandlerFunc {
 		}
 
 		tempControl := TemplateHandler{
-			filename: "login.html",
+			statTemplates: p.api.statTemplates,
+			filename:      "login.html",
 			data: map[string]interface{}{
-				"location":     conf.Location,
+				"location":     p.conf.Location,
 				"flashMessage": "Incorrect username or password",
 			},
 		}

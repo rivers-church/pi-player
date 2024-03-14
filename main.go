@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"flag"
 	"log"
 	"os"
@@ -9,6 +10,12 @@ import (
 	"github.com/17xande/keylogger"
 	piplayer "github.com/17xande/pi-player/pkg/piplayer"
 )
+
+//go:embed pkg/piplayer/assets
+var statAssets embed.FS
+
+//go:embed pkg/piplayer/templates
+var statTemplates embed.FS
 
 func main() {
 	addr := flag.String("addr", ":8080", "The addr of the application.")
@@ -36,7 +43,7 @@ func main() {
 		log.Println("Config file:", conf)
 	}
 
-	a := piplayer.NewAPIHandler(dbg, test)
+	a := piplayer.NewAPIHandler(dbg, test, statAssets, statTemplates)
 	kl := keylogger.NewKeyLogger(conf.Remote.Names)
 	p := piplayer.NewPlayer(&a, &conf, kl)
 	p.Server = piplayer.NewServer(p, *addr)

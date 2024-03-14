@@ -21,9 +21,10 @@ func NewServer(p *Player, addr string) *http.Server {
 func setupRoutes(content string, p *Player) *http.ServeMux {
 	mux := http.NewServeMux()
 
-	mux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("pkg/piplayer/assets"))))
+	mux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(p.api.statAssets))))
+	// mux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("pkg/piplayer/assets"))))
 	mux.HandleFunc("/content/", etagWrapper(content))
-	mux.HandleFunc("/login", LoginHandler(p.conf))
+	mux.HandleFunc("/login", LoginHandler(p))
 	mux.HandleFunc("/logout", LogoutHandler)
 	mux.HandleFunc("/control", p.HandleControl)
 	mux.HandleFunc("/settings", p.conf.SettingsHandler(p))
@@ -31,7 +32,7 @@ func setupRoutes(content string, p *Player) *http.ServeMux {
 	mux.HandleFunc("/ws/viewer", p.ConnViewer.HandlerWebsocket(p))
 	mux.HandleFunc("/ws/control", p.ConnControl.HandlerWebsocket(p))
 	mux.HandleFunc("/api", p.api.Handle(p))
-	mux.HandleFunc("/", handlerHome)
+	mux.HandleFunc("/", p.api.handlerHome)
 
 	return mux
 }
@@ -45,36 +46,6 @@ func etagWrapper(content string) func(http.ResponseWriter, *http.Request) {
 
 		fs.ServeHTTP(w, r)
 	}
-}
-
-// Handles requests to the index page as well as any other requests
-// that don't match any other paths
-func handlerHome(w http.ResponseWriter, r *http.Request) {
-
-	if r.URL.Path != "/" {
-		http.Error(w, "Not found", 404)
-		log.Printf("Not found: %s", r.URL)
-		return
-	}
-	if r.Method != "GET" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		log.Printf("Method not allowed: %s", r.URL)
-		return
-	}
-	_, loggedIn, err := CheckLogin(w, r)
-	if err != nil {
-		log.Println("error trying to retrieve session on login page:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if loggedIn {
-		http.Redirect(w, r, "/control", http.StatusFound)
-	} else {
-		http.Redirect(w, r, "/login", http.StatusFound)
-	}
-
-	t := NewTemplateHandler("index.html")
-	t.ServeHTTP(w, r)
 }
 
 // Restart the http server.

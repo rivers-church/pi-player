@@ -1,22 +1,67 @@
 package piplayer
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 )
 
 // APIHandler handles requests to the API
 type APIHandler struct {
-	debug   bool
-	test    string
-	message reqMessage
+	debug         bool
+	test          string
+	message       reqMessage
+	statAssets    fs.FS
+	statTemplates fs.FS
 }
 
 // NewAPIHandler creates a new APIHandler
-func NewAPIHandler(debug bool, test *string) APIHandler {
-	return APIHandler{debug: debug, test: *test}
+func NewAPIHandler(debug bool, test *string, statAssets, statTemplates embed.FS) APIHandler {
+	subAssets, err := fs.Sub(statAssets, "pkg/piplayer/assets")
+	if err != nil {
+		if debug {
+			log.Println("Error loading assets:", err)
+		}
+	}
+	subTemplates, err := fs.Sub(statTemplates, "pkg/piplayer/templates")
+	if err != nil {
+		if debug {
+			log.Println("Error loading templates:", err)
+		}
+	}
+	return APIHandler{debug: debug, test: *test, statAssets: subAssets, statTemplates: subTemplates}
+}
+
+// Handles requests to the index page as well as any other requests
+// that don't match any other paths
+func (a *APIHandler) handlerHome(w http.ResponseWriter, r *http.Request) {
+
+	if r.URL.Path != "/" {
+		http.Error(w, "Not found", 404)
+		log.Printf("Not found: %s", r.URL)
+		return
+	}
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		log.Printf("Method not allowed: %s", r.URL)
+		return
+	}
+	_, loggedIn, err := CheckLogin(w, r)
+	if err != nil {
+		log.Println("error trying to retrieve session on login page:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if loggedIn {
+		http.Redirect(w, r, "/control", http.StatusFound)
+		return
+	} else {
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
 }
 
 // Handle handles all calls to the API

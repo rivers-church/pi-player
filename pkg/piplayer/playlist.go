@@ -117,7 +117,7 @@ func (p *Playlist) handleAPI(plr *Player, w http.ResponseWriter, h *http.Request
 			log.Println("set current item index to:", index)
 		}
 	case "getItems":
-		if err := p.fromFolder(plr, p.Name); err != nil {
+		if err := p.fromFolder(p.Name); err != nil {
 			log.Printf("Api call failed. Can't get items from folder %s\n%v", p.Name, err)
 		}
 
@@ -133,7 +133,7 @@ func (p *Playlist) handleAPI(plr *Player, w http.ResponseWriter, h *http.Request
 	json.NewEncoder(w).Encode(m)
 }
 
-func (p *Playlist) fromFolder(plr *Player, dir string) error {
+func (p *Playlist) fromFolder(dir string) error {
 	// Remove all items from the current playlist if there are any.
 	p.Items = []Item{}
 	p.Name = dir
