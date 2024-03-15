@@ -15,6 +15,10 @@ systemctl --user daemon-reload
 systemctl --user enable pi-player
 systemctl --user enable unclutter
 
+# Download the pi-player binary.
+mkdir -p ~/.local/bin
+wget -O ~/.local/bin/pi-player https://github.com/17xande/pi-player/releases/download/latest/pi-player 
+
 # Add the current user to the input group so that they can read the USB remote events.
 # Note: a logout or restart is required for this to take effect.
 sudo usermod -a -G input $USER
