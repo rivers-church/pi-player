@@ -8,6 +8,9 @@ sudo snap install chromium
 sudo systemctl start ssh
 sudo systemctl enable ssh
 
+# Remove update popup notification:
+sudo apt remove update-notifier
+
 # Setup pi-player and unclutter to run at boot.
 mkdir -p ~./config/systemd/user
 cp services/*.services ~/.config/systemd/user/
@@ -17,7 +20,7 @@ systemctl --user enable unclutter
 
 # Download the pi-player binary.
 mkdir -p ~/.local/bin
-wget -O ~/.local/bin/pi-player https://github.com/17xande/pi-player/releases/download/latest/pi-player 
+wget -O ~/.local/bin/pi-player https://github.com/17xande/pi-player/releases/latest/download/pi-player
 
 # Add the current user to the input group so that they can read the USB remote events.
 # Note: a logout or restart is required for this to take effect.
@@ -63,5 +66,3 @@ gsettings set org.gnome.desktop.session idle-delay 0
 # Set Automatic Suspend to Off.
 gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 'nothing'
 
-# TODO: disable updates, disable update popup notification.
-# TODO: download pi-player binary
