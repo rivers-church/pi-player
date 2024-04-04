@@ -13,15 +13,16 @@ sudo apt remove update-notifier -y
 
 # Setup pi-player and unclutter to run at boot.
 mkdir -p ~/.config/systemd/user
-wget -O ~/.config/systemd/user/pi-player.service https://github.com/17xande/pi-player/raw/master/services/pi-player.service
-wget -O ~/.config/systemd/user/unclutter.service https://github.com/17xande/pi-player/raw/master/services/unclutter.service
+wget -q -O ~/.config/systemd/user/pi-player.service https://github.com/17xande/pi-player/raw/master/services/pi-player.service
+wget -q -O ~/.config/systemd/user/unclutter.service https://github.com/17xande/pi-player/raw/master/services/unclutter.service
 systemctl --user daemon-reload
 systemctl --user enable pi-player
 systemctl --user enable unclutter
 
 # Download the pi-player binary.
 mkdir -p ~/.local/bin
-wget -O ~/.local/bin/pi-player https://github.com/17xande/pi-player/releases/latest/download/pi-player
+wget -q -O ~/.local/bin/pi-player https://github.com/17xande/pi-player/releases/latest/download/pi-player
+sudo chmod +x ~/.local/bin/pi-player
 
 # Add the current user to the input group so that they can read the USB remote events.
 # Note: a logout or restart is required for this to take effect.
