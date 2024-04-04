@@ -17,8 +17,8 @@ StartLimitInterval=60
 Environment=DISPLAY=:0
 Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin
 # change to your install directory.
-WorkingDirectory=/home/sandtonvisuals/Software/pi-player
-ExecStart=/home/sandtonvisuals/Software/pi-player/pi-player
+WorkingDirectory=%h/.local/bin
+ExecStart=%h/.local/bin/pi-player
 
 [Install]
 WantedBy=default.target

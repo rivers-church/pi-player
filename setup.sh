@@ -1,7 +1,7 @@
 #! /bin/bash
 
 # Install required packages.
-sudo apt install neovim git unclutter ssh
+sudo apt install neovim git unclutter ssh -y
 sudo snap install chromium
 
 # Start ssh and set it to autostart.
@@ -9,7 +9,7 @@ sudo systemctl start ssh
 sudo systemctl enable ssh
 
 # Remove update popup notification:
-sudo apt remove update-notifier
+sudo apt remove update-notifier -y
 
 # Setup pi-player and unclutter to run at boot.
 mkdir -p ~./config/systemd/user
