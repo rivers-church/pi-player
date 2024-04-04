@@ -12,9 +12,9 @@ sudo systemctl enable ssh
 sudo apt remove update-notifier -y
 
 # Setup pi-player and unclutter to run at boot.
-mkdir -p ~./config/systemd/user
-wget -O ~./config/systemd/user/pi-player.service https://github.com/17xande/pi-player/raw/master/services/pi-player.service
-wget -O ~./config/systemd/user/unclutter.service https://github.com/17xande/pi-player/raw/master/services/unclutter.service
+mkdir -p ~/.config/systemd/user
+wget -O ~/.config/systemd/user/pi-player.service https://github.com/17xande/pi-player/raw/master/services/pi-player.service
+wget -O ~/.config/systemd/user/unclutter.service https://github.com/17xande/pi-player/raw/master/services/unclutter.service
 systemctl --user daemon-reload
 systemctl --user enable pi-player
 systemctl --user enable unclutter
