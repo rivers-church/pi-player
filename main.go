@@ -30,22 +30,21 @@ func main() {
 	}
 	exPath := filepath.Dir(ex)
 
-	var conf piplayer.Config
-	if err := conf.Load(""); err != nil {
+	conf, err := piplayer.ConfigLoad("")
+	if err != nil {
 		log.Printf("Current directory: %s\n", exPath)
 		log.Fatalf("Error loading config.\n%v", err)
 	}
 
-	dbg := *debug || conf.Debug
-
-	if dbg {
+	if *debug || conf.Debug {
+		conf.Debug = true
 		log.Println("Debug mode enabled")
-		log.Println("Config file:", conf)
+		log.Printf("Config file: %v", conf)
 	}
 
-	a := piplayer.NewAPIHandler(dbg, test, statAssets, statTemplates)
+	a := piplayer.NewAPIHandler(conf.Debug, test, statAssets, statTemplates)
 	kl := keylogger.NewKeyLogger(conf.Remote.Names)
-	p := piplayer.NewPlayer(&a, &conf, kl)
+	p := piplayer.NewPlayer(&a, conf, kl)
 	p.Server = piplayer.NewServer(p, *addr)
 
 	// Start the browser

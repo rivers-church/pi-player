@@ -30,6 +30,9 @@ type mount struct {
 }
 
 func (u sURL) MarshalJSON() ([]byte, error) {
+	if u.URL == nil {
+		return make([]byte, 0), nil
+	}
 	un, err := url.PathUnescape(u.URL.String())
 	if err != nil {
 		return nil, err

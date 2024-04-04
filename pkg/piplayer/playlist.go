@@ -32,7 +32,7 @@ type Presentation struct {
 func NewPlaylist(p *Player, dir string) (*Playlist, error) {
 	pl := &Playlist{Name: dir}
 
-	if p.conf.Mount.URL.Scheme == "smb" {
+	if p.conf.Mount.URL.URL != nil && p.conf.Mount.URL.Scheme == "smb" {
 		if err := p.conf.Mount.mount(); err != nil {
 			//log.Printf("error trying to mount folder: %v\n", err)
 			return nil, fmt.Errorf("error trying to mount folder: %v", err)

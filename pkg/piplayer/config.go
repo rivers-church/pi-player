@@ -2,10 +2,13 @@ package piplayer
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/17xande/configdir"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 )
 
 // Config holds the configuration of the pi-player
@@ -20,37 +23,73 @@ type Config struct {
 }
 
 // Load reads the config file and unmarshalls it to the config struct
-func (conf *Config) Load(path string) error {
-	if path == "" {
-		path = "config.json"
+func ConfigLoad(path string) (*Config, error) {
+	configPath := configdir.LocalConfig("pi-player")
+	// Create the directory if it doesn't exist.
+	err := configdir.MakePath(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("error creating config dir: %w", err)
 	}
 
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return err
+	var conf *Config
+
+	configFile := filepath.Join(configPath, "config.json")
+	// Does the file not exist?
+	if _, err := os.Stat(configFile); os.IsNotExist(err) {
+		// Create the file
+		f, err := os.Create(configFile)
+		defer f.Close()
+		if err != nil {
+			return nil, fmt.Errorf("error creating config file: %w", err)
+		}
+
+		encoder := json.NewEncoder(f)
+		login, _ := newLogin()
+
+		// Set some default values for config.
+		conf = &Config{
+			Location: "Rename Me",
+			Mount: mount{
+				URL: sURL{URL: &url.URL{Path: "/media"}},
+				Dir: "/media",
+			},
+
+			Debug:  true,
+			Login:  login,
+			Remote: remote{Names: []string{"keyboard"}},
+		}
+
+		if err := encoder.Encode(&conf); err != nil {
+			return nil, fmt.Errorf("error encoding config: %w", err)
+		}
+		conf.Mount.loadDir()
+		return conf, nil
 	}
 
-	err = json.Unmarshal(data, &conf)
+	data, err := os.ReadFile(configFile)
 	if err != nil {
-		return err
+		return nil, err
+	}
+
+	err = json.Unmarshal(data, conf)
+	if err != nil {
+		return nil, err
 	}
 	conf.Mount.loadDir()
 
-	return nil
+	return conf, nil
 }
 
 // Save reads the config struct, marshalls it and writes it to the config file
 func (conf *Config) Save(path string) error {
-	if path == "" {
-		path = "config.json"
-	}
-
+	configPath := configdir.LocalConfig("pi-player")
+	configFile := filepath.Join(configPath, "config.json")
 	jconf, err := json.MarshalIndent(conf, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(path, jconf, 0600)
+	return os.WriteFile(configFile, jconf, 0600)
 }
 
 // SettingsHandler handles requests to the settings page
