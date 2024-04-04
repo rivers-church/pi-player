@@ -1,7 +1,5 @@
 [Unit]
 Description=Pi Player
-# network must be ready
-After=network.target
 PartOf=graphical-session.target
 
 [Service]
@@ -16,7 +14,6 @@ StartLimitInterval=60
 
 Environment=DISPLAY=:0
 Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin
-# change to your install directory.
 WorkingDirectory=%h/.local/bin
 ExecStart=%h/.local/bin/pi-player
 
