@@ -43,8 +43,6 @@ gsettings set org.gnome.shell.extensions.dash-to-dock dock-fixed false
 gsettings set org.gnome.desktop.notifications show-banners false
 # Set Lock screen notifications to disabled.
 gsettings set org.gnome.desktop.notifications show-in-lock-screen false
-# Stop showing update notifications.
-gsettings set com.ubuntu.update-notifier no-show-notifications true
 # Privacy settings:
 
 # Screen settings:
