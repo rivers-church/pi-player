@@ -36,13 +36,6 @@ A black screen should be displayed once the Pi has booted and you should have co
 - Set Displays/refresh rate to 50Hz.
 - Set Date & Time/Automatic Timezone to enabled.
 
-### Open Software & updates and make the following changes under Updates:
-- Subscribed to: Security updates only.
-- Automatically check for updates: Every two weeks.
-- When there are security updates: Download and install automatically.
-- When there are other updates: Display every two weeks.
-- Notify me of a new Ubuntu version: Never.
-
 ### Setup Samba shares if required:
 ```bash
 sudo apt install samba
@@ -69,11 +62,3 @@ At the bottom of the file, add the following:
 sudo systemctl restart smbd
 ```
 
-### Unlock the keyring:
-We need to do this because we are automatically logging in.
-- Open passwords and Keys.
-- Right click on Passwords/Login.
-- Click on Change password.
-- Enter your current password.
-- When asked for a new password, leave it empty.
-- Click Ok to confirm.

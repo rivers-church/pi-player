@@ -13,7 +13,8 @@ sudo apt remove update-notifier -y
 
 # Setup pi-player and unclutter to run at boot.
 mkdir -p ~./config/systemd/user
-cp services/*.services ~/.config/systemd/user/
+wget -O ~./config/systemd/user/pi-player.service https://github.com/17xande/pi-player/raw/master/services/pi-player.service
+wget -O ~./config/systemd/user/unclutter.service https://github.com/17xande/pi-player/raw/master/services/unclutter.service
 systemctl --user daemon-reload
 systemctl --user enable pi-player
 systemctl --user enable unclutter
@@ -25,8 +26,6 @@ wget -O ~/.local/bin/pi-player https://github.com/17xande/pi-player/releases/lat
 # Add the current user to the input group so that they can read the USB remote events.
 # Note: a logout or restart is required for this to take effect.
 sudo usermod -a -G input $USER
-
-echo "Logout or restart your computer for changes to take effect."
 
 # System preferences changes, to make this work like a kiosk.
 
@@ -63,4 +62,6 @@ gsettings set org.gnome.desktop.remote-desktop.vnc view-only false
 gsettings set org.gnome.desktop.session idle-delay 0
 # Set Automatic Suspend to Off.
 gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 'nothing'
+
+echo "Logout or restart this device for changes to take effect."
 
