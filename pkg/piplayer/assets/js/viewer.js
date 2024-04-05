@@ -1,5 +1,5 @@
 class Viewer {
-  
+
   constructor() {
     // TODO: make these constants in a module.
     this.menuItemSelector = '.item';
@@ -11,7 +11,7 @@ class Viewer {
       current: null,
       items: []
     };
-  
+
     this.tmpItem = document.querySelector('#tmpItemRow');
     this.divContainer = document.querySelector('#container');
     this.tblPlaylist = document.querySelector('#tblPlaylist');
@@ -28,7 +28,7 @@ class Viewer {
       console.error("This page requires WebSocket support. Please use a WebSocket enabled service.");
       return;
     }
-  
+
     document.addEventListener("keydown", e => {
       e.preventDefault();
       // console.log(e);
@@ -57,7 +57,7 @@ class Viewer {
     // navigator.mediaSession.setActionHandler('pause', e => {
     //   console.log('pause', e);
     // });
-  
+
     this.getItems().then(res => {
       this.startItem(0);
     });
@@ -71,14 +71,14 @@ class Viewer {
     this.conn.addEventListener('open', e => {
       console.log("Connection Opened.");
     });
-    
+
     this.conn.addEventListener('error', e => {
       console.log("Error in the websocket connection:\n", e);
     });
-  
+
     this.conn.addEventListener('close', e => {
       console.log("Connection closed.\nTrying to reconnect...");
-  
+
       let to = setTimeout(() => this.wsConnect(), 5 * 1000);
     });
 
@@ -88,13 +88,13 @@ class Viewer {
   callApi(reqBody) {
     let myHeaders = new Headers();
     myHeaders.append('Content-Type', 'application/json');
-  
+
     let myInit = {
       method: "POST",
       headers: myHeaders,
       body: JSON.stringify(reqBody)
     }
-  
+
     return fetch(`${window.location.origin}/api`, myInit)
       .then(res => res.json())
       .then(json => {
@@ -108,7 +108,7 @@ class Viewer {
     let msg = JSON.parse(e.data);
     console.log(msg);
 
-    switch(msg.component) {
+    switch (msg.component) {
       case 'remote':
         this.remoteMessage(e, msg);
         break;
@@ -128,10 +128,10 @@ class Viewer {
   }
 
   connectionMessage(e, msg) {
-    switch(msg.event) {
+    switch (msg.event) {
       case "disconnect":
         console.warn(`server requested websocket disconnection. Connection should be closed any second now.`);
-      break;
+        break;
       default:
         console.error(`unsupported connection method: ${msg.component};\nmessage: ${msg}`);
     }
@@ -300,7 +300,7 @@ class Viewer {
       return
     }
 
-      this.startItem(parseInt(this.playlist.current) - 1);
+    this.startItem(parseInt(this.playlist.current) - 1);
   }
 
   next(e) {
@@ -410,7 +410,7 @@ class Viewer {
     let reqBody = {
       component: "playlist",
       method: "setCurrent",
-      arguments: {index: index.toString()}
+      arguments: { index: index.toString() }
     };
 
     this.callApi(reqBody).then(res => {
@@ -422,7 +422,7 @@ class Viewer {
 
   async startVisual(fileName) {
     let success = true;
-    let ext = fileName.slice(fileName.lastIndexOf('.'));
+    let ext = fileName.slice(fileName.lastIndexOf('.')).toLowerCase();
 
     switch (ext) {
       case '.mp4':
@@ -447,7 +447,7 @@ class Viewer {
           this.vidMedia.pause();
         }
         this.vidMedia.style.visibility = 'hidden';
-      break;
+        break;
       default:
         console.log("File type not supported: ", fileName);
         success = false;
@@ -464,7 +464,7 @@ class Viewer {
       this.audMusic.src = "";
       return success;
     }
-    
+
     let ext = item.Audio.slice(item.Audio.lastIndexOf('.'));
 
     switch (ext) {
