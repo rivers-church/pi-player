@@ -31,7 +31,7 @@ func ConfigLoad(path string) (*Config, error) {
 		return nil, fmt.Errorf("error creating config dir: %w", err)
 	}
 
-	var conf *Config
+	conf := &Config{}
 
 	configFile := filepath.Join(configPath, "config.json")
 	// Does the file not exist?
