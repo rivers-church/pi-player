@@ -145,8 +145,10 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 		password := r.PostFormValue("password")
 		debug := r.PostFormValue("debug")
 
+		conf.Debug = debug == "on"
+
 		if conf.Debug {
-			log.Printf("Received settings post: location: %s\n", location)
+			log.Printf("Received settings post: location: %s\nmountURL: %s\n", location, mountURL)
 		}
 
 		if location != "" {
@@ -167,7 +169,7 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 			}
 		}
 
-		if mountURL != "" && mountPassword != "" && mountUsername != "" {
+		if mountURL != "" || mountPassword != "" && mountUsername != "" {
 			var su sURL
 			u, err := url.Parse(mountURL)
 			if err != nil {
@@ -175,41 +177,51 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 			} else {
 				su.URL = u
 				newMount := mount{
-					URL:      su,
-					Username: mountUsername,
-					Domain:   mountDomain,
-					Password: mountPassword,
+					URL: su,
+					Dir: su.URL.String(),
+				}
+
+				if mountPassword != "" || mountUsername != "" {
+					newMount.Username = mountUsername
+					newMount.Domain = mountDomain
+					newMount.Password = mountPassword
 				}
 
 				if newMount.URL != conf.Mount.URL ||
 					newMount.Username != conf.Mount.Username ||
 					newMount.Domain != conf.Mount.Domain ||
-					newMount.Password != conf.Mount.Password &&
-						!newMount.mounted() {
-					if conf.Debug {
-						log.Printf("Debug: Attempting to mount location: %s\n", newMount.Dir)
-					}
-					if err := newMount.mount(); err != nil {
-						log.Printf("SettingsHandler: Error mounting new folder location:\n%s\n", err)
-					} else {
+					newMount.Password != conf.Mount.Password {
+					if su.Scheme == "smb" && !newMount.mounted() {
 						if conf.Debug {
-							log.Printf("Debug: Mount for '%s' successful. Unmounting old '%s' mount.\n", newMount.Dir, conf.Mount.Dir)
+							log.Printf("Debug: Attempting to mount location: %s\n", newMount.Dir)
 						}
-						// if the new folder was mounted successfully, unmount old folder.
-						// if err := conf.Mount.unmount(); err != nil {
-						// 	log.Printf("SettingsHandler: Error unmounting old directory:\n%s\n", err)
-						// }
+						if err := newMount.mount(); err != nil {
+							log.Printf("SettingsHandler: Error mounting new folder location:\n%s\n", err)
+						} else {
+							if conf.Debug {
+								log.Printf("Debug: Mount for '%s' successful. Unmounting old '%s' mount.\n", newMount.Dir, conf.Mount.Dir)
+							}
+							// if the new folder was mounted successfully, unmount old folder.
+							// if err := conf.Mount.unmount(); err != nil {
+							// 	log.Printf("SettingsHandler: Error unmounting old directory:\n%s\n", err)
+							// }
+							conf.Mount = newMount
+							if err := conf.Save(""); err != nil {
+								log.Println("error trying to save config:", err)
+							}
+							restart(p)
+						}
+					}
+
+					if su.Scheme == "" {
 						conf.Mount = newMount
+						if err := conf.Save(""); err != nil {
+							log.Println("error trying to save config:", err)
+						}
 						restart(p)
 					}
 				}
 			}
-		}
-
-		conf.Debug = debug == "on"
-
-		if err := conf.Save(""); err != nil {
-			log.Println("error trying to save config:", err)
 		}
 
 		http.Redirect(w, r, "/control", http.StatusSeeOther)

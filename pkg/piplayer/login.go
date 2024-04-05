@@ -65,7 +65,8 @@ func LoginHandler(p *Player) http.HandlerFunc {
 		if r.Method == "GET" {
 
 			tempControl := TemplateHandler{
-				filename: "login.html",
+				filename:      "login.html",
+				statTemplates: p.api.statTemplates,
 				data: map[string]interface{}{
 					"location": p.conf.Location,
 				},
