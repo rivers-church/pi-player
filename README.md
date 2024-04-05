@@ -1,6 +1,6 @@
 # Pi-Player
 
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/17xande/pi-player/go.yml)
+[![Go](https://github.com/17xande/pi-player/actions/workflows/build.yml/badge.svg)](https://github.com/17xande/pi-player/actions/workflows/build.yml)
 
 A simple remotely controlled video and image player for a linux based computer. Currently working on Ubuntu 22.04. Not currently working in Raspbian.
 
