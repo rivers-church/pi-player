@@ -1,0 +1,184 @@
+---
+- hosts: sandtonHosts
+  become: true
+
+  vars:
+    test: nothingfornow
+
+  tasks:
+    # Not sure if this is necessary for the final deployment.
+    - name: Install tools, neovim & git.
+      ansible.builtin.package:
+        name:
+          - neovim
+          - git
+        state: present
+        update_cache: true
+
+    # Not sure if this is necessary for the final deployment.
+    # - name: Install git.
+    #   ansible.builtin.package:
+    #     name: git
+    #     state: present
+
+    - name: Install unclutter.
+      ansible.builtin.package:
+        name: unclutter
+        state: present
+
+    # SSH will have to be installed and enabled prior to running this playbook.
+        # Perhaps create another playbook that can be run locally to install and enable SSH.
+    # - name: Install ssh.
+    #   ansible.builtin.package:
+    #     name: ssh
+    #     state: present
+
+    # - name: Enable ssh.
+    #   ansible.builtin.systemd_service:
+    #     name: ssh
+    #     enabled: true
+    #     state: started
+
+    - name: Install Chromium.
+      community.general.snap:
+        name: chromium
+        state: present
+
+    - name: Remove update notifier.
+      ansible.builtin.package:
+        name: update-notifier
+        state: absent
+
+
+    - name: Create systemd user dir.
+      ansible.builtin.file:
+        name: /home/{{ ansible_user_id }}/.config/systemd/user
+        state: directory
+
+    - name: Download systemd service file for pi-player.
+      ansible.builtin.get_url:
+        url: https://github.com/17xande/pi-player/raw/master/services/pi-player.service
+        dest: /home/{{ ansible_user_id }}/.config/systemd/user/
+
+    - name: Download systemd service file for unclutter.
+      ansible.builtin.get_url:
+        url: https://github.com/17xande/pi-player/raw/master/services/unclutter.service
+        dest: /home/{{ ansible_user_id }}/.config/systemd/user/
+
+    - name: Enable pi-player service.
+      ansible.builtin.systemd_service:
+        name: pi-player.service
+        enabled: true
+        daemon_reload: true
+
+    - name: Enable unclutter service.
+      ansible.builtin.systemd_service:
+        name: unclutter.service
+        enabled: true
+
+    - name: Create a directory for the pi-player binary.
+      ansible.builtin.file:
+        name: /home/{{ ansible_user_id }}/.local/bin
+        state: directory
+
+    - name: Download the pi-player binary.
+      ansible.builtin.get_url:
+        url: https://github.com/17xande/pi-player/releases/latest/download/pi-player
+        dest: /home/{{ ansible_user_id }}/.local/bin/
+        mode: '0755'
+
+    - name: Add the current user to the input group.
+      ansible.builtin.user:
+        name: {{ ansible_user_id }}
+        groups: input
+        append: true
+
+    - name: Remove desktop background image in light mode.
+      community.general.gconftool2:
+        key: "org.gnome.desktop.background picture-uri"
+        value_type: string
+        value: ""
+
+    - name: Remove desktop background image in dark mode.
+      community.general.gconftool2:
+        key: "org.gnome.desktop.background picture-uri-dark"
+        value_type: string
+        value: ""
+
+    - name: Set desktop color to black.
+      community.general.gconftool2:
+        key: "org.gnome.desktop.background primary-color"
+        value_type: string
+        value: "#000000"
+
+    - name: Set appearance to dark.
+      community.general.gconftool2:
+        key: "org.gnome.desktop.interface color-scheme"
+        value_type: string
+        value: "prefer-dark"
+
+    - name: Set dock to autohide.
+      community.general.gconftool2:
+        key: "org.gnome.shell.extensions.dash-to-dock dock-fixed "
+        value_type: bool
+        value: false
+
+    - name: Set notifications to Do Not Disturb.
+      community.general.gconftool2:
+        key: "org.gnome.desktop.notifications show-banners"
+        value_type: bool
+        value: false
+
+    - name: Disable lock screen notificaitons.
+      community.general.gconftool2:
+        key: "org.gnome.desktop.notifications show-in-lock-screen"
+        value_type: bool
+        value: false
+
+    - name: Set blank screen delay to never.
+      community.general.gconftool2:
+        key: "org.gnome.desktop.screensaver lock-delay"
+        value_type: int
+        value: 0
+
+    - name: Disable automatic screen lock.
+      community.general.gconftool2:
+        key: "org.gnome.desktop.screensaver lock-enabled"
+        value_type: bool
+        value: false
+
+    - name: Disable lock screen on suspend.
+      community.general.gconftool2:
+        key: "org.gnome.desktop.screensaver ubuntu-lock-on-suspend"
+        value_type: bool
+        value: false
+
+    - name: Disable notifications on lock screen.
+      community.general.gconftool2:
+        key: "org.gnome.desktop.notifications show-in-lock-screen"
+        value_type: bool
+        value: false
+
+    - name: Enable remote desktop. 
+      community.general.gconftool2:
+        key: "org.gnome.desktop.remote-desktop.rdp enable"
+        value_type: bool
+        value: true
+
+    - name: Enable VNC.
+      community.general.gconftool2:
+        key: "org.gnome.desktop.remote-desktop.vnc view-only" 
+        value_type: bool
+        value: false
+
+    - name: Disable screen blank.
+      community.general.gconftool2:
+        key: "org.gnome.desktop.session idle-delay"
+        value_type: int
+        value: 0
+
+    - name: Disable auto suspend.
+      community.general.gconftool2:
+        key: "org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type"
+        value_type: string
+        value: "nothing"
