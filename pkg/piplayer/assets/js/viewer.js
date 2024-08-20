@@ -162,6 +162,7 @@ class Viewer {
         this.next(e);
         break;
       case 'KEY_ENTER':
+      case 'KEY_SELECT':
         this.remoteEnterPress(e);
         break;
       case 'KEY_CONTEXT_MENU':
