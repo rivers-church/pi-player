@@ -7,6 +7,7 @@
 
   tasks:
     # Not sure if this is necessary for the final deployment.
+    # TODO: install neovim with snap - installs latest stable version.
     - name: Install tools, neovim & git.
       ansible.builtin.package:
         name:
@@ -33,7 +34,7 @@
     #     name: ssh
     #     state: present
 
-    # - name: Enable ssh.
+    # - name: Enable and start ssh.
     #   ansible.builtin.systemd_service:
     #     name: ssh
     #     enabled: true
@@ -48,7 +49,6 @@
       ansible.builtin.package:
         name: update-notifier
         state: absent
-
 
     - name: Create systemd user dir.
       ansible.builtin.file:
