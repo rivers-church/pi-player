@@ -8,6 +8,7 @@
 
   tasks:
     - name: Initial setup requiring root access.
+      become: true
       block:
         # Not sure if this is necessary for the final deployment.
         # Python is necessary for Ansible
@@ -45,8 +46,7 @@
         - name: Install python psutil package.
           ansible.builtin.pip:
             name: psutil
-            virtualenv: /urs/loca/lib/venv
-            virtualenv_command: "{{ ansible_python_interpreter }} -m venv"
+            break_system_packages: true
 
         - name: Install Chromium.
           community.general.snap:
@@ -64,33 +64,35 @@
             groups: input
             append: true
 
-      become: true
-
     - name: Create a directory for the pi-player binary.
       ansible.builtin.file:
         name: /home/{{ ansible_user_id }}/.local/bin
         state: directory
+        mode: "0744"
 
     - name: Download the pi-player binary.
       ansible.builtin.get_url:
         url: https://github.com/17xande/pi-player/releases/latest/download/pi-player
         dest: /home/{{ ansible_user_id }}/.local/bin/
-        mode: '0755'
+        mode: '0744'
 
     - name: Create systemd user dir.
       ansible.builtin.file:
         name: /home/{{ ansible_user_id }}/.config/systemd/user
         state: directory
+        mode: "0744"
 
     - name: Download systemd service file for pi-player.
       ansible.builtin.get_url:
         url: https://github.com/17xande/pi-player/raw/master/services/pi-player.service
         dest: /home/{{ ansible_user_id }}/.config/systemd/user/
+        mode: "0744"
 
     - name: Download systemd service file for unclutter.
       ansible.builtin.get_url:
         url: https://github.com/17xande/pi-player/raw/master/services/unclutter.service
         dest: /home/{{ ansible_user_id }}/.config/systemd/user/
+        mode: "0744"
 
     - name: Enable pi-player service.
       ansible.builtin.systemd_service:
@@ -107,75 +109,81 @@
 
     - name: Remove desktop background image in light mode.
       community.general.dconf:
-        key: "org/gnome/desktop/background/picture-uri"
-        value: ""
+        key: "/org/gnome/desktop/background/picture-uri"
+        value: "''"
 
     - name: Remove desktop background image in dark mode.
       community.general.dconf:
-        key: "org/gnome/desktop/background/picture-uri-dark"
-        value: ""
+        key: "/org/gnome/desktop/background/picture-uri-dark"
+        value: "''"
 
     - name: Set desktop color to black.
       community.general.dconf:
-        key: "org/gnome/desktop/background/primary-color"
-        value: "#000000"
+        key: "/org/gnome/desktop/background/primary-color"
+        value: "'#000000'"
 
     - name: Set appearance to dark.
       community.general.dconf:
-        key: "org/gnome/desktop/interface/color-scheme"
-        value: "prefer-dark"
+        key: "/org/gnome/desktop/interface/color-scheme"
+        value: "'prefer-dark'"
 
     - name: Set dock to autohide.
       community.general.dconf:
-        key: "org/gnome/shell/extensions/dash-to-dock/dock-fixed "
+        key: "/org/gnome/shell/extensions/dash-to-dock/dock-fixed"
         value: false
 
+    - name: Set dock to be smaller.
+      community.general.dconf:
+        key: "/org/gnome/shell/extensions/dash-to-dock/extend-height"
+        value: false
+
+    # TODO: not sure if this setting still works
     - name: Set notifications to Do Not Disturb.
       community.general.dconf:
-        key: "org/gnome/desktop/notifications/show-banners"
+        key: "/org/gnome/desktop/notifications/show-banners"
         value: false
 
     - name: Disable lock screen notificaitons.
       community.general.dconf:
-        key: "org/gnome/desktop/notifications/show-in-lock-screen"
+        key: "/org/gnome/desktop/notifications/show-in-lock-screen"
         value: false
 
-    - name: Set blank screen delay to never.
+    - name: Set idle-delay to never.
       community.general.dconf:
-        key: "org/gnome/desktop/screensaver/lock-delay"
+        key: "/org/gnome/desktop/session/idle-delay"
         value: 0
+
+    - name: Set sleep timeout to never.
+      community.general.dconf:
+        key: "/org/gnome/settings-daemon/plugins/power/sleep-inactive-ac-timeout"
+        value: 0
+
+    - name: Set sleep to never.
+      community.general.dconf:
+        key: "/org/gnome/settings-daemon/plugins/power/sleep-inactive-ac-type"
+        value: "'nothing'"
 
     - name: Disable automatic screen lock.
       community.general.dconf:
-        key: "org/gnome/desktop/screensaver/lock-enabled"
+        key: "/org/gnome/desktop/screensaver/lock-enabled"
         value: false
 
     - name: Disable lock screen on suspend.
       community.general.dconf:
-        key: "org/gnome/desktop/screensaver/ubuntu-lock-on-suspend"
+        key: "/org/gnome/desktop/screensaver/ubuntu-lock-on-suspend"
         value: false
 
     - name: Disable notifications on lock screen.
       community.general.dconf:
-        key: "org/gnome/desktop/notifications/show-in-lock-screen"
+        key: "/org/gnome/desktop/notifications/show-in-lock-screen"
         value: false
 
-    - name: Enable remote desktop. 
+    - name: Disable system sounds.
       community.general.dconf:
-        key: "org/gnome/desktop/remote-desktop.rdp/enable"
+        key: "/org/gnome/desktop/sound/event-sounds"
+        value: false
+
+    - name: Set timezone to update automatically.
+      community.general.dconf:
+        key: "/org/gnome/desktop/datetime/automatic-timezone"
         value: true
-
-    - name: Enable VNC.
-      community.general.dconf:
-        key: "org/gnome/desktop/remote-desktop.vnc/view-only" 
-        value: false
-
-    - name: Disable screen blank.
-      community.general.dconf:
-        key: "org/gnome/desktop/session/idle-delay"
-        value: 0
-
-    - name: Disable auto suspend.
-      community.general.dconf:
-        key: "org.gnome.settings-daemon.plugins.power/sleep-inactive-ac-type"
-        value: "nothing"
