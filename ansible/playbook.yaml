@@ -10,16 +10,14 @@
     - name: Initial setup requiring root access.
       become: true
       block:
-        # Not sure if this is necessary for the final deployment.
+        # Not sure if other tools are necessary for the final deployment.
         # Python is necessary for Ansible
-        # TODO: install neovim with snap - installs latest stable version.
-        - name: Install tools, neovim, git & python.
+        - name: Install tools, git & python.
           ansible.builtin.package:
             name:
-              - neovim
               - git
               - python3
-              - python3-venv
+              # - python3-venv
               # - python3-pip
               # - python3-gi
             state: present
@@ -48,11 +46,6 @@
             name: psutil
             break_system_packages: true
 
-        - name: Install Chromium.
-          community.general.snap:
-            name: chromium
-            state: present
-
         - name: Remove update notifier.
           ansible.builtin.package:
             name: update-notifier
@@ -63,6 +56,18 @@
             name: "{{ ansible_user_id }}"
             groups: input
             append: true
+
+    - name: Install Chromium.
+      community.general.snap:
+        name: chromium
+        state: present
+
+    - name: Install neovim.
+      community.general.snap:
+        name: nvim
+        state: present
+        classic: true
+        channel: "beta"
 
     - name: Create a directory for the pi-player binary.
       ansible.builtin.file:
