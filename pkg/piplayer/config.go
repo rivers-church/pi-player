@@ -25,9 +25,20 @@ type Config struct {
 // Load reads the config file and unmarshalls it to the config struct
 func ConfigLoad(path string) (*Config, error) {
 	configPath := configdir.LocalConfig("pi-player")
-	// Create the directory if it doesn't exist.
-	err := configdir.MakePath(configPath)
+	userHome, err := os.UserHomeDir()
 	if err != nil {
+		return nil, fmt.Errorf("error trying to get user dir: %w", err)
+	}
+
+	defaultDir := filepath.Join(userHome, "Documents", "pi-player")
+	if err := os.MkdirAll(defaultDir, 0744); err != nil {
+		return nil, fmt.Errorf("error trying to create default pi-player dir: %w", err)
+	}
+
+	// TODO: Put a pic with the Pi Player logo in the folder about so it displays on first load.
+
+	// Create the directory if it doesn't exist.
+	if err := configdir.MakePath(configPath); err != nil {
 		return nil, fmt.Errorf("error creating config dir: %w", err)
 	}
 
@@ -43,15 +54,14 @@ func ConfigLoad(path string) (*Config, error) {
 			return nil, fmt.Errorf("error creating config file: %w", err)
 		}
 
-		encoder := json.NewEncoder(f)
 		login, _ := newLogin()
 
 		// Set some default values for config.
 		conf = &Config{
-			Location: "Rename Me",
+			Location: "PiPlayer",
 			Mount: mount{
-				URL: sURL{URL: &url.URL{Path: "/media"}},
-				Dir: "/media",
+				URL: sURL{URL: &url.URL{Path: defaultDir}},
+				Dir: defaultDir,
 			},
 
 			Debug:  true,
@@ -59,10 +69,8 @@ func ConfigLoad(path string) (*Config, error) {
 			Remote: remote{Names: []string{"keyboard"}},
 		}
 
-		if err := encoder.Encode(&conf); err != nil {
-			return nil, fmt.Errorf("error encoding config: %w", err)
-		}
-		conf.Mount.loadDir()
+		conf.Save()
+
 		return conf, nil
 	}
 
@@ -81,7 +89,7 @@ func ConfigLoad(path string) (*Config, error) {
 }
 
 // Save reads the config struct, marshalls it and writes it to the config file
-func (conf *Config) Save(path string) error {
+func (conf *Config) Save() error {
 	configPath := configdir.LocalConfig("pi-player")
 	configFile := filepath.Join(configPath, "config.json")
 	jconf, err := json.MarshalIndent(conf, "", "  ")
@@ -206,7 +214,7 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 							// 	log.Printf("SettingsHandler: Error unmounting old directory:\n%s\n", err)
 							// }
 							conf.Mount = newMount
-							if err := conf.Save(""); err != nil {
+							if err := conf.Save(); err != nil {
 								log.Println("error trying to save config:", err)
 							}
 							restart(p)
@@ -215,7 +223,7 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 
 					if su.Scheme == "" {
 						conf.Mount = newMount
-						if err := conf.Save(""); err != nil {
+						if err := conf.Save(); err != nil {
 							log.Println("error trying to save config:", err)
 						}
 						restart(p)

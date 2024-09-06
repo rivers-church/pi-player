@@ -8,6 +8,8 @@ A simple remotely controlled video and image player for a linux based computer. 
 Run setup script:
 ```bash
 sudo ./setup.sh
+# OR Ansible playbook, with your own inventory file:
+ansible-playbook -i ansible/inventory.yml ansible/playbook.yaml
 ```
 
 Logout or restart.
@@ -17,9 +19,10 @@ Test project:
 systemctl --user start pi-player
 # Check the status of the running service:
 systemctl --user status pi-player
+# You might have to update the config file at ~/.config/pi-player/config.json
 ```
 
-Access the server from a browset to make sure it's running properly. Use the following address:.`http://<device-ip-address>:8080/control`
+Access the server from a browser to make sure it's running properly. Use the following address:.`http://<device-ip-address>:8080/control`
 
 Reboot the PC and make sure that the program still runs on boot correctly.
 
@@ -30,11 +33,9 @@ A black screen should be displayed once the Pi has booted and you should have co
 - Set Privacy/Connectivity checking to disabled.
 - Sound Settings:
   - Set System volume to 100%.
-  - Set Volume levels/System sounds to 0%.
 - Power Settings:
   - Set Power mode to Performance (Some machines don't have this).
 - Set Displays/refresh rate to 50Hz.
-- Set Date & Time/Automatic Timezone to enabled.
 
 ### Setup Samba shares if required:
 ```bash

@@ -100,7 +100,7 @@ func LoginHandler(p *Player) http.HandlerFunc {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			if err := p.conf.Save(""); err != nil {
+			if err := p.conf.Save(); err != nil {
 				log.Println("error trying to save config file:", err)
 			}
 		}
