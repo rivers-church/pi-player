@@ -14,6 +14,7 @@ type Login struct {
 	Password string
 }
 
+// TODO: use an random env variable instead of hard coding the secret here.
 var store = sessions.NewCookieStore([]byte("ip-player-session-secret"))
 
 // newLogin creates the default login credentials if none are found
@@ -42,7 +43,9 @@ func CheckLogin(w http.ResponseWriter, r *http.Request) (*sessions.Session, bool
 		return nil, false, err
 	}
 
-	return session, session.Values["x-forwarded-for"] != nil, nil
+	_, authenticated := session.Values["authenticated"]
+
+	return session, authenticated, nil
 }
 
 // LoginHandler handles login requests
@@ -73,8 +76,9 @@ func LoginHandler(p *Player) http.HandlerFunc {
 			}
 			tempControl.ServeHTTP(w, r)
 			return
+
 		} else if r.Method != "POST" {
-			log.Println("Unsuported request type for Settings page:", r.Method)
+			log.Println("Unsuported request type for Login page:", r.Method)
 			return
 		}
 
@@ -107,7 +111,15 @@ func LoginHandler(p *Player) http.HandlerFunc {
 
 		if username == p.conf.Login.Username && checkHash(password, p.conf.Login.Password) {
 			// user successfully logged in
-			session.Values["x-forwarded-for"] = xForward
+			if p.conf.Debug {
+				log.Printf("login successful from %s\n", r.RemoteAddr)
+			}
+
+			store.Options = &sessions.Options{
+				Secure: false,
+			}
+
+			session.Values["authenticated"] = r.RemoteAddr
 			session.Save(r, w)
 			http.Redirect(w, r, "/control", http.StatusFound)
 			return

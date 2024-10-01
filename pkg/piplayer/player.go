@@ -312,6 +312,9 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !loggedIn {
+		if p.conf.Debug {
+			log.Println("User not logged in. Redirecting to login page.")
+		}
 		http.Redirect(w, r, "/login", http.StatusFound)
 		return
 	}
