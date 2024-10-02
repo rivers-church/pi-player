@@ -145,6 +145,9 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	session.Options.MaxAge = -1
+	store.Options = &sessions.Options{
+		Secure: false,
+	}
 	if err := session.Save(r, w); err != nil {
 		log.Println("error trying to set MaxAge on session to logout")
 	}
