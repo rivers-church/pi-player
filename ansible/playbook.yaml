@@ -156,12 +156,12 @@
     - name: Set idle-delay to never.
       community.general.dconf:
         key: "/org/gnome/desktop/session/idle-delay"
-        value: 0
+        value: "uint32 0"
 
     - name: Set sleep timeout to never.
       community.general.dconf:
         key: "/org/gnome/settings-daemon/plugins/power/sleep-inactive-ac-timeout"
-        value: 0
+        value: "uint32 0"
 
     - name: Set sleep to never.
       community.general.dconf:
