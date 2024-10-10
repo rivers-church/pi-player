@@ -160,41 +160,9 @@ func (p *Player) startBrowser() error {
 		return errors.New("error: Browser already running, cannot start another instance")
 	}
 
+	// https://peter.sh/experiments/chromium-command-line-switches/
 	flags := []string{
-		"--window-size=1920,1080",
-		"--window-position=0,0",
 		"--kiosk",
-		"--incognito",
-		"--disable-infobars",
-		"--noerrdialogs",
-		"--no-first-run",
-		"--enable-experimental-web-platform-features",
-		"--javascript-harmony",
-		"--autoplay-policy=no-user-gesture-required",
-		"--remote-debugging-port=9222",
-
-		// Experimental gpu enabling flags for higher video playback performance
-		/*
-			"--ignore-gpu-blacklist",
-			"--enable-gpu-rasterization",
-			"--enable-native-gpu-memory-buffers",
-			"--enable-checker-imaging",
-			"--disable-quic",
-			"--enable-tcp-fast-open",
-			"--disable-gpu-compositing",
-			"--enable-fast-unload",
-			"--enable-experimental-canvas-features",
-			"--enable-scroll-prediction",
-			"--enable-simple-cache-backend",
-			"--answers-in-suggest",
-			"--ppapi-flash-path=/usr/lib/chromium-browser/libpepflashplayer.so",
-			"--ppapi-flash-args=enable_stagevideo_auto=0",
-			"--ppapi-flash-version=",
-			"--max-tiles-for-interest-area=512",
-			"--num-raster-threads=4",
-			"--default-tile-height=512",
-		*/
-		// End of experimental flags
 
 		"http://localhost:8080/viewer",
 	}
