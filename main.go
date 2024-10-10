@@ -30,7 +30,7 @@ func main() {
 	}
 	exPath := filepath.Dir(ex)
 
-	conf, err := piplayer.ConfigLoad("")
+	conf, err := piplayer.ConfigLoad(statAssets)
 	if err != nil {
 		log.Printf("Current directory: %s\n", exPath)
 		log.Fatalf("Error loading config.\n%v", err)

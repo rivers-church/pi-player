@@ -1,14 +1,17 @@
 package piplayer
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
-	"github.com/17xande/configdir"
+	"io/fs"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+
+	"github.com/17xande/configdir"
 )
 
 // Config holds the configuration of the pi-player
@@ -23,7 +26,7 @@ type Config struct {
 }
 
 // Load reads the config file and unmarshalls it to the config struct
-func ConfigLoad(path string) (*Config, error) {
+func ConfigLoad(statsAssets embed.FS) (*Config, error) {
 	configPath := configdir.LocalConfig("pi-player")
 	userHome, err := os.UserHomeDir()
 	if err != nil {
@@ -31,13 +34,25 @@ func ConfigLoad(path string) (*Config, error) {
 	}
 
 	defaultDir := filepath.Join(userHome, "Documents", "pi-player")
-	if err := os.MkdirAll(defaultDir, 0744); err != nil {
-		return nil, fmt.Errorf("error trying to create default pi-player dir: %w", err)
+
+	if _, err := os.Stat(defaultDir); os.IsNotExist(err) {
+		// Create the media directory if it doesn't exist
+		if err := os.MkdirAll(defaultDir, 0744); err != nil {
+			return nil, fmt.Errorf("error trying to create default pi-player dir: %w", err)
+		}
+
+		// Copy the logo file to the media directory
+		logoFile, err := fs.ReadFile(statsAssets, "pkg/piplayer/assets/img/PiPlayer Logo.png")
+		if err != nil {
+			return nil, fmt.Errorf("error trying to read logo file: %w", err)
+		}
+
+		if err := os.WriteFile(filepath.Join(defaultDir, "PiPlayer Logo.png"), logoFile, 0644); err != nil {
+			return nil, fmt.Errorf("error trying to write logo file: %w", err)
+		}
 	}
 
-	// TODO: Put a pic with the Pi Player logo in the folder about so it displays on first load.
-
-	// Create the directory if it doesn't exist.
+	// Create the config directory if it doesn't exist.
 	if err := configdir.MakePath(configPath); err != nil {
 		return nil, fmt.Errorf("error creating config dir: %w", err)
 	}
