@@ -18,7 +18,7 @@
               - git
               - python3
               # - python3-venv
-              # - python3-pip
+              - python3-pip
               # - python3-gi
             state: present
             update_cache: true
@@ -57,17 +57,17 @@
             groups: input
             append: true
 
-    - name: Install Chromium.
-      community.general.snap:
-        name: chromium
-        state: present
+        - name: Install Chromium.
+          community.general.snap:
+            name: chromium
+            state: present
 
-    - name: Install neovim.
-      community.general.snap:
-        name: nvim
-        state: present
-        classic: true
-        channel: "beta"
+        - name: Install neovim.
+          community.general.snap:
+            name: nvim
+            state: present
+            classic: true
+            channel: "beta"
 
     - name: Create a directory for the pi-player binary.
       ansible.builtin.file:
