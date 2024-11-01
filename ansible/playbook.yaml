@@ -23,11 +23,6 @@
             state: present
             update_cache: true
 
-        - name: Install unclutter.
-          ansible.builtin.package:
-            name: unclutter
-            state: present
-
         # SSH will have to be installed and enabled prior to running this playbook.
             # Perhaps create another playbook that can be run locally to install and enable SSH.
         # - name: Install ssh.
@@ -69,6 +64,23 @@
             classic: true
             channel: "beta"
 
+    - name: Download the hide-cursor gnome shell extension
+      ansible.builtin.get_url:
+        url: https://github.com/elcste/hide-cursor/releases/latest/download/hide-cursor@elcste.com.zip
+        dest: /home/{{ ansible_user_id }}/
+        mode: '0744'
+
+    - name: Install the hide-cursor gnome shell extension
+      # NOTE: Requires a logout/login or reboot to take effect, and then a separate command to enable it.
+      ansible.builtin.command:
+        cmd: "gnome-extensions install --force /home/{{ ansible_user_id }}/hide-cursor@elcste.com.zip"
+        creates: "/home/{{ ansible_user_id }}.local/share/gnome-shell/extensions/hide-cursor@elcste.com"
+
+    # - name: Enable the hide-cursor extension
+    #   # NOTE: this can only be run after a restart or logout/login.
+    #   ansible.builtin.command:
+    #     cmd: "gnome-extensions enable hide-cursor@elcste.com"
+
     - name: Create a directory for the pi-player binary.
       ansible.builtin.file:
         name: /home/{{ ansible_user_id }}/.local/bin
@@ -93,24 +105,12 @@
         dest: /home/{{ ansible_user_id }}/.config/systemd/user/
         mode: "0744"
 
-    - name: Download systemd service file for unclutter.
-      ansible.builtin.get_url:
-        url: https://github.com/17xande/pi-player/raw/master/services/unclutter.service
-        dest: /home/{{ ansible_user_id }}/.config/systemd/user/
-        mode: "0744"
-
     - name: Enable pi-player service.
       ansible.builtin.systemd_service:
         name: pi-player.service
         scope: user
         enabled: true
         daemon_reload: true
-
-    - name: Enable unclutter service.
-      ansible.builtin.systemd_service:
-        name: unclutter.service
-        scope: user
-        enabled: true
 
     - name: Remove desktop background image in light mode.
       community.general.dconf:
