@@ -29,6 +29,7 @@ class Viewer {
       return;
     }
 
+    this.hideMouse()
     this.listenMouse()
 
     document.addEventListener("keydown", e => {
