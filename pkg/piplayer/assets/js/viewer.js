@@ -34,7 +34,6 @@ class Viewer {
 
     document.addEventListener("keydown", e => {
       e.preventDefault();
-      // console.log(e);
     });
 
     // navigator.mediaSession.setActionHandler('previoustrack', e => {
