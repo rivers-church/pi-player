@@ -29,6 +29,8 @@ class Viewer {
       return;
     }
 
+    this.listenMouse()
+
     document.addEventListener("keydown", e => {
       e.preventDefault();
       // console.log(e);
@@ -479,6 +481,23 @@ class Viewer {
         break;
     }
     return success;
+  }
+
+  listenMouse() {
+    let timer
+    document.addEventListener('mousemove', () => {
+      this.showMouse()
+      clearTimeout(timer)
+      timer = setTimeout(this.hideMouse.bind(this), 1000)
+    });
+  }
+
+  showMouse() {
+    document.body.style.cursor = 'auto';
+  }
+
+  hideMouse() {
+    document.body.style.cursor = 'none';
   }
 }
 
