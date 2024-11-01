@@ -64,23 +64,6 @@
             classic: true
             channel: "beta"
 
-    - name: Download the hide-cursor gnome shell extension
-      ansible.builtin.get_url:
-        url: https://github.com/elcste/hide-cursor/releases/latest/download/hide-cursor@elcste.com.zip
-        dest: /home/{{ ansible_user_id }}/
-        mode: '0744'
-
-    - name: Install the hide-cursor gnome shell extension
-      # NOTE: Requires a logout/login or reboot to take effect, and then a separate command to enable it.
-      ansible.builtin.command:
-        cmd: "gnome-extensions install --force /home/{{ ansible_user_id }}/hide-cursor@elcste.com.zip"
-        creates: "/home/{{ ansible_user_id }}.local/share/gnome-shell/extensions/hide-cursor@elcste.com"
-
-    # - name: Enable the hide-cursor extension
-    #   # NOTE: this can only be run after a restart or logout/login.
-    #   ansible.builtin.command:
-    #     cmd: "gnome-extensions enable hide-cursor@elcste.com"
-
     - name: Create a directory for the pi-player binary.
       ansible.builtin.file:
         name: /home/{{ ansible_user_id }}/.local/bin
