@@ -1,12 +1,10 @@
 [Unit]
 Description=Pi Player
-PartOf=graphical-session.target
+Requires=graphical-session.target
+After=graphical-session.target
 
 [Service]
 Type=simple
-# if using custom user and group, define here.
-#User=user
-#Group=user
 
 Restart=on-failure
 RestartSec=10
@@ -18,6 +16,5 @@ WorkingDirectory=%h/.local/bin
 ExecStart=%h/.local/bin/pi-player
 
 [Install]
-WantedBy=default.target
-WantedBy=graphical-session.target
+RequiredBy=graphical-session.target
 
