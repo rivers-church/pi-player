@@ -19,6 +19,8 @@ class Viewer {
     this.vidMedia = document.querySelector('#vidMedia');
     this.audMusic = document.querySelector('#audMusic');
 
+    // divContainer.requestFullscreen();
+
     // Listen for when the video ends and start the next item.
     this.vidMedia.addEventListener('ended', e => {
       this.next();
@@ -29,8 +31,8 @@ class Viewer {
       return;
     }
 
-    this.hideMouse()
-    this.listenMouse()
+    this.hideMouse();
+    this.listenMouse();
 
     document.addEventListener("keydown", e => {
       e.preventDefault();
@@ -493,11 +495,11 @@ class Viewer {
   }
 
   showMouse() {
-    document.body.style.cursor = 'auto';
+    document.documentElement.style.cursor = 'auto';
   }
 
   hideMouse() {
-    document.body.style.cursor = 'none';
+    document.documentElement.style.cursor = 'none';
   }
 }
 

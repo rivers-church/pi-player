@@ -162,17 +162,17 @@ func (p *Player) startBrowser() error {
 
 	// https://peter.sh/experiments/chromium-command-line-switches/
 	flags := []string{
-		"--kiosk",
-		"--autoplay-policy=no-user-gesture-required",
+		// "--no-user-gesture-required",
+		"-kiosk",
+		// "-private-window",
 		"http://localhost:8080/viewer",
 	}
 
-	browser := "chromium"
+	browser := "firefox"
 
 	if p.api.test == "linux" {
 		flags = []string{
 			"--incognito",
-			"--remote-debugging-port=9222",
 			"http://localhost:8080/viewer",
 		}
 
@@ -180,7 +180,6 @@ func (p *Player) startBrowser() error {
 	} else if p.api.test == "mac" {
 		flags = []string{
 			"--incognito",
-			"--remote-debugging-port=9222",
 			"http://localhost:8080/viewer",
 		}
 

@@ -16,5 +16,4 @@ WorkingDirectory=%h/.local/bin
 ExecStart=%h/.local/bin/pi-player
 
 [Install]
-RequiredBy=graphical-session.target
-
+WantedBy=default.target
