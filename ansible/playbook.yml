@@ -1,0 +1,165 @@
+---
+- name: Pi-Player setup for Arch Linux + Hyprland Kiosk
+  hosts: devices
+
+  vars:
+    ansible_python_interpreter: python3
+
+  tasks:
+    - name: Initial setup requiring root access.
+      become: true
+      block:
+        - name: Install essential packages.
+          community.general.pacman:
+            name:
+              - git
+              - chromium
+              - base-devel  # Required for yay
+              - wget
+              - curl
+              - ntp
+            state: present
+            update_cache: true
+
+        - name: Add the current user to the input group.
+          ansible.builtin.user:
+            name: "{{ ansible_user_id }}"
+            groups: input
+            append: true
+
+        - name: Enable automatic login.
+          ansible.builtin.lineinfile:
+            path: /etc/systemd/system/getty@tty1.service.d/autologin.conf
+            line: "ExecStart=-/sbin/agetty -o '-p -f -- \\u' --noclear --autologin {{ ansible_user_id }} %I $TERM"
+            regexp: "^ExecStart="
+            create: true
+            backup: true
+
+        - name: Create getty service override directory.
+          ansible.builtin.file:
+            path: /etc/systemd/system/getty@tty1.service.d
+            state: directory
+            mode: '0755'
+
+        - name: Enable and start ntp for time sync.
+          ansible.builtin.systemd_service:
+            name: systemd-timesyncd
+            enabled: true
+            state: started
+
+        - name: Create the `aur_builder` user
+          ansible.builtin.user:
+            name: aur_builder
+            create_home: yes
+            group: wheel
+
+        - name: Allow the `aur_builder` user to run `sudo pacman` without a password
+          ansible.builtin.lineinfile:
+            path: /etc/sudoers.d/11-install-aur_builder
+            line: 'aur_builder ALL=(ALL) NOPASSWD: /usr/bin/pacman'
+            create: yes
+            mode: 0644
+            validate: 'visudo -cf %s'
+
+    - name: Install yay AUR helper.
+      become: yes
+      become_user: aur_builder
+      kewlfft.aur.aur:
+        name: yay
+        use: makepkg
+        state: present
+
+    - name: Install AUR packages with yay.
+      become: yes
+      become_user: aur_builder
+      kewlfft.aur.aur:
+        name:
+          - neovim
+          - ghostty
+          - ttf-firacode-nerd
+        use: yay
+        state: present
+
+    - name: Install LazyVim.
+      block:
+        - name: Check if nvim config exists.
+          ansible.builtin.stat:
+            path: /home/{{ ansible_user_id }}/.config/nvim
+          register: nvim_config
+
+        - name: Clone LazyVim starter config.
+          ansible.builtin.git:
+            repo: https://github.com/LazyVim/starter
+            dest: /home/{{ ansible_user_id }}/.config/nvim
+            depth: 1
+          when: not nvim_config.stat.exists
+
+        - name: Remove .git directory from nvim config.
+          ansible.builtin.file:
+            path: /home/{{ ansible_user_id }}/.config/nvim/.git
+            state: absent
+          when: not nvim_config.stat.exists
+
+    - name: Create a directory for the pi-player binary.
+      ansible.builtin.file:
+        name: /home/{{ ansible_user_id }}/.local/bin
+        state: directory
+        mode: "0744"
+
+    - name: Download the pi-player binary.
+      ansible.builtin.get_url:
+        url: https://github.com/17xande/pi-player/releases/latest/download/pi-player
+        dest: /home/{{ ansible_user_id }}/.local/bin/
+        mode: '0744'
+
+    - name: Create systemd user dir.
+      ansible.builtin.file:
+        name: /home/{{ ansible_user_id }}/.config/systemd/user
+        state: directory
+        mode: "0744"
+
+    - name: Download systemd service file for pi-player.
+      ansible.builtin.get_url:
+        url: https://github.com/17xande/pi-player/raw/master/services/pi-player.service
+        dest: /home/{{ ansible_user_id }}/.config/systemd/user/
+        mode: "0744"
+
+    - name: Enable pi-player service.
+      ansible.builtin.systemd_service:
+        name: pi-player.service
+        scope: user
+        enabled: true
+        daemon_reload: true
+
+    - name: Create Hyprland config directory.
+      ansible.builtin.file:
+        name: /home/{{ ansible_user_id }}/.config/hypr
+        state: directory
+        mode: "0755"
+
+    - name: Configure Hyprland for kiosk mode.
+      ansible.builtin.blockinfile:
+        path: /home/{{ ansible_user_id }}/.config/hypr/hyprland.conf
+        create: true
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - Pi-Player Kiosk"
+        block: |
+          # Kiosk optimizations for pi-player
+          general {
+              gaps_in = 0
+              gaps_out = 0
+              border_size = 0
+          }
+
+          misc {
+              disable_hyprland_logo = true
+              disable_splash_rendering = true
+              mouse_move_enables_dpms = false
+              key_press_enables_dpms = false
+              vrr = 0
+          }
+
+          $terminal = ghostty
+          cursor { 
+              inactive_timeout = 3
+          }
+

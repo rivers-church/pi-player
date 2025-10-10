@@ -168,16 +168,17 @@ func (p *Player) startBrowser() error {
 		"http://localhost:8080/viewer",
 	}
 
-	browser := "firefox"
+	browser := "chromium"
 
-	if p.api.test == "linux" {
+	switch p.api.test {
+	case "linux":
 		flags = []string{
 			"--incognito",
 			"http://localhost:8080/viewer",
 		}
 
 		browser = "google-chrome"
-	} else if p.api.test == "mac" {
+	case "mac":
 		flags = []string{
 			"--incognito",
 			"http://localhost:8080/viewer",

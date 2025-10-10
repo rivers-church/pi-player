@@ -12,3 +12,4 @@ config.json
 .vscode
 
 ansible/inventory.yml
+CLAUDE.md
