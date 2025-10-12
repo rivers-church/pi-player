@@ -162,9 +162,9 @@ func (p *Player) startBrowser() error {
 
 	// https://peter.sh/experiments/chromium-command-line-switches/
 	flags := []string{
-		// "--no-user-gesture-required",
-		"-kiosk",
-		// "-private-window",
+		"--kiosk",
+		"--ozone-platforms-wayland",
+		"--enable-features=UseOzonePlatform",
 		"http://localhost:8080/viewer",
 	}
 
