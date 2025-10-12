@@ -124,11 +124,9 @@
         dest: /home/{{ ansible_user_id }}/.config/systemd/user/
         mode: "0744"
 
-    - name: Enable pi-player service.
+    - name: Reload systemd user daemon.
       ansible.builtin.systemd_service:
-        name: pi-player.service
         scope: user
-        enabled: true
         daemon_reload: true
 
     - name: Create Hyprland config directory.
@@ -159,7 +157,10 @@
           }
 
           $terminal = ghostty
-          cursor { 
+          cursor {
               inactive_timeout = 3
           }
+
+          # Start pi-player service
+          exec-once = systemctl --user start pi-player.service
 

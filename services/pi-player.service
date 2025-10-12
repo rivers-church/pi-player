@@ -1,7 +1,5 @@
 [Unit]
 Description=Pi Player
-Requires=graphical-session.target
-After=graphical-session.target
 
 [Service]
 Type=simple
@@ -10,10 +8,5 @@ Restart=on-failure
 RestartSec=10
 StartLimitInterval=60
 
-Environment=DISPLAY=:0
-Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin
 WorkingDirectory=%h/.local/bin
 ExecStart=%h/.local/bin/pi-player
-
-[Install]
-WantedBy=default.target
