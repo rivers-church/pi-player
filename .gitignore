@@ -10,6 +10,7 @@ debug
 node_modules
 config.json
 .vscode
+.claude
 
 ansible/inventory.yml
 CLAUDE.md
