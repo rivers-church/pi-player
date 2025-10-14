@@ -27,19 +27,29 @@
             groups: input
             append: true
 
-        - name: Enable automatic login.
-          ansible.builtin.lineinfile:
-            path: /etc/systemd/system/getty@tty1.service.d/autologin.conf
-            line: "ExecStart=-/sbin/agetty -o '-p -f -- \\u' --noclear --autologin {{ ansible_user_id }} %I $TERM"
-            regexp: "^ExecStart="
-            create: true
-            backup: true
-
         - name: Create getty service override directory.
           ansible.builtin.file:
             path: /etc/systemd/system/getty@tty1.service.d
             state: directory
             mode: '0755'
+
+        - name: Enable automatic login.
+          ansible.builtin.copy:
+            dest: /etc/systemd/system/getty@tty1.service.d/autologin.conf
+            content: |
+              [Service]
+              ExecStart=
+              ExecStart=-/sbin/agetty -o '-p -f -- \\u' --noclear --autologin {{ ansible_user_id }} %I $TERM
+            backup: true
+
+        - name: Reload systemd daemon.
+          ansible.builtin.systemd_service:
+            daemon_reload: true
+
+        - name: Restart getty@tty1 to apply autologin.
+          ansible.builtin.systemd_service:
+            name: getty@tty1.service
+            state: restarted
 
         - name: Enable and start ntp for time sync.
           ansible.builtin.systemd_service:
@@ -135,32 +145,45 @@
         state: directory
         mode: "0755"
 
-    - name: Configure Hyprland for kiosk mode.
-      ansible.builtin.blockinfile:
-        path: /home/{{ ansible_user_id }}/.config/hypr/hyprland.conf
-        create: true
-        marker: "# {mark} ANSIBLE MANAGED BLOCK - Pi-Player Kiosk"
-        block: |
-          # Kiosk optimizations for pi-player
-          general {
-              gaps_in = 0
-              gaps_out = 0
-              border_size = 0
-          }
+    - name: Create kiosk config file.
+      ansible.builtin.copy:
+        dest: /home/{{ ansible_user_id }}/.config/hypr/kiosk.conf
+        content: |
+          # Pi-Player kiosk configuration
 
-          misc {
-              disable_hyprland_logo = true
-              disable_splash_rendering = true
-              mouse_move_enables_dpms = false
-              key_press_enables_dpms = false
-              vrr = 0
-          }
-
+          # Override terminal
           $terminal = ghostty
-          cursor {
-              inactive_timeout = 3
-          }
+
+          # Kiosk optimizations
+          general:gaps_in = 0
+          general:gaps_out = 0
+          general:border_size = 0
+
+          misc:disable_hyprland_logo = true
+          misc:disable_splash_rendering = true
+          misc:mouse_move_enables_dpms = false
+          misc:key_press_enables_dpms = false
+          misc:vrr = 0
+
+          cursor:inactive_timeout = 3
 
           # Start pi-player service
           exec-once = systemctl --user start pi-player.service
+
+    - name: Source kiosk config in main Hyprland config.
+      ansible.builtin.lineinfile:
+        path: /home/{{ ansible_user_id }}/.config/hypr/hyprland.conf
+        line: 'source = ~/.config/hypr/kiosk.conf'
+        create: true
+
+    - name: Auto-start Hyprland on login.
+      ansible.builtin.blockinfile:
+        path: /home/{{ ansible_user_id }}/.bash_profile
+        create: true
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - Auto-start Hyprland"
+        block: |
+          # Start Hyprland on tty1
+          if [ -z "$DISPLAY" ] && [ "$XDG_VTNR" -eq 1 ]; then
+            exec Hyprland
+          fi
 
