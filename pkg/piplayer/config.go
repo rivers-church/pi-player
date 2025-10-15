@@ -98,8 +98,8 @@ func ConfigLoad(statsAssets embed.FS) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	conf.Mount.loadDir()
 
+	conf.Mount.Dir = conf.Mount.URL.Path
 	return conf, nil
 }
 
@@ -161,7 +161,6 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 		location := r.PostFormValue("location")
 		mountURL := r.PostFormValue("mountURL")
 		mountUsername := r.PostFormValue("mountUsername")
-		mountDomain := r.PostFormValue("mountDomain")
 		mountPassword := r.PostFormValue("mountPassword")
 		audioOutput := r.PostFormValue("audioOutput")
 		username := r.PostFormValue("username")
@@ -204,35 +203,10 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 					Dir: su.URL.String(),
 				}
 
-				if mountPassword != "" || mountUsername != "" {
-					newMount.Username = mountUsername
-					newMount.Domain = mountDomain
-					newMount.Password = mountPassword
-				}
-
-				if newMount.URL != conf.Mount.URL ||
-					newMount.Username != conf.Mount.Username ||
-					newMount.Domain != conf.Mount.Domain ||
-					newMount.Password != conf.Mount.Password {
-					if su.Scheme == "smb" && !newMount.mounted() {
+				if newMount.URL != conf.Mount.URL {
+					if su.Scheme == "smb" {
 						if conf.Debug {
-							log.Printf("Debug: Attempting to mount location: %s\n", newMount.Dir)
-						}
-						if err := newMount.mount(); err != nil {
-							log.Printf("SettingsHandler: Error mounting new folder location:\n%s\n", err)
-						} else {
-							if conf.Debug {
-								log.Printf("Debug: Mount for '%s' successful. Unmounting old '%s' mount.\n", newMount.Dir, conf.Mount.Dir)
-							}
-							// if the new folder was mounted successfully, unmount old folder.
-							// if err := conf.Mount.unmount(); err != nil {
-							// 	log.Printf("SettingsHandler: Error unmounting old directory:\n%s\n", err)
-							// }
-							conf.Mount = newMount
-							if err := conf.Save(); err != nil {
-								log.Println("error trying to save config:", err)
-							}
-							restart(p)
+							log.Printf("SMB mounting no longer supported")
 						}
 					}
 
