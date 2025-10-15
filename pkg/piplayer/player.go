@@ -163,8 +163,8 @@ func (p *Player) startBrowser() error {
 	// https://peter.sh/experiments/chromium-command-line-switches/
 	flags := []string{
 		"--kiosk",
-		"--ozone-platforms=wayland",
 		"--enable-features=UseOzonePlatform",
+		"--ozone-platform=wayland",
 		"http://localhost:8080/viewer",
 	}
 

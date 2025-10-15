@@ -71,24 +71,22 @@
             mode: 0644
             validate: 'visudo -cf %s'
 
-    - name: Install yay AUR helper.
-      become: yes
-      become_user: aur_builder
-      kewlfft.aur.aur:
-        name: yay
-        use: makepkg
-        state: present
+        - name: Install yay AUR helper.
+          become_user: aur_builder
+          kewlfft.aur.aur:
+            name: yay
+            use: makepkg
+            state: present
 
-    - name: Install AUR packages with yay.
-      become: yes
-      become_user: aur_builder
-      kewlfft.aur.aur:
-        name:
-          - neovim
-          - ghostty
-          - ttf-firacode-nerd
-        use: yay
-        state: present
+        - name: Install AUR packages with yay.
+          become_user: aur_builder
+          kewlfft.aur.aur:
+            name:
+              - neovim
+              - ghostty
+              - ttf-firacode-nerd
+            use: yay
+            state: present
 
     - name: Install LazyVim.
       block:
@@ -153,6 +151,7 @@
 
           # Override terminal
           $terminal = ghostty
+          bind = SUPER, Q, exec, $terminal
 
           # Kiosk optimizations
           general:gaps_in = 0
@@ -167,7 +166,7 @@
 
           cursor:inactive_timeout = 3
 
-          # Start pi-player service
+          # Import Wayland environment and start pi-player (chained to ensure order)
           exec-once = systemctl --user start pi-player.service
 
     - name: Source kiosk config in main Hyprland config.
@@ -183,7 +182,7 @@
         marker: "# {mark} ANSIBLE MANAGED BLOCK - Auto-start Hyprland"
         block: |
           # Start Hyprland on tty1
-          if [ -z "$DISPLAY" ] && [ "$XDG_VTNR" -eq 1 ]; then
+          if [ -z "$DISPLAY" ] && [ -n "$XDG_VTNR" ] && [ "$XDG_VTNR" -eq 1 ]; then
             exec Hyprland
           fi
 
