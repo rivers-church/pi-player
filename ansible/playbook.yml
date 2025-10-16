@@ -18,6 +18,8 @@
               - wget
               - curl
               - ntp
+              - hyprland
+              - nodejs # required by neovim plugins
               - cifs-utils  # Required for SMB mounts
               - swayosd  # OSD for volume/brightness
               - gtk-layer-shell  # Required by swayosd
@@ -224,52 +226,11 @@
         state: directory
         mode: "0755"
 
-    - name: Create kiosk config file.
-      ansible.builtin.copy:
-        dest: /home/{{ ansible_user_id }}/.config/hypr/kiosk.conf
-        content: |
-          # Pi-Player kiosk configuration
-
-          # Override terminal
-          $terminal = ghostty
-          bind = SUPER, Q, exec, $terminal
-
-          # Kiosk optimizations
-          general:gaps_in = 0
-          general:gaps_out = 0
-          general:border_size = 0
-
-          misc:disable_hyprland_logo = true
-          misc:disable_splash_rendering = true
-          misc:mouse_move_enables_dpms = false
-          misc:key_press_enables_dpms = false
-          misc:vrr = 0
-
-          cursor:inactive_timeout = 3
-
-          # Start OSD server for volume/brightness feedback
-          exec-once = swayosd-server
-
-          # Volume control with OSD
-          bind = , XF86AudioRaiseVolume, exec, swayosd-client --output-volume raise
-          bind = , XF86AudioLowerVolume, exec, swayosd-client --output-volume lower
-          bind = , XF86AudioMute, exec, swayosd-client --output-volume mute-toggle
-
-          # Import Wayland environment and start pi-player (chained to ensure order)
-          exec-once = systemctl --user restart pi-player.service
-
-    - name: Remove conflicting volume bindings from Hyprland config.
-      ansible.builtin.lineinfile:
-        path: /home/{{ ansible_user_id }}/.config/hypr/hyprland.conf
-        regexp: '^bindel?\s*=\s*,\s*XF86Audio(RaiseVolume|LowerVolume|Mute),'
-        state: absent
-      ignore_errors: true
-
-    - name: Source kiosk config in main Hyprland config.
-      ansible.builtin.lineinfile:
-        path: /home/{{ ansible_user_id }}/.config/hypr/hyprland.conf
-        line: 'source = ~/.config/hypr/kiosk.conf'
-        create: true
+    - name: Download Hyprland config file.
+      ansible.builtin.get_url:
+        url: https://github.com/17xande/pi-player/raw/master/scripts/hyprland.conf
+        dest: /home/{{ ansible_user_id }}/.config/hypr/hyprland.conf
+        mode: '0644'
 
     - name: Auto-start Hyprland on login.
       ansible.builtin.blockinfile:
