@@ -258,6 +258,13 @@
           # Import Wayland environment and start pi-player (chained to ensure order)
           exec-once = systemctl --user restart pi-player.service
 
+    - name: Remove conflicting volume bindings from Hyprland config.
+      ansible.builtin.lineinfile:
+        path: /home/{{ ansible_user_id }}/.config/hypr/hyprland.conf
+        regexp: '^bindel?\s*=\s*,\s*XF86Audio(RaiseVolume|LowerVolume|Mute),'
+        state: absent
+      ignore_errors: true
+
     - name: Source kiosk config in main Hyprland config.
       ansible.builtin.lineinfile:
         path: /home/{{ ansible_user_id }}/.config/hypr/hyprland.conf
