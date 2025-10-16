@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"maps"
 	"net/http"
 	"os"
 	"path"
@@ -66,7 +67,7 @@ func (p *Playlist) handleAPI(plr *Player, w http.ResponseWriter, h *http.Request
 			}
 		}
 	case "setCurrent":
-		if plr.api.message.Arguments == nil || len(plr.api.message.Arguments) == 0 {
+		if len(plr.api.message.Arguments) == 0 {
 			m = resMessage{
 				Success: false,
 				Event:   "noArgumentSupplied",
@@ -145,11 +146,12 @@ func (p *Playlist) fromFolder(dir string) error {
 	for _, file := range files {
 		c := make(map[string]string)
 		e := strings.ToLower(path.Ext(file.Name()))
-		if e == ".mp4" || e == ".webm" {
+		switch e {
+		case ".mp4", ".webm":
 			p.Items = append(p.Items, Item{Visual: file, Type: "video", Cues: c})
-		} else if e == ".jpg" || e == ".jpeg" || e == ".png" {
+		case ".jpg", ".jpeg", ".png":
 			p.Items = append(p.Items, Item{Visual: file, Type: "image", Cues: c})
-		} else if e == ".html" {
+		case ".html":
 			p.Items = append(p.Items, Item{Visual: file, Type: "browser", Cues: c})
 		}
 	}
@@ -166,9 +168,10 @@ func (p *Playlist) fromFolder(dir string) error {
 			visual := item.Visual.Name()
 			visualBase := visual[0 : len(visual)-len(path.Ext(visual))]
 			if audioBase == visualBase {
-				if e == ".mp3" {
+				switch e {
+				case ".mp3":
 					p.Items[i].Audio = file
-				} else if e == ".mp0" {
+				case ".mp0":
 					p.Items[i].Cues["clear"] = "audio"
 				}
 				break
@@ -200,14 +203,10 @@ func (p *Playlist) fromFolder(dir string) error {
 			for _, playItem := range p.Items {
 				// If the regex can't compile, use the file name, otherwise use the regex.
 				if err != nil && presItem.Visual == playItem.Visual.Name() {
-					for k, v := range presItem.Cues {
-						playItem.Cues[k] = v
-					}
+					maps.Copy(playItem.Cues, presItem.Cues)
 					break
 				} else if err == nil && r.MatchString(playItem.Visual.Name()) {
-					for k, v := range presItem.Cues {
-						playItem.Cues[k] = v
-					}
+					maps.Copy(playItem.Cues, presItem.Cues)
 				}
 			}
 		}

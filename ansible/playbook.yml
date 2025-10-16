@@ -18,6 +18,9 @@
               - wget
               - curl
               - ntp
+              - cifs-utils  # Required for SMB mounts
+              - swayosd  # OSD for volume/brightness
+              - gtk-layer-shell  # Required by swayosd
             state: present
             update_cache: true
 
@@ -56,6 +59,84 @@
             name: systemd-timesyncd
             enabled: true
             state: started
+
+        - name: Configure systemd-networkd for ethernet with DNS domain support.
+          ansible.builtin.copy:
+            dest: /etc/systemd/network/20-ethernet.network
+            content: |
+              [Match]
+              # Matching with "Type=ether" causes issues with containers because it also matches virtual Ethernet interfaces (veth*).
+              # See https://bugs.archlinux.org/task/70892
+              # Instead match by globbing the network interface name.
+              Name=en*
+              Name=eth*
+
+              [Link]
+              RequiredForOnline=routable
+
+              [Network]
+              DHCP=yes
+              MulticastDNS=yes
+              UseDomains=true
+
+              # systemd-networkd does not set per-interface-type default route metrics
+              # https://github.com/systemd/systemd/issues/17698
+              # Explicitly set route metric, so that Ethernet is preferred over Wi-Fi and Wi-Fi is preferred over mobile broadband.
+              # Use values from NetworkManager. From nm_device_get_route_metric_default in
+              # https://gitlab.freedesktop.org/NetworkManager/NetworkManager/-/blob/main/src/core/devices/nm-device.c
+              [DHCPv4]
+              RouteMetric=100
+
+              [IPv6AcceptRA]
+              RouteMetric=100
+            mode: '0644'
+            backup: true
+
+        - name: Restart systemd-networkd to apply network configuration.
+          ansible.builtin.systemd_service:
+            name: systemd-networkd
+            state: restarted
+
+        - name: Restart systemd-resolved to apply DNS configuration.
+          ansible.builtin.systemd_service:
+            name: systemd-resolved
+            state: restarted
+
+        - name: Create mount point for SMB share.
+          ansible.builtin.file:
+            path: /mnt/visuals
+            state: directory
+            mode: '0755'
+
+        - name: Create samba credentials directory.
+          ansible.builtin.file:
+            path: /etc/samba
+            state: directory
+            mode: '0755'
+
+        - name: Create samba credentials file.
+          ansible.builtin.copy:
+            dest: /etc/samba/credentials
+            content: |
+              username={{ smb_username | default('') }}
+              password={{ smb_password | default('') }}
+              domain={{ smb_domain | default('') }}
+            mode: '0600'
+          when: smb_username is defined
+
+        - name: Download SMB mount unit file.
+          ansible.builtin.get_url:
+            url: https://github.com/17xande/pi-player/raw/master/services/mnt-visuals.mount
+            dest: /etc/systemd/system/mnt-visuals.mount
+            mode: '0644'
+
+        - name: Enable and start SMB mount.
+          ansible.builtin.systemd_service:
+            name: mnt-visuals.mount
+            enabled: true
+            state: started
+            daemon_reload: true
+          when: smb_username is defined
 
         - name: Create the `aur_builder` user
           ansible.builtin.user:
@@ -166,8 +247,16 @@
 
           cursor:inactive_timeout = 3
 
+          # Start OSD server for volume/brightness feedback
+          exec-once = swayosd-server
+
+          # Volume control with OSD
+          bind = , XF86AudioRaiseVolume, exec, swayosd-client --output-volume raise
+          bind = , XF86AudioLowerVolume, exec, swayosd-client --output-volume lower
+          bind = , XF86AudioMute, exec, swayosd-client --output-volume mute-toggle
+
           # Import Wayland environment and start pi-player (chained to ensure order)
-          exec-once = systemctl --user start pi-player.service
+          exec-once = systemctl --user restart pi-player.service
 
     - name: Source kiosk config in main Hyprland config.
       ansible.builtin.lineinfile:

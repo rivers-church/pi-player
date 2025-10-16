@@ -19,12 +19,6 @@
         <input type="text" id="txtLocation" name="location" value="{{.location}}">
         <label for="txtMountURL">Mount URL</label>
         <input type="text" id="txtMountURL" name="mountURL" value="{{.mountURL}}">
-        <label for="txtMountUsername">Mount Username</label>
-        <input type="text" id="txtMountUsername" name="mountUsername" value="{{.mount.Username}}">
-        <label for="txtMountDomain">Mount Domain</label>
-        <input type="text" id="txtMountDomain" name="mountDomain" value="{{.mount.Domain}}">
-        <label for="txtMountPassword">Mount Password</label>
-        <input type="password" id="txtMountPassword" name="mountPassword">
         <label for="txtUsername">Username</label>
         <input type="text" id="txtUsername" name="username" value="{{.username}}">
         <label for="txtPassword">Password</label>
@@ -33,16 +27,16 @@
         <input type="checkbox" id="cbxDebug" name="debug" {{if .debug}}checked{{end}}>
         <h3>Audio Output</h3>
         <label for="radAudioOutput1">HDMI
-          <input type="radio" id="radAudioOutput1" name="audioOutput" value="hdmi" 
-              {{if eq .audioOutput "hdmi"}}checked{{end}}>
+          <input type="radio" id="radAudioOutput1" name="audioOutput" value="hdmi" {{if eq .audioOutput "hdmi"
+            }}checked{{end}}>
         </label>
         <label for="radAudioOutput2">Audio Jack
-          <input type="radio" id="radAudioOutput2" name="audioOutput" value="local" 
-              {{if eq .audioOutput "local"}}checked{{end}}>
+          <input type="radio" id="radAudioOutput2" name="audioOutput" value="local" {{if eq .audioOutput "local"
+            }}checked{{end}}>
         </label>
         <label for="radAudioOutput3">Both
-          <input type="radio" id="radAudioOutput3" name="audioOutput" value="both" 
-              {{if eq .audioOutput "both"}}checked{{end}}>
+          <input type="radio" id="radAudioOutput3" name="audioOutput" value="both" {{if eq .audioOutput "both"
+            }}checked{{end}}>
         </label>
         <button type="submit">Save</button>
         <a href="/control">Controls</a>

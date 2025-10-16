@@ -5,11 +5,12 @@ pi-player_*.snap
 prime
 snap/.snapcraft
 # end of snap things
-launch.json
 debug
 node_modules
 config.json
-.vscode
+# VSCode settings - keep launch.json for debug configs
+.vscode/*
+!.vscode/launch.json
 .claude
 
 ansible/inventory.yml
