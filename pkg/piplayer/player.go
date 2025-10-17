@@ -165,6 +165,7 @@ func (p *Player) startBrowser() error {
 		"--kiosk",
 		"--enable-features=UseOzonePlatform",
 		"--ozone-platform=wayland",
+		"--autoplay-policy=no-user-gesture-required",
 		"http://localhost:8080/viewer",
 	}
 

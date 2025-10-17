@@ -104,9 +104,9 @@
             name: systemd-resolved
             state: restarted
 
-        - name: Create mount point for SMB share.
+        - name: Create mount point for network share.
           ansible.builtin.file:
-            path: /mnt/visuals
+            path: /mnt/networkshare
             state: directory
             mode: '0755'
 
@@ -116,29 +116,47 @@
             state: directory
             mode: '0755'
 
-        - name: Create samba credentials file.
+        - name: Check if local mount file exists.
+          ansible.builtin.stat:
+            path: "{{ playbook_dir }}/../services/mnt-networkshare.mount"
+          register: local_mount_file
+          delegate_to: localhost
+          become: false
+
+        - name: Check if local credentials file exists.
+          ansible.builtin.stat:
+            path: "{{ playbook_dir }}/../services/samba-credentials"
+          register: local_credentials_file
+          delegate_to: localhost
+          become: false
+
+        - name: Copy mount unit file if it exists.
           ansible.builtin.copy:
-            dest: /etc/samba/credentials
-            content: |
-              username={{ smb_username | default('') }}
-              password={{ smb_password | default('') }}
-              domain={{ smb_domain | default('') }}
-            mode: '0600'
-          when: smb_username is defined
-
-        - name: Download SMB mount unit file.
-          ansible.builtin.get_url:
-            url: https://github.com/17xande/pi-player/raw/master/services/mnt-visuals.mount
-            dest: /etc/systemd/system/mnt-visuals.mount
+            src: "{{ playbook_dir }}/../services/mnt-networkshare.mount"
+            dest: /etc/systemd/system/mnt-networkshare.mount
             mode: '0644'
+          when: local_mount_file.stat.exists
+          register: mount_file_copied
 
-        - name: Enable and start SMB mount.
+        - name: Copy samba credentials file if it exists.
+          ansible.builtin.copy:
+            src: "{{ playbook_dir }}/../services/samba-credentials"
+            dest: /etc/samba/credentials
+            mode: '0600'
+          when: local_credentials_file.stat.exists
+          register: credentials_file_copied
+
+        - name: Reload systemd daemon if mount file was copied.
           ansible.builtin.systemd_service:
-            name: mnt-visuals.mount
+            daemon_reload: true
+          when: mount_file_copied.changed
+
+        - name: Enable and start network share mount.
+          ansible.builtin.systemd_service:
+            name: mnt-networkshare.mount
             enabled: true
             state: started
-            daemon_reload: true
-          when: smb_username is defined
+          when: local_mount_file.stat.exists and local_credentials_file.stat.exists
 
         - name: Create the `aur_builder` user
           ansible.builtin.user:
