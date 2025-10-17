@@ -1,11 +1,11 @@
 [Unit]
-Description=Mount SMB share for pi-player visuals
+Description=Mount SMB share for pi-player
 After=network-online.target
 Wants=network-online.target
 
 [Mount]
-What=//sdtfs/visuals
-Where=/mnt/visuals
+What=//networkaddress/directory
+Where=/mnt/networkshare
 Type=cifs
 Options=credentials=/etc/samba/credentials,uid=1000,gid=1000,iocharset=utf8,file_mode=0755,dir_mode=0755,vers=3.0
 

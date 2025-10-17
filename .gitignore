@@ -1,10 +1,5 @@
 .DS_Store
 pi-player
-# ignore snap things
-pi-player_*.snap
-prime
-snap/.snapcraft
-# end of snap things
 debug
 node_modules
 config.json
@@ -14,4 +9,6 @@ config.json
 .claude
 
 ansible/inventory.yml
+services/samba-credentials
+services/mnt-networkshare.mount
 CLAUDE.md

@@ -1,0 +1,13 @@
+all:
+  children:
+    devices:
+      vars:
+        ansible_user: sandtonvisuals
+        smb_username: visuals
+        smb_password: crazyshapes
+        smb_domain: riverschurch
+      hosts:
+        aud1-pp3:
+          ansible_host: sdt-vis-pp
+        # aud1-pp-foundation:
+        #   ansible_host: sdt-vis-aud1pp-foundation
