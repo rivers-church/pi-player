@@ -22,13 +22,16 @@
               - nodejs # required by neovim plugins
               - cifs-utils  # Required for SMB mounts
               - swayosd  # OSD for volume/brightness
+              - fwupd  # Firmware update tool (provides fwupdmgr)
+              - udisks2  # Disk management daemon
+              - ethtool
               - gtk-layer-shell  # Required by swayosd
             state: present
             update_cache: true
 
         - name: Add the current user to the input group.
           ansible.builtin.user:
-            name: "{{ ansible_user_id }}"
+            name: '{{ ansible_facts["user_id"] }}'
             groups: input
             append: true
 
@@ -44,7 +47,7 @@
             content: |
               [Service]
               ExecStart=
-              ExecStart=-/sbin/agetty -o '-p -f -- \\u' --noclear --autologin {{ ansible_user_id }} %I $TERM
+              ExecStart=-/sbin/agetty -o '-p -f -- \\u' --noclear --autologin {{ ansible_facts["user_id"] }} %I $TERM
             backup: true
 
         - name: Reload systemd daemon.
@@ -193,44 +196,44 @@
       block:
         - name: Check if nvim config exists.
           ansible.builtin.stat:
-            path: /home/{{ ansible_user_id }}/.config/nvim
+            path: /home/{{ ansible_facts["user_id"] }}/.config/nvim
           register: nvim_config
 
         - name: Clone LazyVim starter config.
           ansible.builtin.git:
             repo: https://github.com/LazyVim/starter
-            dest: /home/{{ ansible_user_id }}/.config/nvim
+            dest: /home/{{ ansible_facts["user_id"] }}/.config/nvim
             depth: 1
           when: not nvim_config.stat.exists
 
         - name: Remove .git directory from nvim config.
           ansible.builtin.file:
-            path: /home/{{ ansible_user_id }}/.config/nvim/.git
+            path: /home/{{ ansible_facts["user_id"] }}/.config/nvim/.git
             state: absent
           when: not nvim_config.stat.exists
 
     - name: Create a directory for the pi-player binary.
       ansible.builtin.file:
-        name: /home/{{ ansible_user_id }}/.local/bin
+        name: /home/{{ ansible_facts["user_id"] }}/.local/bin
         state: directory
         mode: "0744"
 
     - name: Download the pi-player binary.
       ansible.builtin.get_url:
         url: https://github.com/17xande/pi-player/releases/latest/download/pi-player
-        dest: /home/{{ ansible_user_id }}/.local/bin/
+        dest: /home/{{ ansible_facts["user_id"] }}/.local/bin/
         mode: '0744'
 
     - name: Create systemd user dir.
       ansible.builtin.file:
-        name: /home/{{ ansible_user_id }}/.config/systemd/user
+        name: /home/{{ ansible_facts["user_id"] }}/.config/systemd/user
         state: directory
         mode: "0744"
 
     - name: Download systemd service file for pi-player.
       ansible.builtin.get_url:
         url: https://github.com/17xande/pi-player/raw/master/services/pi-player.service
-        dest: /home/{{ ansible_user_id }}/.config/systemd/user/
+        dest: /home/{{ ansible_facts["user_id"] }}/.config/systemd/user/
         mode: "0744"
 
     - name: Reload systemd user daemon.
@@ -240,19 +243,19 @@
 
     - name: Create Hyprland config directory.
       ansible.builtin.file:
-        name: /home/{{ ansible_user_id }}/.config/hypr
+        name: /home/{{ ansible_facts["user_id"] }}/.config/hypr
         state: directory
         mode: "0755"
 
     - name: Download Hyprland config file.
       ansible.builtin.get_url:
         url: https://github.com/17xande/pi-player/raw/master/scripts/hyprland.conf
-        dest: /home/{{ ansible_user_id }}/.config/hypr/hyprland.conf
+        dest: /home/{{ ansible_facts["user_id"] }}/.config/hypr/hyprland.conf
         mode: '0644'
 
     - name: Auto-start Hyprland on login.
       ansible.builtin.blockinfile:
-        path: /home/{{ ansible_user_id }}/.bash_profile
+        path: /home/{{ ansible_facts["user_id"] }}/.bash_profile
         create: true
         marker: "# {mark} ANSIBLE MANAGED BLOCK - Auto-start Hyprland"
         block: |
@@ -261,3 +264,9 @@
             exec Hyprland
           fi
 
+
+    - name: Reboot the system to apply all changes.
+      become: true
+      ansible.builtin.reboot:
+        msg: "Rebooting to apply pi-player configuration"
+        reboot_timeout: 600
