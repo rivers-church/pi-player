@@ -166,7 +166,8 @@ func (p *Player) startBrowser() error {
 		"--enable-features=UseOzonePlatform",
 		"--ozone-platform=wayland",
 		"--autoplay-policy=no-user-gesture-required",
-		"--disk-cache-dir=/dev/null", //in theory this clears the chrome cache
+		"--disk-cache-dir=/dev/null", //this sets the cache store location to null 
+		"--aggressive-cache-discard", //in theory this clears the chrome cache
 		"http://localhost:8080/viewer",
 	}
 
