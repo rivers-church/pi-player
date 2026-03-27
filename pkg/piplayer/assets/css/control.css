@@ -1,5 +1,7 @@
 body {
   margin: 0;
+  background-color: black;
+  color: rgba(255,255,255,0.8);
 }
 
 td {
@@ -8,11 +10,12 @@ td {
 
 .selected {
   color: white;
-  background-color: #9a52c8;
+  background-color: #eba13a;
 }
 
 .container {
   padding-bottom: 7.5rem;
+  background-color: black;
 }
 
 .icon {
@@ -36,7 +39,8 @@ td {
   left: 0;
   width: 100%;
   padding: 1rem;
-  background-color: white;
+  background-color: black;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 #divControls button {
@@ -57,4 +61,13 @@ td {
   top: 0;
   color: white;
   background-color: #000B;
+}
+
+.button{
+  backgrund-color: #eba13a;
+  border: 0.1rem solid #eba13a;
+}
+
+a{
+  color: #eba13a;
 }
