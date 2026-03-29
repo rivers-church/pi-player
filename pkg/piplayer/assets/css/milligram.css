@@ -42,8 +42,8 @@ button,
 input[type='button'],
 input[type='reset'],
 input[type='submit'] {
-  background-color: #9b4dca;
-  border: 0.1rem solid #9b4dca;
+  background-color: #eba13a;
+  border: 0.1rem solid #eba13a;
   border-radius: .4rem;
   color: #fff;
   cursor: pointer;
