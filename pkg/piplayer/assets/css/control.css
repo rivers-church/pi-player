@@ -8,6 +8,11 @@ td {
   padding: 1.2rem .5rem;
 }
 
+
+tr {
+  padding-left: 10px;
+}
+ 
 .selected {
   color: white;
   background-color: #eba13a;
