@@ -12,6 +12,9 @@ test:
 run:
 	go run main.go
 
+
+dev:
+	go run main.go --debug --test web
 # Set up SSH tunnel for remote debugging
 # Usage: make debug-tunnel HOST=user@host
 # Or:    export PI_PLAYER_DEBUG_HOST=user@host && make debug-tunnel
