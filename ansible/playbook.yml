@@ -97,11 +97,6 @@
             mode: '0644'
             backup: true
 
-        - name: Restart systemd-networkd to apply network configuration.
-          ansible.builtin.systemd_service:
-            name: systemd-networkd
-            state: restarted
-
         - name: Restart systemd-resolved to apply DNS configuration.
           ansible.builtin.systemd_service:
             name: systemd-resolved
@@ -264,6 +259,11 @@
             exec Hyprland
           fi
 
+    - name: Restart systemd-networkd to apply network configuration.
+      become: true
+      ansible.builtin.systemd_service:
+        name: systemd-networkd
+        state: restarted
 
     - name: Reboot the system to apply all changes.
       become: true
