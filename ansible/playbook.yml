@@ -97,6 +97,37 @@
             mode: '0644'
             backup: true
 
+        - name: Create systemd-networkd-wait-online override directory.
+          ansible.builtin.file:
+            path: /etc/systemd/system/systemd-networkd-wait-online.service.d
+            state: directory
+            mode: '0755'
+
+        - name: Continue boot as soon as any one interface is online.
+          ansible.builtin.copy:
+            dest: /etc/systemd/system/systemd-networkd-wait-online.service.d/any.conf
+            content: |
+              # By default systemd-networkd-wait-online blocks until *every* routable
+              # interface is online, so boot hangs ~2min waiting for the second
+              # ethernet port and then times out.
+              # `--any` makes it succeed as soon as the first interface
+              # (ethernet 1, ethernet 2 or wifi) becomes routable.
+              #
+              # Note: this service only runs at boot when something pulls in
+              # network-online.target. The SMB share mount does (Wants=network-online.target),
+              # so boot waits only when the share is configured; otherwise it is inert.
+              [Service]
+              ExecStart=
+              ExecStart=/usr/lib/systemd/systemd-networkd-wait-online --any
+            mode: '0644'
+            backup: true
+          register: wait_online_override
+
+        - name: Reload systemd daemon if wait-online override changed.
+          ansible.builtin.systemd_service:
+            daemon_reload: true
+          when: wait_online_override.changed
+
         - name: Restart systemd-resolved to apply DNS configuration.
           ansible.builtin.systemd_service:
             name: systemd-resolved
