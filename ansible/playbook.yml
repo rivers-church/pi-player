@@ -246,7 +246,7 @@
 
     - name: Download the pi-player binary.
       ansible.builtin.get_url:
-        url: https://github.com/17xande/pi-player/releases/latest/download/pi-player
+        url: https://github.com/rivers-church/pi-player/releases/latest/download/pi-player
         dest: /home/{{ ansible_facts["user_id"] }}/.local/bin/
         mode: '0744'
 
@@ -258,7 +258,7 @@
 
     - name: Download systemd service file for pi-player.
       ansible.builtin.get_url:
-        url: https://github.com/17xande/pi-player/raw/master/services/pi-player.service
+        url: https://github.com/rivers-church/pi-player/raw/master/services/pi-player.service
         dest: /home/{{ ansible_facts["user_id"] }}/.config/systemd/user/
         mode: "0744"
 
@@ -275,7 +275,7 @@
 
     - name: Download Hyprland config file.
       ansible.builtin.get_url:
-        url: https://github.com/17xande/pi-player/raw/master/scripts/hyprland.conf
+        url: https://github.com/rivers-church/pi-player/raw/master/scripts/hyprland.conf
         dest: /home/{{ ansible_facts["user_id"] }}/.config/hypr/hyprland.conf
         mode: '0644'
 

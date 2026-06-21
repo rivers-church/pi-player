@@ -1,6 +1,6 @@
 # Pi-Player
 
-[![Go](https://github.com/17xande/pi-player/actions/workflows/build.yml/badge.svg)](https://github.com/17xande/pi-player/actions/workflows/build.yml)
+[![Go](https://github.com/rivers-church/pi-player/actions/workflows/build.yml/badge.svg)](https://github.com/rivers-church/pi-player/actions/workflows/build.yml)
 
 A simple remotely controlled video and image player for a linux based computer. Currently working on Arch with Hyprland.
 
@@ -15,7 +15,7 @@ Boot the target machine from an Arch Linux ISO **in UEFI mode**, connect it to
 the network (ethernet is automatic; for wifi use `iwctl`), then run:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/17xande/pi-player/master/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/rivers-church/pi-player/master/scripts/install.sh | bash
 ```
 
 The installer ([`scripts/install.sh`](scripts/install.sh)) replicates the old

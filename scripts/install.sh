@@ -4,7 +4,7 @@
 # ------------------------------
 # Run from a booted Arch Linux ISO (UEFI mode):
 #
-#   curl -fsSL https://raw.githubusercontent.com/17xande/pi-player/master/scripts/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/rivers-church/pi-player/master/scripts/install.sh | bash
 #
 # Reproduces the archinstall config in scripts/user_configuration.json:
 #   - systemd-boot + UKI, btrfs (@ @home @log @pkg, compress=zstd), 1GiB FAT32 ESP
@@ -30,6 +30,28 @@ info()  { printf '%s==>%s %s\n' "$c_orange" "$c_reset" "$*"; }
 ok()    { printf '%s==>%s %s\n' "$c_green"  "$c_reset" "$*"; }
 warn()  { printf '%s==>%s %s\n' "$c_amber"  "$c_reset" "$*" >&2; }
 die()   { printf '%s ✗ %s%s\n' "$c_red"     "$*" "$c_reset" >&2; exit 1; }
+
+# ---------------------------------------------------------------------------
+# Debug mode
+#   Enable with either:
+#     curl ... | DEBUG=1 bash
+#     curl ... | bash -s -- --debug
+#   dbg() prints extra diagnostics; PP_TRACE=1 additionally enables `set -x`
+#   (noisy, and may echo values — avoid while entering passwords).
+# ---------------------------------------------------------------------------
+DEBUG="${DEBUG:-0}"
+for _arg in "$@"; do
+  case "$_arg" in
+    -d|--debug|-v|--verbose) DEBUG=1 ;;
+    --trace) DEBUG=1; PP_TRACE=1 ;;
+  esac
+done
+dbg() { [[ "$DEBUG" == 1 ]] && printf '%s  [dbg]%s %s\n' "$c_dim" "$c_reset" "$*" >&2 || true; }
+if [[ "${PP_TRACE:-0}" == 1 ]]; then
+  export PS4='+ ${BASH_SOURCE##*/}:${LINENO}: '
+  set -x
+fi
+[[ "$DEBUG" == 1 ]] && dbg "debug mode enabled"
 
 # ---------------------------------------------------------------------------
 # Interactive prompts (read from /dev/tty so this works under `curl | bash`)
@@ -90,11 +112,44 @@ printf '%s            Arch Linux kiosk installer%s\n\n' "$c_dim" "$c_reset"
 # Pre-flight checks
 # ---------------------------------------------------------------------------
 info "Running pre-flight checks..."
+
+dbg "EUID=$EUID (need 0)"
 [[ $EUID -eq 0 ]] || die "Must run as root (you are on the Arch ISO, so you already are)."
+
+dbg "checking UEFI marker: /sys/firmware/efi/efivars"
 [[ -d /sys/firmware/efi/efivars ]] || die "Not booted in UEFI mode. This installer requires UEFI."
-ping -c1 -W3 archlinux.org >/dev/null 2>&1 || curl -fsS https://archlinux.org >/dev/null 2>&1 \
-  || die "No internet connection. Connect first (ethernet should be automatic; for wifi use 'iwctl')."
-timedatectl set-ntp true >/dev/null 2>&1 || true
+
+# Connectivity check. ICMP often fails under QEMU user-mode networking, so we
+# treat ping as best-effort and fall back to an HTTPS fetch. Every probe has a
+# hard timeout so this step can never hang the install.
+info "Checking internet connectivity..."
+dbg "resolver config (/etc/resolv.conf):"
+[[ "$DEBUG" == 1 ]] && { grep -v '^\s*#' /etc/resolv.conf 2>/dev/null | sed 's/^/  [dbg]   /' >&2 || true; }
+
+net_ok=0
+dbg "probe 1: timeout 8 ping -c1 -W3 archlinux.org"
+if timeout 8 ping -c1 -W3 archlinux.org >/dev/null 2>&1; then
+  dbg "ping OK"; net_ok=1
+else
+  dbg "ping failed/unsupported (normal under QEMU SLIRP) — falling back to curl"
+  dbg "probe 2: curl -fsS --max-time 10 https://archlinux.org"
+  if curl_out="$(curl -fsS --max-time 10 -o /dev/null https://archlinux.org 2>&1)"; then
+    dbg "curl https OK"; net_ok=1
+  else
+    dbg "curl https failed: ${curl_out:-<no output>}"
+    dbg "probe 3: curl --max-time 10 https://1.1.1.1 (DNS-free reachability test)"
+    if curl -fsS --max-time 10 -o /dev/null https://1.1.1.1 2>/dev/null; then
+      dbg "raw IP 1.1.1.1 reachable but archlinux.org failed -> likely a DNS problem"
+    else
+      dbg "no outbound HTTPS at all -> link/NAT/gateway problem"
+    fi
+  fi
+fi
+[[ "$net_ok" == 1 ]] || die "No internet connection. Connect first (ethernet should be automatic; for wifi use 'iwctl'). Re-run with --debug for details."
+dbg "connectivity OK"
+
+dbg "syncing clock: timedatectl set-ntp true"
+timedatectl set-ntp true >/dev/null 2>&1 || dbg "timedatectl set-ntp failed (non-fatal)"
 ok "Pre-flight checks passed."
 
 # ---------------------------------------------------------------------------
@@ -102,8 +157,8 @@ ok "Pre-flight checks passed."
 # ---------------------------------------------------------------------------
 info "Configuration"
 
-HOSTNAME="$(ask_required "Hostname" "sdt-pp-test01")"
-USERNAME="$(ask_required "Username" "sandtonvisuals")"
+HOSTNAME="$(ask_required "Hostname" "pi-player")"
+USERNAME="$(ask_required "Username" "pi")"
 USERPASS="$(ask_secret  "Password for user '$USERNAME'")"
 if confirm "Use the same password for root?"; then
   ROOTPASS="$USERPASS"
@@ -184,7 +239,7 @@ esac
 # ---------------------------------------------------------------------------
 cat >/dev/tty <<SUMMARY
 
-${c_yellow}========================= INSTALL SUMMARY =========================${c_reset}
+${c_orange}========================= INSTALL SUMMARY =========================${c_reset}
   Hostname     : $HOSTNAME
   Username     : $USERNAME (sudo)
   Locale       : $LOCALE      Keymap: $KEYMAP   (auto-detected)
@@ -194,7 +249,7 @@ ${c_yellow}========================= INSTALL SUMMARY =========================${
   Network      : $NET_TYPE${IFACE:+  iface=$IFACE}${STATIC_ADDR:+  addr=$STATIC_ADDR gw=$STATIC_GW}
   Target disk  : $DISK  ->  ESP=$ESP_PART  root=$ROOT_PART
 ${c_red}  ALL DATA ON $DISK WILL BE PERMANENTLY ERASED.${c_reset}
-${c_yellow}===================================================================${c_reset}
+${c_orange}===================================================================${c_reset}
 
 SUMMARY
 
