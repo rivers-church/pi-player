@@ -4,8 +4,45 @@
 
 A simple remotely controlled video and image player for a linux based computer. Currently working on Arch with Hyprland.
 
-## Setup
-Run setup script:
+## Provisioning a new unit
+
+Provisioning a kiosk is a two-stage process: a base Arch install from the live
+ISO, followed by the Ansible playbook that configures the pi-player environment.
+
+### 1. Base Arch install (from the live ISO)
+
+Boot the target machine from an Arch Linux ISO **in UEFI mode**, connect it to
+the network (ethernet is automatic; for wifi use `iwctl`), then run:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/17xande/pi-player/master/scripts/install.sh | bash
+```
+
+The installer ([`scripts/install.sh`](scripts/install.sh)) replicates the old
+archinstall config and prompts only for the things that genuinely vary per unit:
+
+- **Prompts:** hostname, username + password, root password, target disk
+  (with a typed confirmation before wiping), and DHCP vs. static IP.
+- **Auto-detected from your IP** (no prompts): timezone, the closest/fastest
+  pacman mirrors (via `reflector`), system locale, and console keymap.
+- **Layout:** systemd-boot + UKI, GPT with a 1 GiB FAT32 ESP, and btrfs
+  subvolumes (`@`, `@home`, `@log`, `@pkg`) with `compress=zstd`.
+- **Installed/enabled:** systemd-networkd + resolved, NTP, zram swap (zstd),
+  pipewire, ufw, `python` (required by Ansible), and `openssh` (enabled) so the
+  playbook below can connect immediately after first boot.
+
+Reboot when it finishes and remove the install media.
+
+> Passwords are entered interactively during install, so there is **no**
+> committed credentials file. (The previous `scripts/user_credentials.json` has
+> been removed.) `scripts/user_configuration.json` is kept only as a reference
+> of the original archinstall layout.
+
+### 2. Configure with Ansible
+
+From your workstation, point the inventory at the new host (reachable over SSH
+as `<username>@<hostname>`) and run the playbook:
+
 ```bash
 ansible-playbook -i ansible/inventory.yml ansible/playbook.yaml
 ```

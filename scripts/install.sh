@@ -1,0 +1,406 @@
+#!/usr/bin/env bash
+#
+# pi-player Arch Linux installer
+# ------------------------------
+# Run from a booted Arch Linux ISO (UEFI mode):
+#
+#   curl -fsSL https://raw.githubusercontent.com/17xande/pi-player/master/scripts/install.sh | bash
+#
+# Reproduces the archinstall config in scripts/user_configuration.json:
+#   - systemd-boot + UKI, btrfs (@ @home @log @pkg, compress=zstd), 1GiB FAT32 ESP
+#   - systemd-networkd (DHCP or static), systemd-resolved, NTP via timesyncd
+#   - zram swap (zstd), pipewire audio, ufw firewall, openssh (for Ansible)
+#   - en_ZA.UTF-8 locale, us keymap, auto-detected timezone
+#
+# Interactive prompts: hostname, username/password, root password, target disk,
+# DHCP vs static IP, timezone (auto-detected), mirror country.
+#
+set -euo pipefail
+
+# ---------------------------------------------------------------------------
+# Output helpers — palette: orange (primary) + black, blue as complement
+# ---------------------------------------------------------------------------
+c_reset=$'\e[0m'; c_bold=$'\e[1m'; c_dim=$'\e[2m'
+c_orange=$'\e[38;5;208m'   # primary
+c_amber=$'\e[38;5;214m'    # warnings (analogous to orange)
+c_blue=$'\e[38;5;39m'      # complement to orange (info accents)
+c_green=$'\e[38;5;42m'     # success
+c_red=$'\e[38;5;203m'      # errors
+info()  { printf '%s==>%s %s\n' "$c_orange" "$c_reset" "$*"; }
+ok()    { printf '%s==>%s %s\n' "$c_green"  "$c_reset" "$*"; }
+warn()  { printf '%s==>%s %s\n' "$c_amber"  "$c_reset" "$*" >&2; }
+die()   { printf '%s ✗ %s%s\n' "$c_red"     "$*" "$c_reset" >&2; exit 1; }
+
+# ---------------------------------------------------------------------------
+# Interactive prompts (read from /dev/tty so this works under `curl | bash`)
+# ---------------------------------------------------------------------------
+ask() {  # ask "Prompt" [default] -> echoes answer
+  local prompt="$1" default="${2:-}" reply
+  if [[ -n "$default" ]]; then
+    printf '%s [%s]: ' "$prompt" "$default" >/dev/tty
+  else
+    printf '%s: ' "$prompt" >/dev/tty
+  fi
+  read -r reply </dev/tty
+  printf '%s' "${reply:-$default}"
+}
+
+ask_required() {  # like ask but loops until non-empty
+  local val
+  while :; do
+    val="$(ask "$1" "${2:-}")"
+    [[ -n "$val" ]] && { printf '%s' "$val"; return; }
+    warn "A value is required."
+  done
+}
+
+ask_secret() {  # ask_secret "Prompt" -> echoes password (confirmed twice)
+  local prompt="$1" p1 p2
+  while :; do
+    printf '%s: ' "$prompt" >/dev/tty;        read -rs p1 </dev/tty; printf '\n' >/dev/tty
+    printf 'Confirm %s: ' "$prompt" >/dev/tty; read -rs p2 </dev/tty; printf '\n' >/dev/tty
+    [[ -n "$p1" && "$p1" == "$p2" ]] && { printf '%s' "$p1"; return; }
+    warn "Passwords are empty or do not match — try again."
+  done
+}
+
+confirm() {  # confirm "Prompt" -> returns 0 on yes
+  local ans
+  printf '%s [y/N]: ' "$1" >/dev/tty
+  read -r ans </dev/tty
+  [[ "$ans" =~ ^[Yy] ]]
+}
+
+# ---------------------------------------------------------------------------
+# Banner
+# ---------------------------------------------------------------------------
+clear 2>/dev/null || true
+printf '%s' "$c_orange"
+cat <<'BANNER'
+       _             _
+ _ __ (_)      _ __ | | __ _ _   _  ___ _ __
+| '_ \| |_____| '_ \| |/ _` | | | |/ _ \ '__|
+| |_) | |_____| |_) | | (_| | |_| |  __/ |
+| .__/|_|     | .__/|_|\__,_|\__, |\___|_|
+|_|           |_|            |___/
+BANNER
+printf '%s            Arch Linux kiosk installer%s\n\n' "$c_dim" "$c_reset"
+
+# ---------------------------------------------------------------------------
+# Pre-flight checks
+# ---------------------------------------------------------------------------
+info "Running pre-flight checks..."
+[[ $EUID -eq 0 ]] || die "Must run as root (you are on the Arch ISO, so you already are)."
+[[ -d /sys/firmware/efi/efivars ]] || die "Not booted in UEFI mode. This installer requires UEFI."
+ping -c1 -W3 archlinux.org >/dev/null 2>&1 || curl -fsS https://archlinux.org >/dev/null 2>&1 \
+  || die "No internet connection. Connect first (ethernet should be automatic; for wifi use 'iwctl')."
+timedatectl set-ntp true >/dev/null 2>&1 || true
+ok "Pre-flight checks passed."
+
+# ---------------------------------------------------------------------------
+# Gather configuration
+# ---------------------------------------------------------------------------
+info "Configuration"
+
+HOSTNAME="$(ask_required "Hostname" "sdt-pp-test01")"
+USERNAME="$(ask_required "Username" "sandtonvisuals")"
+USERPASS="$(ask_secret  "Password for user '$USERNAME'")"
+if confirm "Use the same password for root?"; then
+  ROOTPASS="$USERPASS"
+else
+  ROOTPASS="$(ask_secret "Root password")"
+fi
+
+# --- Auto-detect location-based settings (timezone, mirrors, locale, keymap) ---
+# A single IP-geolocation lookup drives all of these so the user isn't prompted.
+info "Detecting location-based settings from your IP address..."
+GEO="$(curl -fsS --max-time 6 https://ipapi.co/json/ 2>/dev/null || true)"
+geo_field() { printf '%s' "$GEO" | grep -oP "\"$1\"\s*:\s*\"?\K[^\",}]*" | head -n1; }
+
+GEO_TZ="$(geo_field timezone)"
+GEO_CC="$(geo_field country_code)"            # e.g. ZA
+GEO_LANG="$(geo_field languages | cut -d, -f1)"  # e.g. en-ZA
+
+# Timezone — fall back to Africa/Johannesburg if detection fails or is invalid.
+TIMEZONE="$GEO_TZ"
+[[ -n "$TIMEZONE" && -f "/usr/share/zoneinfo/$TIMEZONE" ]] || TIMEZONE="Africa/Johannesburg"
+
+# Locale — derive from the primary IP language ("en-ZA" -> "en_ZA.UTF-8").
+if [[ "$GEO_LANG" =~ ^[a-z]{2}-[A-Z]{2}$ ]]; then
+  LOCALE="${GEO_LANG/-/_}.UTF-8"
+else
+  LOCALE="en_ZA.UTF-8"
+fi
+
+# Console keymap — map the country code to a keymap (most default to "us").
+case "$GEO_CC" in
+  GB|IE) KEYMAP="uk" ;;
+  DE|AT|CH) KEYMAP="de" ;;
+  FR) KEYMAP="fr" ;;
+  ES) KEYMAP="es" ;;
+  IT) KEYMAP="it" ;;
+  PT) KEYMAP="pt-latin1" ;;
+  BR) KEYMAP="br-abnt2" ;;
+  *)  KEYMAP="us" ;;
+esac
+
+ok "Detected: timezone=$TIMEZONE  locale=$LOCALE  keymap=$KEYMAP  country=${GEO_CC:-?}"
+
+# --- Network ---------------------------------------------------------------
+# Detect the first wired interface as a sensible default.
+DEFAULT_IFACE="$(ip -o link show 2>/dev/null | awk -F': ' '{print $2}' | grep -E '^(en|eth)' | head -n1 || true)"
+NET_TYPE="dhcp"
+if confirm "Use DHCP for networking? (No = configure a static IP)"; then
+  NET_TYPE="dhcp"
+else
+  NET_TYPE="static"
+  IFACE="$(ask_required "Interface name" "${DEFAULT_IFACE:-eth0}")"
+  STATIC_ADDR="$(ask_required "Static address (CIDR, e.g. 192.168.1.50/24)")"
+  STATIC_GW="$(ask_required   "Gateway (e.g. 192.168.1.1)")"
+  STATIC_DNS="$(ask "DNS servers (space-separated)" "1.1.1.1 8.8.8.8")"
+fi
+
+# --- Target disk -----------------------------------------------------------
+info "Available disks:"
+lsblk -dpno NAME,SIZE,MODEL | grep -vE 'loop|sr0' >/dev/tty || true
+DEFAULT_DISK="$(lsblk -dpno NAME,TYPE | awk '$2=="disk"{print $1; exit}')"
+DISK="$(ask_required "Target disk to ERASE and install to" "$DEFAULT_DISK")"
+[[ -b "$DISK" ]] || die "Not a block device: $DISK"
+
+# Partition path suffix differs for nvme/mmc (p1) vs sata/scsi (1).
+if [[ "$DISK" =~ [0-9]$ ]]; then PSEP="p"; else PSEP=""; fi
+ESP_PART="${DISK}${PSEP}1"
+ROOT_PART="${DISK}${PSEP}2"
+
+# CPU microcode
+case "$(grep -m1 -o -E 'GenuineIntel|AuthenticAMD' /proc/cpuinfo || true)" in
+  GenuineIntel) UCODE="intel-ucode" ;;
+  AuthenticAMD) UCODE="amd-ucode" ;;
+  *)            UCODE="" ;;
+esac
+
+# ---------------------------------------------------------------------------
+# Summary + final confirmation (last chance before destruction)
+# ---------------------------------------------------------------------------
+cat >/dev/tty <<SUMMARY
+
+${c_yellow}========================= INSTALL SUMMARY =========================${c_reset}
+  Hostname     : $HOSTNAME
+  Username     : $USERNAME (sudo)
+  Locale       : $LOCALE      Keymap: $KEYMAP   (auto-detected)
+  Timezone     : $TIMEZONE   (auto-detected)
+  Mirrors      : country ${GEO_CC:-unknown} via reflector
+  Microcode    : ${UCODE:-none detected}
+  Network      : $NET_TYPE${IFACE:+  iface=$IFACE}${STATIC_ADDR:+  addr=$STATIC_ADDR gw=$STATIC_GW}
+  Target disk  : $DISK  ->  ESP=$ESP_PART  root=$ROOT_PART
+${c_red}  ALL DATA ON $DISK WILL BE PERMANENTLY ERASED.${c_reset}
+${c_yellow}===================================================================${c_reset}
+
+SUMMARY
+
+confirm "Proceed with installation?" || die "Aborted by user."
+printf 'Type the disk path again to confirm wipe (%s): ' "$DISK" >/dev/tty
+read -r confirm_disk </dev/tty
+[[ "$confirm_disk" == "$DISK" ]] || die "Disk confirmation did not match. Aborted."
+
+# ---------------------------------------------------------------------------
+# Speed up pacman on the live ISO + refresh mirrors
+# ---------------------------------------------------------------------------
+sed -i 's/^#ParallelDownloads.*/ParallelDownloads = 5/' /etc/pacman.conf || true
+if command -v reflector >/dev/null && [[ -n "$GEO_CC" ]]; then
+  info "Selecting fastest mirrors for country '$GEO_CC' with reflector..."
+  reflector --country "$GEO_CC" --age 12 --protocol https --sort rate \
+    --save /etc/pacman.d/mirrorlist 2>/dev/null \
+    || warn "reflector failed for '$GEO_CC'; using the ISO's default mirrorlist."
+else
+  warn "Skipping mirror selection (reflector unavailable or country undetected)."
+fi
+
+# ---------------------------------------------------------------------------
+# Partition, format, mount
+# ---------------------------------------------------------------------------
+info "Partitioning $DISK..."
+wipefs -af "$DISK"
+sgdisk --zap-all "$DISK"
+sgdisk -n 1:1MiB:+1GiB -t 1:ef00 -c 1:EFI "$DISK"
+sgdisk -n 2:0:0        -t 2:8300 -c 2:root "$DISK"
+partprobe "$DISK"; sleep 2
+
+info "Creating filesystems..."
+mkfs.fat -F32 -n EFI "$ESP_PART"
+mkfs.btrfs -f -L root "$ROOT_PART"
+
+info "Creating btrfs subvolumes..."
+mount "$ROOT_PART" /mnt
+btrfs subvolume create /mnt/@
+btrfs subvolume create /mnt/@home
+btrfs subvolume create /mnt/@log
+btrfs subvolume create /mnt/@pkg
+umount /mnt
+
+BTRFS_OPTS="noatime,compress=zstd,ssd,discard=async"
+mount -o "$BTRFS_OPTS,subvol=@"    "$ROOT_PART" /mnt
+mkdir -p /mnt/{home,var/log,var/cache/pacman/pkg,boot}
+mount -o "$BTRFS_OPTS,subvol=@home" "$ROOT_PART" /mnt/home
+mount -o "$BTRFS_OPTS,subvol=@log"  "$ROOT_PART" /mnt/var/log
+mount -o "$BTRFS_OPTS,subvol=@pkg"  "$ROOT_PART" /mnt/var/cache/pacman/pkg
+mount "$ESP_PART" /mnt/boot
+
+# ---------------------------------------------------------------------------
+# Install base system
+# ---------------------------------------------------------------------------
+info "Installing base system (pacstrap)... this can take a while."
+pacstrap -K /mnt \
+  base linux linux-firmware ${UCODE} \
+  btrfs-progs sudo git vim \
+  openssh python \
+  zram-generator ufw \
+  pipewire pipewire-pulse pipewire-alsa wireplumber \
+  efibootmgr
+
+info "Generating fstab..."
+genfstab -U /mnt >> /mnt/etc/fstab
+
+# ---------------------------------------------------------------------------
+# Network configuration (written directly into the target)
+# ---------------------------------------------------------------------------
+info "Writing systemd-networkd configuration ($NET_TYPE)..."
+mkdir -p /mnt/etc/systemd/network
+if [[ "$NET_TYPE" == "dhcp" ]]; then
+  cat > /mnt/etc/systemd/network/20-ethernet.network <<'NETEOF'
+[Match]
+# Match by interface-name glob (not Type=ether) to avoid matching veth* in containers.
+# https://bugs.archlinux.org/task/70892
+Name=en*
+Name=eth*
+
+[Link]
+RequiredForOnline=routable
+
+[Network]
+DHCP=yes
+MulticastDNS=yes
+UseDomains=true
+
+[DHCPv4]
+RouteMetric=100
+
+[IPv6AcceptRA]
+RouteMetric=100
+NETEOF
+else
+  {
+    printf '[Match]\nName=%s\n\n' "$IFACE"
+    printf '[Link]\nRequiredForOnline=routable\n\n'
+    printf '[Network]\nAddress=%s\nGateway=%s\n' "$STATIC_ADDR" "$STATIC_GW"
+    for d in $STATIC_DNS; do printf 'DNS=%s\n' "$d"; done
+  } > /mnt/etc/systemd/network/20-static.network
+fi
+
+# Continue boot as soon as ONE interface is online (eth1 / eth2 / wifi),
+# instead of blocking ~2min for every routable interface and timing out.
+mkdir -p /mnt/etc/systemd/system/systemd-networkd-wait-online.service.d
+cat > /mnt/etc/systemd/system/systemd-networkd-wait-online.service.d/any.conf <<'WAITEOF'
+# Only runs at boot when something pulls in network-online.target (e.g. the SMB
+# mount). `--any` makes it succeed as soon as the first interface is routable.
+[Service]
+ExecStart=
+ExecStart=/usr/lib/systemd/systemd-networkd-wait-online --any
+WAITEOF
+
+# ---------------------------------------------------------------------------
+# Configure the installed system inside chroot
+# ---------------------------------------------------------------------------
+info "Configuring the installed system..."
+# Export everything the chroot script needs. Secrets travel via the environment
+# (inherited through arch-chroot) so they never appear in a here-doc or argv.
+export PP_HOSTNAME="$HOSTNAME" PP_USERNAME="$USERNAME" PP_TIMEZONE="$TIMEZONE" \
+       PP_LOCALE="$LOCALE" PP_KEYMAP="$KEYMAP" PP_ROOTPASS="$ROOTPASS" PP_USERPASS="$USERPASS"
+
+# Filesystem UUID of the btrfs root, needed for the UKI kernel cmdline.
+export PP_ROOT_UUID="$(blkid -s UUID -o value "$ROOT_PART")"
+
+arch-chroot /mnt /bin/bash -euo pipefail <<'CHROOT'
+# --- time -------------------------------------------------------------------
+ln -sf "/usr/share/zoneinfo/$PP_TIMEZONE" /etc/localtime
+hwclock --systohc
+
+# --- locale & keymap --------------------------------------------------------
+sed -i "s/^#\s*\(${PP_LOCALE//./\\.}\b.*\)/\1/" /etc/locale.gen
+sed -i 's/^#\s*\(en_US\.UTF-8\b.*\)/\1/'        /etc/locale.gen
+locale-gen
+echo "LANG=$PP_LOCALE"   > /etc/locale.conf
+echo "KEYMAP=$PP_KEYMAP" > /etc/vconsole.conf
+
+# --- hostname ---------------------------------------------------------------
+echo "$PP_HOSTNAME" > /etc/hostname
+cat > /etc/hosts <<HOSTS
+127.0.0.1   localhost
+::1         localhost
+127.0.1.1   $PP_HOSTNAME.localdomain $PP_HOSTNAME
+HOSTS
+
+# --- pacman cosmetics -------------------------------------------------------
+sed -i 's/^#Color/Color/'                        /etc/pacman.conf
+sed -i 's/^#ParallelDownloads.*/ParallelDownloads = 5/' /etc/pacman.conf
+
+# --- zram swap (zstd) -------------------------------------------------------
+cat > /etc/systemd/zram-generator.conf <<ZRAM
+[zram0]
+zram-size = min(ram, 8192)
+compression-algorithm = zstd
+ZRAM
+
+# --- UKI + mkinitcpio -------------------------------------------------------
+echo "root=UUID=$PP_ROOT_UUID rootflags=subvol=@ rw" > /etc/kernel/cmdline
+mkdir -p /boot/EFI/Linux
+preset=/etc/mkinitcpio.d/linux.preset
+# Build a single unified kernel image; disable the split image/fallback outputs.
+sed -i 's|^#\?\s*default_image=.*|#default_image="/boot/initramfs-linux.img"|'                 "$preset"
+sed -i 's|^#\?\s*fallback_image=.*|#fallback_image="/boot/initramfs-linux-fallback.img"|'        "$preset"
+if grep -q '^#\?\s*default_uki=' "$preset"; then
+  sed -i 's|^#\?\s*default_uki=.*|default_uki="/boot/EFI/Linux/arch-linux.efi"|' "$preset"
+else
+  echo 'default_uki="/boot/EFI/Linux/arch-linux.efi"' >> "$preset"
+fi
+sed -i "s|^PRESETS=.*|PRESETS=('default')|" "$preset"
+mkinitcpio -P
+
+# --- bootloader (systemd-boot; auto-discovers the UKI) ----------------------
+bootctl install
+cat > /boot/loader/loader.conf <<LOADER
+default  arch-linux.efi
+timeout  3
+console-mode max
+editor   no
+LOADER
+
+# --- users & sudo -----------------------------------------------------------
+echo "root:$PP_ROOTPASS" | chpasswd
+useradd -m -G wheel -s /bin/bash "$PP_USERNAME"
+echo "$PP_USERNAME:$PP_USERPASS" | chpasswd
+sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
+
+# --- services ---------------------------------------------------------------
+systemctl enable systemd-networkd systemd-resolved systemd-timesyncd sshd ufw
+ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+CHROOT
+
+# ---------------------------------------------------------------------------
+# Done
+# ---------------------------------------------------------------------------
+ok "Installation complete."
+cat >/dev/tty <<DONE
+
+Next steps:
+  1. Remove the installation media.
+  2. ${c_blue}reboot${c_reset}
+  3. From another machine, run the Ansible playbook against this host
+     (it is reachable over SSH as '$USERNAME@$HOSTNAME').
+
+DONE
+
+if confirm "Reboot now?"; then
+  umount -R /mnt || true
+  systemctl reboot
+fi
