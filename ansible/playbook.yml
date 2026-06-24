@@ -1,9 +1,11 @@
 ---
 - name: Pi-Player setup for Arch Linux + Hyprland Kiosk
-  hosts: devices
+  hosts: localhost
+  connection: local
 
   vars:
     ansible_python_interpreter: python3
+    pi_user: "{{ pi_user | default(ansible_facts['user_id']) }}"
 
   tasks:
     - name: Initial setup requiring root access.
@@ -12,12 +14,9 @@
         - name: Install essential packages.
           community.general.pacman:
             name:
-              - git
               - chromium
               - base-devel  # Required for yay
               - wget
-              - curl
-              - ntp
               - hyprland
               - nodejs # required by neovim plugins
               - cifs-utils  # Required for SMB mounts
@@ -31,7 +30,7 @@
 
         - name: Add the current user to the input group.
           ansible.builtin.user:
-            name: '{{ ansible_facts["user_id"] }}'
+            name: '{{ pi_user }}'
             groups: input
             append: true
 
@@ -47,91 +46,8 @@
             content: |
               [Service]
               ExecStart=
-              ExecStart=-/sbin/agetty -o '-p -f -- \\u' --noclear --autologin {{ ansible_facts["user_id"] }} %I $TERM
+              ExecStart=-/sbin/agetty -o '-p -f -- \\u' --noclear --autologin {{ pi_user }} %I $TERM
             backup: true
-
-        - name: Reload systemd daemon.
-          ansible.builtin.systemd_service:
-            daemon_reload: true
-
-        - name: Restart getty@tty1 to apply autologin.
-          ansible.builtin.systemd_service:
-            name: getty@tty1.service
-            state: restarted
-
-        - name: Enable and start ntp for time sync.
-          ansible.builtin.systemd_service:
-            name: systemd-timesyncd
-            enabled: true
-            state: started
-
-        - name: Configure systemd-networkd for ethernet with DNS domain support.
-          ansible.builtin.copy:
-            dest: /etc/systemd/network/20-ethernet.network
-            content: |
-              [Match]
-              # Matching with "Type=ether" causes issues with containers because it also matches virtual Ethernet interfaces (veth*).
-              # See https://bugs.archlinux.org/task/70892
-              # Instead match by globbing the network interface name.
-              Name=en*
-              Name=eth*
-
-              [Link]
-              RequiredForOnline=routable
-
-              [Network]
-              DHCP=yes
-              MulticastDNS=yes
-              UseDomains=true
-
-              # systemd-networkd does not set per-interface-type default route metrics
-              # https://github.com/systemd/systemd/issues/17698
-              # Explicitly set route metric, so that Ethernet is preferred over Wi-Fi and Wi-Fi is preferred over mobile broadband.
-              # Use values from NetworkManager. From nm_device_get_route_metric_default in
-              # https://gitlab.freedesktop.org/NetworkManager/NetworkManager/-/blob/main/src/core/devices/nm-device.c
-              [DHCPv4]
-              RouteMetric=100
-
-              [IPv6AcceptRA]
-              RouteMetric=100
-            mode: '0644'
-            backup: true
-
-        - name: Create systemd-networkd-wait-online override directory.
-          ansible.builtin.file:
-            path: /etc/systemd/system/systemd-networkd-wait-online.service.d
-            state: directory
-            mode: '0755'
-
-        - name: Continue boot as soon as any one interface is online.
-          ansible.builtin.copy:
-            dest: /etc/systemd/system/systemd-networkd-wait-online.service.d/any.conf
-            content: |
-              # By default systemd-networkd-wait-online blocks until *every* routable
-              # interface is online, so boot hangs ~2min waiting for the second
-              # ethernet port and then times out.
-              # `--any` makes it succeed as soon as the first interface
-              # (ethernet 1, ethernet 2 or wifi) becomes routable.
-              #
-              # Note: this service only runs at boot when something pulls in
-              # network-online.target. The SMB share mount does (Wants=network-online.target),
-              # so boot waits only when the share is configured; otherwise it is inert.
-              [Service]
-              ExecStart=
-              ExecStart=/usr/lib/systemd/systemd-networkd-wait-online --any
-            mode: '0644'
-            backup: true
-          register: wait_online_override
-
-        - name: Reload systemd daemon if wait-online override changed.
-          ansible.builtin.systemd_service:
-            daemon_reload: true
-          when: wait_online_override.changed
-
-        - name: Restart systemd-resolved to apply DNS configuration.
-          ansible.builtin.systemd_service:
-            name: systemd-resolved
-            state: restarted
 
         - name: Create mount point for network share.
           ansible.builtin.file:
@@ -165,7 +81,6 @@
             dest: /etc/systemd/system/mnt-networkshare.mount
             mode: '0644'
           when: local_mount_file.stat.exists
-          register: mount_file_copied
 
         - name: Copy samba credentials file if it exists.
           ansible.builtin.copy:
@@ -173,27 +88,20 @@
             dest: /etc/samba/credentials
             mode: '0600'
           when: local_credentials_file.stat.exists
-          register: credentials_file_copied
 
-        - name: Reload systemd daemon if mount file was copied.
-          ansible.builtin.systemd_service:
-            daemon_reload: true
-          when: mount_file_copied.changed
-
-        - name: Enable and start network share mount.
+        - name: Enable network share mount.
           ansible.builtin.systemd_service:
             name: mnt-networkshare.mount
             enabled: true
-            state: started
           when: local_mount_file.stat.exists and local_credentials_file.stat.exists
 
-        - name: Create the `aur_builder` user
+        - name: Create the `aur_builder` user.
           ansible.builtin.user:
             name: aur_builder
             create_home: yes
             group: wheel
 
-        - name: Allow the `aur_builder` user to run `sudo pacman` without a password
+        - name: Allow the `aur_builder` user to run `sudo pacman` without a password.
           ansible.builtin.lineinfile:
             path: /etc/sudoers.d/11-install-aur_builder
             line: 'aur_builder ALL=(ALL) NOPASSWD: /usr/bin/pacman'
@@ -219,85 +127,99 @@
             state: present
 
     - name: Install LazyVim.
+      become: true
       block:
         - name: Check if nvim config exists.
           ansible.builtin.stat:
-            path: /home/{{ ansible_facts["user_id"] }}/.config/nvim
+            path: /home/{{ pi_user }}/.config/nvim
           register: nvim_config
 
         - name: Clone LazyVim starter config.
           ansible.builtin.git:
             repo: https://github.com/LazyVim/starter
-            dest: /home/{{ ansible_facts["user_id"] }}/.config/nvim
+            dest: /home/{{ pi_user }}/.config/nvim
             depth: 1
+          when: not nvim_config.stat.exists
+
+        - name: Set ownership of nvim config.
+          ansible.builtin.file:
+            path: /home/{{ pi_user }}/.config/nvim
+            owner: "{{ pi_user }}"
+            group: "{{ pi_user }}"
+            recurse: true
           when: not nvim_config.stat.exists
 
         - name: Remove .git directory from nvim config.
           ansible.builtin.file:
-            path: /home/{{ ansible_facts["user_id"] }}/.config/nvim/.git
+            path: /home/{{ pi_user }}/.config/nvim/.git
             state: absent
           when: not nvim_config.stat.exists
 
     - name: Create a directory for the pi-player binary.
+      become: true
       ansible.builtin.file:
-        name: /home/{{ ansible_facts["user_id"] }}/.local/bin
+        name: /home/{{ pi_user }}/.local/bin
         state: directory
         mode: "0744"
+        owner: "{{ pi_user }}"
+        group: "{{ pi_user }}"
 
     - name: Download the pi-player binary.
+      become: true
       ansible.builtin.get_url:
         url: https://github.com/rivers-church/pi-player/releases/latest/download/pi-player
-        dest: /home/{{ ansible_facts["user_id"] }}/.local/bin/
+        dest: /home/{{ pi_user }}/.local/bin/
         mode: '0744'
+        owner: "{{ pi_user }}"
+        group: "{{ pi_user }}"
 
-    - name: Create systemd user dir.
+    - name: Create systemd user service directory.
+      become: true
       ansible.builtin.file:
-        name: /home/{{ ansible_facts["user_id"] }}/.config/systemd/user
+        name: /home/{{ pi_user }}/.config/systemd/user
         state: directory
         mode: "0744"
+        owner: "{{ pi_user }}"
+        group: "{{ pi_user }}"
 
     - name: Download systemd service file for pi-player.
+      become: true
       ansible.builtin.get_url:
         url: https://github.com/rivers-church/pi-player/raw/master/services/pi-player.service
-        dest: /home/{{ ansible_facts["user_id"] }}/.config/systemd/user/
+        dest: /home/{{ pi_user }}/.config/systemd/user/
         mode: "0744"
-
-    - name: Reload systemd user daemon.
-      ansible.builtin.systemd_service:
-        scope: user
-        daemon_reload: true
+        owner: "{{ pi_user }}"
+        group: "{{ pi_user }}"
 
     - name: Create Hyprland config directory.
+      become: true
       ansible.builtin.file:
-        name: /home/{{ ansible_facts["user_id"] }}/.config/hypr
+        name: /home/{{ pi_user }}/.config/hypr
         state: directory
         mode: "0755"
+        owner: "{{ pi_user }}"
+        group: "{{ pi_user }}"
 
     - name: Download Hyprland config file.
+      become: true
       ansible.builtin.get_url:
         url: https://github.com/rivers-church/pi-player/raw/master/scripts/hyprland.conf
-        dest: /home/{{ ansible_facts["user_id"] }}/.config/hypr/hyprland.conf
+        dest: /home/{{ pi_user }}/.config/hypr/hyprland.conf
         mode: '0644'
+        owner: "{{ pi_user }}"
+        group: "{{ pi_user }}"
 
     - name: Auto-start Hyprland on login.
+      become: true
       ansible.builtin.blockinfile:
-        path: /home/{{ ansible_facts["user_id"] }}/.bash_profile
+        path: /home/{{ pi_user }}/.bash_profile
         create: true
+        mode: '0644'
+        owner: "{{ pi_user }}"
+        group: "{{ pi_user }}"
         marker: "# {mark} ANSIBLE MANAGED BLOCK - Auto-start Hyprland"
         block: |
           # Start Hyprland on tty1
           if [ -z "$DISPLAY" ] && [ -n "$XDG_VTNR" ] && [ "$XDG_VTNR" -eq 1 ]; then
             exec Hyprland
           fi
-
-    - name: Restart systemd-networkd to apply network configuration.
-      become: true
-      ansible.builtin.systemd_service:
-        name: systemd-networkd
-        state: restarted
-
-    - name: Reboot the system to apply all changes.
-      become: true
-      ansible.builtin.reboot:
-        msg: "Rebooting to apply pi-player configuration"
-        reboot_timeout: 600

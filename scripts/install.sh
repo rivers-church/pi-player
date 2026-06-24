@@ -325,7 +325,7 @@ mount "$ESP_PART" /mnt/boot
 info "Installing base system (pacstrap)... this can take a while."
 pacstrap -K /mnt \
   base linux linux-firmware ${UCODE} \
-  btrfs-progs sudo git vim \
+  btrfs-progs sudo git vim ansible \
   openssh python \
   zram-generator ufw \
   pipewire pipewire-pulse pipewire-alsa wireplumber \
@@ -460,34 +460,37 @@ ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf || true
 CHROOT
 
 # ---------------------------------------------------------------------------
+# First-boot setup service (runs ansible-pull as root on first boot)
+# ---------------------------------------------------------------------------
+info "Writing first-boot setup service..."
+cat > /mnt/etc/systemd/system/pi-player-setup.service <<EOF
+[Unit]
+Description=Pi-Player initial setup (ansible-pull)
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=!/etc/pi-player-setup-done
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/ansible-pull -U https://github.com/rivers-church/pi-player --extra-vars "pi_user=$USERNAME" ansible/playbook.yml
+ExecStartPost=/usr/bin/touch /etc/pi-player-setup-done
+ExecStartPost=/usr/bin/systemctl reboot
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+mkdir -p /mnt/etc/systemd/system/multi-user.target.wants
+ln -sf /etc/systemd/system/pi-player-setup.service \
+  /mnt/etc/systemd/system/multi-user.target.wants/pi-player-setup.service
+
+# ---------------------------------------------------------------------------
 # Done
 # ---------------------------------------------------------------------------
-ok "Installation complete."
-cat >/dev/tty <<DONE
-
-Next steps:
-  1. Remove the installation media.
-  2. ${c_blue}reboot${c_reset}
-  3. From another machine, run the Ansible playbook against this host
-     (it is reachable over SSH as '$USERNAME@$HOSTNAME').
-
-DONE
+ok "Installation complete. Rebooting into new system — ansible-pull will complete setup on first boot."
 
 umount -R /mnt 2>/dev/null || true
-
-printf '%s==>%s Rebooting in 10 seconds — press any key to cancel.\n' "$c_orange" "$c_reset" >/dev/tty
-REBOOT=1
-for i in $(seq 10 -1 1); do
-  printf '\r     %s%d%s  ' "$c_bold" "$i" "$c_reset" >/dev/tty
-  if read -r -s -n 1 -t 1 </dev/tty 2>/dev/null; then
-    REBOOT=0
-    break
-  fi
-done
-printf '\n' >/dev/tty
-
-if [[ "$REBOOT" == 1 ]]; then
-  systemctl reboot
-else
-  info "Reboot cancelled. Run 'reboot' when ready."
-fi
+systemctl reboot
