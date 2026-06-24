@@ -29,7 +29,7 @@ c_red=$'\e[38;5;203m'      # errors
 info()  { printf '%s==>%s %s\n' "$c_orange" "$c_reset" "$*"; }
 ok()    { printf '%s==>%s %s\n' "$c_green"  "$c_reset" "$*"; }
 warn()  { printf '%s==>%s %s\n' "$c_amber"  "$c_reset" "$*" >&2; }
-die()   { printf '%s ✗ %s%s\n' "$c_red"     "$*" "$c_reset" >&2; exit 1; }
+die()   { _DYING=1; printf '%s ✗ %s%s\n' "$c_red" "$*" "$c_reset" >&2; exit 1; }
 
 # ---------------------------------------------------------------------------
 # Debug mode
@@ -47,6 +47,17 @@ for _arg in "$@"; do
   esac
 done
 dbg() { [[ "$DEBUG" == 1 ]] && printf '%s  [dbg]%s %s\n' "$c_dim" "$c_reset" "$*" >&2 || true; }
+_DYING=0
+_on_error() {
+  [[ "$_DYING" == 1 ]] && return
+  local line=$1 cmd="$2" code=$3
+  if [[ "$DEBUG" == 1 ]]; then
+    printf '%s ✗ Error at line %d (exit %d): %s%s\n' "$c_red" "$line" "$code" "$cmd" "$c_reset" >&2
+  else
+    printf '%s ✗ Installation failed at line %d. Re-run with --debug for details.%s\n' "$c_red" "$line" "$c_reset" >&2
+  fi
+}
+trap '_on_error $LINENO "$BASH_COMMAND" $?' ERR
 if [[ "${PP_TRACE:-0}" == 1 ]]; then
   export PS4='+ ${BASH_SOURCE##*/}:${LINENO}: '
   set -x
@@ -170,6 +181,8 @@ fi
 # A single IP-geolocation lookup drives all of these so the user isn't prompted.
 info "Detecting location-based settings from your IP address..."
 GEO="$(curl -fsS --max-time 6 https://ipapi.co/json/ 2>/dev/null || true)"
+[[ -n "$GEO" ]] || warn "Geolocation lookup failed — using defaults (Africa/Johannesburg, en_ZA.UTF-8, us keymap)."
+dbg "GEO response: ${GEO:-(empty)}"
 geo_field() { printf '%s' "$GEO" | grep -oP "\"$1\"\s*:\s*\"?\K[^\",}]*" | head -n1; }
 
 GEO_TZ="$(geo_field timezone)"
@@ -205,6 +218,7 @@ ok "Detected: timezone=$TIMEZONE  locale=$LOCALE  keymap=$KEYMAP  country=${GEO_
 # Detect the first wired interface as a sensible default.
 DEFAULT_IFACE="$(ip -o link show 2>/dev/null | awk -F': ' '{print $2}' | grep -E '^(en|eth)' | head -n1 || true)"
 NET_TYPE="dhcp"
+IFACE="" STATIC_ADDR="" STATIC_GW="" STATIC_DNS=""
 if confirm "Use DHCP for networking? (No = configure a static IP)"; then
   NET_TYPE="dhcp"
 else
@@ -218,6 +232,8 @@ fi
 # --- Target disk -----------------------------------------------------------
 DEFAULT_DISK="$(lsblk -dpno NAME,TYPE | awk '$2=="disk"{print $1; exit}')"
 mapfile -t DISK_LINES < <(lsblk -dpno NAME,SIZE,MODEL | grep -vE 'loop|sr0')
+dbg "disks found: ${#DISK_LINES[@]} — ${DISK_LINES[*]:-(none)}"
+[[ ${#DISK_LINES[@]} -gt 0 ]] || die "No disks found. Check that your disk is connected and visible (lsblk)."
 info "Available disks (ALL DATA on the selected disk will be erased):"
 printf '\n' >/dev/tty
 PS3=$'\nSelect disk number: '
