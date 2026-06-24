@@ -217,18 +217,14 @@ fi
 
 # --- Target disk -----------------------------------------------------------
 DEFAULT_DISK="$(lsblk -dpno NAME,TYPE | awk '$2=="disk"{print $1; exit}')"
-MENU_ITEMS=()
-while IFS= read -r line; do
-  name="$(awk '{print $1}' <<<"$line")"
-  desc="$(awk '{$1=""; print $0}' <<<"$line" | xargs)"
-  MENU_ITEMS+=("$name" "$desc")
-done < <(lsblk -dpno NAME,SIZE,MODEL | grep -vE 'loop|sr0')
-DISK="$(whiptail --title "Select Target Disk" \
-  --default-item "$DEFAULT_DISK" \
-  --menu $'\nChoose the disk to install to. ALL DATA WILL BE ERASED.\n' \
-  18 64 8 \
-  "${MENU_ITEMS[@]}" \
-  3>&1 1>&2 2>&3)" || die "No disk selected."
+mapfile -t DISK_LINES < <(lsblk -dpno NAME,SIZE,MODEL | grep -vE 'loop|sr0')
+info "Available disks (ALL DATA on the selected disk will be erased):"
+printf '\n' >/dev/tty
+PS3=$'\nSelect disk number: '
+select _line in "${DISK_LINES[@]}"; do
+  [[ -n "$_line" ]] && { DISK="$(awk '{print $1}' <<<"$_line")"; break; }
+  warn "Invalid selection — enter a number from the list."
+done </dev/tty >/dev/tty
 [[ -b "$DISK" ]] || die "Not a block device: $DISK"
 
 # Partition path suffix differs for nvme/mmc (p1) vs sata/scsi (1).
@@ -263,9 +259,6 @@ ${c_orange}===================================================================${
 SUMMARY
 
 confirm "Proceed with installation?" || die "Aborted by user."
-printf 'Type the disk path again to confirm wipe (%s): ' "$DISK" >/dev/tty
-read -r confirm_disk </dev/tty
-[[ "$confirm_disk" == "$DISK" ]] || die "Disk confirmation did not match. Aborted."
 
 # ---------------------------------------------------------------------------
 # Speed up pacman on the live ISO + refresh mirrors
@@ -447,7 +440,7 @@ sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
 
 # --- services ---------------------------------------------------------------
 systemctl enable systemd-networkd systemd-resolved systemd-timesyncd sshd ufw
-ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf || true
 CHROOT
 
 # ---------------------------------------------------------------------------
