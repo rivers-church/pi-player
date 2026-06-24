@@ -12,3 +12,6 @@ ansible/inventory.yml
 services/samba-credentials
 services/mnt-networkshare.mount
 CLAUDE.md
+
+# QEMU test VM artifacts (see scripts/test-vm.sh)
+.vm/

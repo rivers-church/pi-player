@@ -38,6 +38,37 @@ Reboot when it finishes and remove the install media.
 > been removed.) `scripts/user_configuration.json` is kept only as a reference
 > of the original archinstall layout.
 
+### Testing the installer in a VM
+
+Before running `install.sh` on real hardware, test it in a disposable UEFI VM.
+[`scripts/test-vm.sh`](scripts/test-vm.sh) wraps QEMU with all the right flags
+(UEFI firmware, a blank virtio disk, the Arch ISO, and `localhost:2222 -> :22`
+SSH forwarding):
+
+```bash
+# Requires: qemu-full, edk2-ovmf
+scripts/test-vm.sh            # boot the VM (downloads ISO + creates disk on first run)
+scripts/test-vm.sh --fresh    # wipe the disk first, for a clean install test
+scripts/test-vm.sh --no-cdrom # boot the installed system without the ISO attached
+```
+
+Notes:
+
+- The target disk inside the VM is `/dev/vda` (virtio), so enter `/dev/vda` at
+  the installer's disk prompt.
+- After a successful install, reboot with `--no-cdrom` so it boots the installed
+  system instead of the live ISO again.
+- Once SSH is up you can reach the guest with `ssh -p 2222 <username>@localhost`.
+- All VM artifacts (ISO, disk image, UEFI NVRAM) live under `.vm/`, which is
+  gitignored. Tunables: `RAM`, `CPUS`, `DISK_SIZE`, `SSH_PORT` (e.g.
+  `DISK_SIZE=40G RAM=8192 scripts/test-vm.sh`).
+
+To debug a failing install run, the installer accepts a debug flag:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rivers-church/pi-player/master/scripts/install.sh | DEBUG=1 bash
+```
+
 ### 2. Configure with Ansible
 
 From your workstation, point the inventory at the new host (reachable over SSH

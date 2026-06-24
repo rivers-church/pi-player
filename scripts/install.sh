@@ -216,10 +216,19 @@ else
 fi
 
 # --- Target disk -----------------------------------------------------------
-info "Available disks:"
-lsblk -dpno NAME,SIZE,MODEL | grep -vE 'loop|sr0' >/dev/tty || true
 DEFAULT_DISK="$(lsblk -dpno NAME,TYPE | awk '$2=="disk"{print $1; exit}')"
-DISK="$(ask_required "Target disk to ERASE and install to" "$DEFAULT_DISK")"
+MENU_ITEMS=()
+while IFS= read -r line; do
+  name="$(awk '{print $1}' <<<"$line")"
+  desc="$(awk '{$1=""; print $0}' <<<"$line" | xargs)"
+  MENU_ITEMS+=("$name" "$desc")
+done < <(lsblk -dpno NAME,SIZE,MODEL | grep -vE 'loop|sr0')
+DISK="$(whiptail --title "Select Target Disk" \
+  --default-item "$DEFAULT_DISK" \
+  --menu $'\nChoose the disk to install to. ALL DATA WILL BE ERASED.\n' \
+  18 64 8 \
+  "${MENU_ITEMS[@]}" \
+  3>&1 1>&2 2>&3)" || die "No disk selected."
 [[ -b "$DISK" ]] || die "Not a block device: $DISK"
 
 # Partition path suffix differs for nvme/mmc (p1) vs sata/scsi (1).
@@ -455,7 +464,21 @@ Next steps:
 
 DONE
 
-if confirm "Reboot now?"; then
-  umount -R /mnt || true
+umount -R /mnt 2>/dev/null || true
+
+printf '%s==>%s Rebooting in 10 seconds — press any key to cancel.\n' "$c_orange" "$c_reset" >/dev/tty
+REBOOT=1
+for i in $(seq 10 -1 1); do
+  printf '\r     %s%d%s  ' "$c_bold" "$i" "$c_reset" >/dev/tty
+  if read -r -s -n 1 -t 1 </dev/tty 2>/dev/null; then
+    REBOOT=0
+    break
+  fi
+done
+printf '\n' >/dev/tty
+
+if [[ "$REBOOT" == 1 ]]; then
   systemctl reboot
+else
+  info "Reboot cancelled. Run 'reboot' when ready."
 fi
