@@ -483,7 +483,7 @@ systemctl enable systemd-resolved
 systemctl enable systemd-timesyncd
 systemctl enable sshd
 systemctl enable ufw
-[[ "$PP_TESTING" == 1 ]] && systemctl enable spice-vdagentd
+if [[ "$PP_TESTING" == 1 ]]; then systemctl enable spice-vdagentd; fi
 CHROOT
 
 # arch-chroot bind-mounts a tmpfs onto /etc/resolv.conf inside the chroot,
