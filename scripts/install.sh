@@ -22,30 +22,36 @@ set -euo pipefail
 # Detects 256-colour support; falls back to 16-colour for the Arch live TTY
 # (the Linux console renders \e[38;5;208m as red — \e[33m is brown-orange).
 # ---------------------------------------------------------------------------
-c_reset=$'\e[0m'; c_bold=$'\e[1m'; c_dim=$'\e[2m'
+c_reset=$'\e[0m'
+c_bold=$'\e[1m'
+c_dim=$'\e[2m'
 _ncolors=$(tput colors 2>/dev/null || echo 0)
 if [[ "$_ncolors" -ge 256 ]]; then
-  c_orange=$'\e[38;5;208m'   # primary
-  c_amber=$'\e[38;5;214m'    # warnings (analogous to orange)
-  c_blue=$'\e[38;5;39m'      # complement to orange (info accents)
-  c_green=$'\e[38;5;42m'     # success
-  c_red=$'\e[38;5;203m'      # errors
-  c_grey=$'\e[38;5;240m'     # dark grey (frame)
-  c_lgrey=$'\e[38;5;250m'    # light grey (subtitle)
+  c_orange=$'\e[38;5;208m' # primary
+  c_amber=$'\e[38;5;214m'  # warnings (analogous to orange)
+  c_blue=$'\e[38;5;39m'    # complement to orange (info accents)
+  c_green=$'\e[38;5;42m'   # success
+  c_red=$'\e[38;5;203m'    # errors
+  c_grey=$'\e[38;5;240m'   # dark grey (frame)
+  c_lgrey=$'\e[38;5;250m'  # light grey (subtitle)
 else
   # 16-colour fallback: \e[33m = CGA "yellow" = brown-orange on Linux TTY
   c_orange=$'\e[33m'
-  c_amber=$'\e[1;33m'        # bright yellow (analogous)
-  c_blue=$'\e[36m'           # cyan (complement)
+  c_amber=$'\e[1;33m' # bright yellow (analogous)
+  c_blue=$'\e[36m'    # cyan (complement)
   c_green=$'\e[32m'
   c_red=$'\e[31m'
-  c_grey=$'\e[2;37m'         # dim white = dark grey
-  c_lgrey=$'\e[37m'          # light grey
+  c_grey=$'\e[2;37m' # dim white = dark grey
+  c_lgrey=$'\e[37m'  # light grey
 fi
-info()  { printf '%s==>%s %s\n' "$c_orange" "$c_reset" "$*"; }
-ok()    { printf '%s==>%s %s\n' "$c_green"  "$c_reset" "$*"; }
-warn()  { printf '%s==>%s %s\n' "$c_amber"  "$c_reset" "$*" >&2; }
-die()   { _DYING=1; printf '%s ✗ %s%s\n' "$c_red" "$*" "$c_reset" >&2; exit 1; }
+info() { printf '%s==>%s %s\n' "$c_orange" "$c_reset" "$*"; }
+ok() { printf '%s==>%s %s\n' "$c_green" "$c_reset" "$*"; }
+warn() { printf '%s==>%s %s\n' "$c_amber" "$c_reset" "$*" >&2; }
+die() {
+  _DYING=1
+  printf '%s ✗ %s%s\n' "$c_red" "$*" "$c_reset" >&2
+  exit 1
+}
 
 # ---------------------------------------------------------------------------
 # Debug mode
@@ -59,9 +65,12 @@ DEBUG="${DEBUG:-0}"
 TESTING="${TESTING:-0}"
 for _arg in "$@"; do
   case "$_arg" in
-    -d|--debug|-v|--verbose) DEBUG=1 ;;
-    --trace) DEBUG=1; PP_TRACE=1 ;;
-    --testing) TESTING=1 ;;
+  -d | --debug | -v | --verbose) DEBUG=1 ;;
+  --trace)
+    DEBUG=1
+    PP_TRACE=1
+    ;;
+  --testing) TESTING=1 ;;
   esac
 done
 dbg() { [[ "$DEBUG" == 1 ]] && printf '%s  [dbg]%s %s\n' "$c_dim" "$c_reset" "$*" >&2 || true; }
@@ -85,7 +94,7 @@ fi
 # ---------------------------------------------------------------------------
 # Interactive prompts (read from /dev/tty so this works under `curl | bash`)
 # ---------------------------------------------------------------------------
-ask() {  # ask "Prompt" [default] -> echoes answer
+ask() { # ask "Prompt" [default] -> echoes answer
   local prompt="$1" default="${2:-}" reply
   if [[ -n "$default" ]]; then
     printf '%s [%s]: ' "$prompt" "$default" >/dev/tty
@@ -96,26 +105,36 @@ ask() {  # ask "Prompt" [default] -> echoes answer
   printf '%s' "${reply:-$default}"
 }
 
-ask_required() {  # like ask but loops until non-empty
+ask_required() { # like ask but loops until non-empty
   local val
   while :; do
     val="$(ask "$1" "${2:-}")"
-    [[ -n "$val" ]] && { printf '%s' "$val"; return; }
+    [[ -n "$val" ]] && {
+      printf '%s' "$val"
+      return
+    }
     warn "A value is required."
   done
 }
 
-ask_secret() {  # ask_secret "Prompt" -> echoes password (confirmed twice)
+ask_secret() { # ask_secret "Prompt" -> echoes password (confirmed twice)
   local prompt="$1" p1 p2
   while :; do
-    printf '%s: ' "$prompt" >/dev/tty;        read -rs p1 </dev/tty; printf '\n' >/dev/tty
-    printf 'Confirm %s: ' "$prompt" >/dev/tty; read -rs p2 </dev/tty; printf '\n' >/dev/tty
-    [[ -n "$p1" && "$p1" == "$p2" ]] && { printf '%s' "$p1"; return; }
+    printf '%s: ' "$prompt" >/dev/tty
+    read -rs p1 </dev/tty
+    printf '\n' >/dev/tty
+    printf 'Confirm %s: ' "$prompt" >/dev/tty
+    read -rs p2 </dev/tty
+    printf '\n' >/dev/tty
+    [[ -n "$p1" && "$p1" == "$p2" ]] && {
+      printf '%s' "$p1"
+      return
+    }
     warn "Passwords are empty or do not match — try again."
   done
 }
 
-confirm() {  # confirm "Prompt" -> returns 0 on yes
+confirm() { # confirm "Prompt" -> returns 0 on yes
   local ans
   printf '%s [y/N]: ' "$1" >/dev/tty
   read -r ans </dev/tty
@@ -127,19 +146,20 @@ confirm() {  # confirm "Prompt" -> returns 0 on yes
 # ---------------------------------------------------------------------------
 clear 2>/dev/null || true
 # Colour aliases for the banner only
-_F="${c_grey}${c_bold}"       # frame (dark grey, bold)
-_O="${c_orange}${c_bold}"     # Pi-Player art (orange, bold)
-_P="${c_amber}"               # play button (amber/yellow)
-_S="${c_lgrey}${c_dim}"       # subtitle (light grey, dim)
+_F="${c_grey}${c_bold}"   # frame (dark grey, bold)
+_O="${c_orange}${c_bold}" # Pi-Player art (orange, bold)
+_P="${c_amber}"           # play button (amber/yellow)
+_S="${c_lgrey}${c_dim}"   # subtitle (light grey, dim)
 _R="${c_reset}"
+
 printf '\n'
 printf '%s  ╔════════════════════════════════════════════════════════╗%s\n' "$_F" "$_R"
 printf '%s  ║%s                                                        %s║%s\n' "$_F" "$_R" "$_F" "$_R"
 printf '%s  ║%s  %s ____  _          ____  _                 %s[ ▶ ]%s       %s║%s\n' "$_F" "$_R" "$_O" "$_P" "$_R" "$_F" "$_R"
-printf '%s  ║%s  %s|  _ \\(_)        |  _ \\| | __ _ _   _  ___ _ __%s       ║%s\n'   "$_F" "$_R" "$_O" "$_F$_R" "$_R"
-printf '%s  ║%s  %s| |_) | | ______ | |_) | |/ _\` | | | |/ _ \\ '"'"'__|%s      ║%s\n' "$_F" "$_R" "$_O" "$_F$_R" "$_R"
-printf '%s  ║%s  %s|  __/| ||______||  __/| | (_| | |_| |  __/ |%s         ║%s\n'    "$_F" "$_R" "$_O" "$_F$_R" "$_R"
-printf '%s  ║%s  %s|_|   |_|        |_|   |_|\\__,_|\\__, |\\___|_|%s         ║%s\n'   "$_F" "$_R" "$_O" "$_F$_R" "$_R"
+printf '%s  ║%s  %s|  _ \\(_)        |  _ \\| | __ _ _   _  ___ _ __%s       ║%s\n' "$_F" "$_R" "$_O" "$_F$_R" "$_R"
+printf '%s  ║%s  %s| |_) | | ______ | |_) | |/ _ \| | | |/ _ \\ '"'"'__|%s      ║%s\n' "$_F" "$_R" "$_O" "$_F$_R" "$_R"
+printf '%s  ║%s  %s|  __/| ||______||  __/| | (_| | |_| |  __/ |%s         ║%s\n' "$_F" "$_R" "$_O" "$_F$_R" "$_R"
+printf '%s  ║%s  %s|_|   |_|        |_|   |_|\\__,_|\\__, |\\___|_|%s         ║%s\n' "$_F" "$_R" "$_O" "$_F$_R" "$_R"
 printf '%s  ║%s  %s                                |___/%s                 ║%s\n' "$_F" "$_R" "$_O" "$_F$_R" "$_R"
 printf '%s  ║%s                                                        %s║%s\n' "$_F" "$_R" "$_F" "$_R"
 printf '%s  ║%s  %sArch Linux  ·  Kiosk Installer%s                        %s║%s\n' "$_F" "$_R" "$_S" "$_R" "$_F" "$_R"
@@ -169,12 +189,14 @@ dbg "resolver config (/etc/resolv.conf):"
 net_ok=0
 dbg "probe 1: timeout 8 ping -c1 -W3 archlinux.org"
 if timeout 8 ping -c1 -W3 archlinux.org >/dev/null 2>&1; then
-  dbg "ping OK"; net_ok=1
+  dbg "ping OK"
+  net_ok=1
 else
   dbg "ping failed/unsupported (normal under QEMU SLIRP) — falling back to curl"
   dbg "probe 2: curl -fsS --max-time 10 https://archlinux.org"
   if curl_out="$(curl -fsS --max-time 10 -o /dev/null https://archlinux.org 2>&1)"; then
-    dbg "curl https OK"; net_ok=1
+    dbg "curl https OK"
+    net_ok=1
   else
     dbg "curl https failed: ${curl_out:-<no output>}"
     dbg "probe 3: curl --max-time 10 https://1.1.1.1 (DNS-free reachability test)"
@@ -207,8 +229,8 @@ sed -i 's/^#ParallelDownloads.*/ParallelDownloads = 5/' /etc/pacman.conf || true
 if command -v reflector >/dev/null && [[ -n "$GEO_CC" ]]; then
   info "Selecting fastest mirrors for country '$GEO_CC' with reflector..."
   reflector --country "$GEO_CC" --age 12 --protocol https --sort rate \
-    --save /etc/pacman.d/mirrorlist 2>/dev/null \
-    || warn "reflector failed for '$GEO_CC'; using the ISO's default mirrorlist."
+    --save /etc/pacman.d/mirrorlist 2>/dev/null ||
+    warn "reflector failed for '$GEO_CC'; using the ISO's default mirrorlist."
 else
   warn "Skipping mirror selection (reflector unavailable or country undetected)."
 fi
@@ -222,7 +244,7 @@ info "Configuration"
 
 HOSTNAME="$(ask_required "Hostname" "pi-player")"
 USERNAME="$(ask_required "Username" "pi")"
-USERPASS="$(ask_secret  "Password for user '$USERNAME'")"
+USERPASS="$(ask_secret "Password for user '$USERNAME'")"
 if confirm "Use the same password for root?"; then
   ROOTPASS="$USERPASS"
 else
@@ -242,14 +264,14 @@ fi
 
 # Console keymap — map the country code to a keymap (most default to "us").
 case "$GEO_CC" in
-  GB|IE) KEYMAP="uk" ;;
-  DE|AT|CH) KEYMAP="de" ;;
-  FR) KEYMAP="fr" ;;
-  ES) KEYMAP="es" ;;
-  IT) KEYMAP="it" ;;
-  PT) KEYMAP="pt-latin1" ;;
-  BR) KEYMAP="br-abnt2" ;;
-  *)  KEYMAP="us" ;;
+GB | IE) KEYMAP="uk" ;;
+DE | AT | CH) KEYMAP="de" ;;
+FR) KEYMAP="fr" ;;
+ES) KEYMAP="es" ;;
+IT) KEYMAP="it" ;;
+PT) KEYMAP="pt-latin1" ;;
+BR) KEYMAP="br-abnt2" ;;
+*) KEYMAP="us" ;;
 esac
 
 ok "Detected: timezone=$TIMEZONE  locale=$LOCALE  keymap=$KEYMAP  country=${GEO_CC:-?}"
@@ -265,7 +287,7 @@ else
   NET_TYPE="static"
   IFACE="$(ask_required "Interface name" "${DEFAULT_IFACE:-eth0}")"
   STATIC_ADDR="$(ask_required "Static address (CIDR, e.g. 192.168.1.50/24)")"
-  STATIC_GW="$(ask_required   "Gateway (e.g. 192.168.1.1)")"
+  STATIC_GW="$(ask_required "Gateway (e.g. 192.168.1.1)")"
   STATIC_DNS="$(ask "DNS servers (space-separated)" "1.1.1.1 8.8.8.8")"
 fi
 
@@ -278,7 +300,10 @@ info "Available disks (ALL DATA on the selected disk will be erased):"
 printf '\n' >/dev/tty
 PS3=$'\nSelect disk number: '
 select _line in "${DISK_LINES[@]}"; do
-  [[ -n "$_line" ]] && { DISK="$(awk '{print $1}' <<<"$_line")"; break; }
+  [[ -n "$_line" ]] && {
+    DISK="$(awk '{print $1}' <<<"$_line")"
+    break
+  }
   warn "Invalid selection — enter a number from the list."
 done </dev/tty >/dev/tty
 [[ -b "$DISK" ]] || die "Not a block device: $DISK"
@@ -290,9 +315,9 @@ ROOT_PART="${DISK}${PSEP}2"
 
 # CPU microcode
 case "$(grep -m1 -o -E 'GenuineIntel|AuthenticAMD' /proc/cpuinfo || true)" in
-  GenuineIntel) UCODE="intel-ucode" ;;
-  AuthenticAMD) UCODE="amd-ucode" ;;
-  *)            UCODE="" ;;
+GenuineIntel) UCODE="intel-ucode" ;;
+AuthenticAMD) UCODE="amd-ucode" ;;
+*) UCODE="" ;;
 esac
 
 # ---------------------------------------------------------------------------
@@ -324,8 +349,9 @@ info "Partitioning $DISK..."
 wipefs -af "$DISK"
 sgdisk --zap-all "$DISK"
 sgdisk -n 1:1MiB:+1GiB -t 1:ef00 -c 1:EFI "$DISK"
-sgdisk -n 2:0:0        -t 2:8300 -c 2:root "$DISK"
-partprobe "$DISK"; sleep 2
+sgdisk -n 2:0:0 -t 2:8300 -c 2:root "$DISK"
+partprobe "$DISK"
+sleep 2
 
 info "Creating filesystems..."
 mkfs.fat -F32 -n EFI "$ESP_PART"
@@ -340,11 +366,11 @@ btrfs subvolume create /mnt/@pkg
 umount /mnt
 
 BTRFS_OPTS="noatime,compress=zstd,ssd,discard=async"
-mount -o "$BTRFS_OPTS,subvol=@"    "$ROOT_PART" /mnt
+mount -o "$BTRFS_OPTS,subvol=@" "$ROOT_PART" /mnt
 mkdir -p /mnt/{home,var/log,var/cache/pacman/pkg,boot}
 mount -o "$BTRFS_OPTS,subvol=@home" "$ROOT_PART" /mnt/home
-mount -o "$BTRFS_OPTS,subvol=@log"  "$ROOT_PART" /mnt/var/log
-mount -o "$BTRFS_OPTS,subvol=@pkg"  "$ROOT_PART" /mnt/var/cache/pacman/pkg
+mount -o "$BTRFS_OPTS,subvol=@log" "$ROOT_PART" /mnt/var/log
+mount -o "$BTRFS_OPTS,subvol=@pkg" "$ROOT_PART" /mnt/var/cache/pacman/pkg
 mount "$ESP_PART" /mnt/boot
 
 # ---------------------------------------------------------------------------
@@ -363,7 +389,7 @@ pacstrap -K /mnt \
   "${TESTING_PKGS[@]}"
 
 info "Generating fstab..."
-genfstab -U /mnt >> /mnt/etc/fstab
+genfstab -U /mnt >>/mnt/etc/fstab
 
 # ---------------------------------------------------------------------------
 # Network configuration (written directly into the target)
@@ -371,7 +397,7 @@ genfstab -U /mnt >> /mnt/etc/fstab
 info "Writing systemd-networkd configuration ($NET_TYPE)..."
 mkdir -p /mnt/etc/systemd/network
 if [[ "$NET_TYPE" == "dhcp" ]]; then
-  cat > /mnt/etc/systemd/network/20-ethernet.network <<'NETEOF'
+  cat >/mnt/etc/systemd/network/20-ethernet.network <<'NETEOF'
 [Match]
 # Match by interface-name glob (not Type=ether) to avoid matching veth* in containers.
 # https://bugs.archlinux.org/task/70892
@@ -398,13 +424,13 @@ else
     printf '[Link]\nRequiredForOnline=routable\n\n'
     printf '[Network]\nAddress=%s\nGateway=%s\n' "$STATIC_ADDR" "$STATIC_GW"
     for d in $STATIC_DNS; do printf 'DNS=%s\n' "$d"; done
-  } > /mnt/etc/systemd/network/20-static.network
+  } >/mnt/etc/systemd/network/20-static.network
 fi
 
 # Continue boot as soon as ONE interface is online (eth1 / eth2 / wifi),
 # instead of blocking ~2min for every routable interface and timing out.
 mkdir -p /mnt/etc/systemd/system/systemd-networkd-wait-online.service.d
-cat > /mnt/etc/systemd/system/systemd-networkd-wait-online.service.d/any.conf <<'WAITEOF'
+cat >/mnt/etc/systemd/system/systemd-networkd-wait-online.service.d/any.conf <<'WAITEOF'
 # Only runs at boot when something pulls in network-online.target (e.g. the SMB
 # mount). `--any` makes it succeed as soon as the first interface is routable.
 [Service]
@@ -419,8 +445,8 @@ info "Configuring the installed system..."
 # Export everything the chroot script needs. Secrets travel via the environment
 # (inherited through arch-chroot) so they never appear in a here-doc or argv.
 export PP_HOSTNAME="$HOSTNAME" PP_USERNAME="$USERNAME" PP_TIMEZONE="$TIMEZONE" \
-       PP_LOCALE="$LOCALE" PP_KEYMAP="$KEYMAP" PP_ROOTPASS="$ROOTPASS" PP_USERPASS="$USERPASS" \
-       PP_TESTING="$TESTING"
+  PP_LOCALE="$LOCALE" PP_KEYMAP="$KEYMAP" PP_ROOTPASS="$ROOTPASS" PP_USERPASS="$USERPASS" \
+  PP_TESTING="$TESTING"
 
 # Filesystem UUID of the btrfs root, needed for the UKI kernel cmdline.
 export PP_ROOT_UUID="$(blkid -s UUID -o value "$ROOT_PART")"
@@ -521,7 +547,7 @@ ln -sf /run/systemd/resolve/stub-resolv.conf /mnt/etc/resolv.conf
 # First-boot setup service (runs ansible-pull as root on first boot)
 # ---------------------------------------------------------------------------
 info "Writing first-boot setup service..."
-cat > /mnt/etc/systemd/system/pi-player-setup.service <<EOF
+cat >/mnt/etc/systemd/system/pi-player-setup.service <<EOF
 [Unit]
 Description=Pi-Player initial setup (ansible-pull)
 After=network-online.target
