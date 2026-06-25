@@ -454,6 +454,25 @@ useradd -m -G wheel -s /bin/bash "$PP_USERNAME"
 echo "$PP_USERNAME:$PP_USERPASS" | chpasswd
 sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
 
+# --- autologin --------------------------------------------------------------
+mkdir -p /etc/systemd/system/getty@tty1.service.d
+cat > /etc/systemd/system/getty@tty1.service.d/autologin.conf <<AUTOLOGIN
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty -o '-p -f -- \\u' --noclear --autologin $PP_USERNAME %I \$TERM
+AUTOLOGIN
+
+# --- ansible collections ----------------------------------------------------
+ansible-galaxy collection install kewlfft.aur
+
+# --- setup motd -------------------------------------------------------------
+cat > /etc/motd <<'MOTD'
+
+  Pi-Player setup is running in the background.
+  To watch progress:  journalctl -u pi-player-setup.service -f
+
+MOTD
+
 # --- services ---------------------------------------------------------------
 systemctl enable systemd-networkd systemd-resolved systemd-timesyncd sshd ufw
 ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf || true
@@ -474,6 +493,8 @@ ConditionPathExists=!/etc/pi-player-setup-done
 Type=oneshot
 ExecStart=/usr/bin/ansible-pull -U https://github.com/rivers-church/pi-player --extra-vars "pi_user=$USERNAME" ansible/playbook.yml
 ExecStartPost=/usr/bin/touch /etc/pi-player-setup-done
+ExecStartPost=-/usr/bin/systemctl disable pi-player-setup.service
+ExecStartPost=-/usr/bin/rm /etc/systemd/system/pi-player-setup.service
 ExecStartPost=/usr/bin/systemctl reboot
 RemainAfterExit=yes
 StandardOutput=journal

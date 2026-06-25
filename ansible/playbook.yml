@@ -5,7 +5,7 @@
 
   vars:
     ansible_python_interpreter: python3
-    pi_user: "{{ pi_user | default(ansible_facts['user_id']) }}"
+    target_user: "{{ pi_user | default(ansible_facts['user_id']) }}"
 
   tasks:
     - name: Initial setup requiring root access.
@@ -30,24 +30,9 @@
 
         - name: Add the current user to the input group.
           ansible.builtin.user:
-            name: '{{ pi_user }}'
+            name: '{{ target_user }}'
             groups: input
             append: true
-
-        - name: Create getty service override directory.
-          ansible.builtin.file:
-            path: /etc/systemd/system/getty@tty1.service.d
-            state: directory
-            mode: '0755'
-
-        - name: Enable automatic login.
-          ansible.builtin.copy:
-            dest: /etc/systemd/system/getty@tty1.service.d/autologin.conf
-            content: |
-              [Service]
-              ExecStart=
-              ExecStart=-/sbin/agetty -o '-p -f -- \\u' --noclear --autologin {{ pi_user }} %I $TERM
-            backup: true
 
         - name: Create mount point for network share.
           ansible.builtin.file:
@@ -131,95 +116,101 @@
       block:
         - name: Check if nvim config exists.
           ansible.builtin.stat:
-            path: /home/{{ pi_user }}/.config/nvim
+            path: /home/{{ target_user }}/.config/nvim
           register: nvim_config
 
         - name: Clone LazyVim starter config.
           ansible.builtin.git:
             repo: https://github.com/LazyVim/starter
-            dest: /home/{{ pi_user }}/.config/nvim
+            dest: /home/{{ target_user }}/.config/nvim
             depth: 1
           when: not nvim_config.stat.exists
 
         - name: Set ownership of nvim config.
           ansible.builtin.file:
-            path: /home/{{ pi_user }}/.config/nvim
-            owner: "{{ pi_user }}"
-            group: "{{ pi_user }}"
+            path: /home/{{ target_user }}/.config/nvim
+            owner: "{{ target_user }}"
+            group: "{{ target_user }}"
             recurse: true
           when: not nvim_config.stat.exists
 
         - name: Remove .git directory from nvim config.
           ansible.builtin.file:
-            path: /home/{{ pi_user }}/.config/nvim/.git
+            path: /home/{{ target_user }}/.config/nvim/.git
             state: absent
           when: not nvim_config.stat.exists
 
     - name: Create a directory for the pi-player binary.
       become: true
       ansible.builtin.file:
-        name: /home/{{ pi_user }}/.local/bin
+        name: /home/{{ target_user }}/.local/bin
         state: directory
         mode: "0744"
-        owner: "{{ pi_user }}"
-        group: "{{ pi_user }}"
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
 
     - name: Download the pi-player binary.
       become: true
       ansible.builtin.get_url:
         url: https://github.com/rivers-church/pi-player/releases/latest/download/pi-player
-        dest: /home/{{ pi_user }}/.local/bin/
+        dest: /home/{{ target_user }}/.local/bin/
         mode: '0744'
-        owner: "{{ pi_user }}"
-        group: "{{ pi_user }}"
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
 
     - name: Create systemd user service directory.
       become: true
       ansible.builtin.file:
-        name: /home/{{ pi_user }}/.config/systemd/user
+        name: /home/{{ target_user }}/.config/systemd/user
         state: directory
         mode: "0744"
-        owner: "{{ pi_user }}"
-        group: "{{ pi_user }}"
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
 
     - name: Download systemd service file for pi-player.
       become: true
       ansible.builtin.get_url:
         url: https://github.com/rivers-church/pi-player/raw/master/services/pi-player.service
-        dest: /home/{{ pi_user }}/.config/systemd/user/
+        dest: /home/{{ target_user }}/.config/systemd/user/
         mode: "0744"
-        owner: "{{ pi_user }}"
-        group: "{{ pi_user }}"
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
 
     - name: Create Hyprland config directory.
       become: true
       ansible.builtin.file:
-        name: /home/{{ pi_user }}/.config/hypr
+        name: /home/{{ target_user }}/.config/hypr
         state: directory
         mode: "0755"
-        owner: "{{ pi_user }}"
-        group: "{{ pi_user }}"
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
 
     - name: Download Hyprland config file.
       become: true
       ansible.builtin.get_url:
         url: https://github.com/rivers-church/pi-player/raw/master/scripts/hyprland.conf
-        dest: /home/{{ pi_user }}/.config/hypr/hyprland.conf
+        dest: /home/{{ target_user }}/.config/hypr/hyprland.conf
         mode: '0644'
-        owner: "{{ pi_user }}"
-        group: "{{ pi_user }}"
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
 
     - name: Auto-start Hyprland on login.
       become: true
       ansible.builtin.blockinfile:
-        path: /home/{{ pi_user }}/.bash_profile
+        path: /home/{{ target_user }}/.bash_profile
         create: true
         mode: '0644'
-        owner: "{{ pi_user }}"
-        group: "{{ pi_user }}"
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
         marker: "# {mark} ANSIBLE MANAGED BLOCK - Auto-start Hyprland"
         block: |
           # Start Hyprland on tty1
           if [ -z "$DISPLAY" ] && [ -n "$XDG_VTNR" ] && [ "$XDG_VTNR" -eq 1 ]; then
             exec Hyprland
           fi
+
+    - name: Remove setup MOTD.
+      become: true
+      ansible.builtin.file:
+        path: /etc/motd
+        state: absent
