@@ -185,7 +185,7 @@ info "Detecting location-based settings from your IP address..."
 GEO="$(curl -fsS --max-time 6 https://ipapi.co/json/ 2>/dev/null || true)"
 [[ -n "$GEO" ]] || warn "Geolocation lookup failed — using defaults (Africa/Johannesburg, en_ZA.UTF-8, us keymap)."
 dbg "GEO response: ${GEO:-(empty)}"
-geo_field() { printf '%s' "$GEO" | grep -oP "\"$1\"\s*:\s*\"?\K[^\",}]*" | head -n1; }
+geo_field() { printf '%s' "$GEO" | grep -oP "\"$1\"\s*:\s*\"?\K[^\",}]*" | head -n1 || true; }
 
 GEO_TZ="$(geo_field timezone)"
 GEO_CC="$(geo_field country_code)"            # e.g. ZA
