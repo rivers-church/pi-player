@@ -18,14 +18,30 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# Output helpers — palette: orange (primary) + black, blue as complement
+# Output helpers — palette: orange (primary) + white/grey + blue complement
+# Detects 256-colour support; falls back to 16-colour for the Arch live TTY
+# (the Linux console renders \e[38;5;208m as red — \e[33m is brown-orange).
 # ---------------------------------------------------------------------------
 c_reset=$'\e[0m'; c_bold=$'\e[1m'; c_dim=$'\e[2m'
-c_orange=$'\e[38;5;208m'   # primary
-c_amber=$'\e[38;5;214m'    # warnings (analogous to orange)
-c_blue=$'\e[38;5;39m'      # complement to orange (info accents)
-c_green=$'\e[38;5;42m'     # success
-c_red=$'\e[38;5;203m'      # errors
+_ncolors=$(tput colors 2>/dev/null || echo 0)
+if [[ "$_ncolors" -ge 256 ]]; then
+  c_orange=$'\e[38;5;208m'   # primary
+  c_amber=$'\e[38;5;214m'    # warnings (analogous to orange)
+  c_blue=$'\e[38;5;39m'      # complement to orange (info accents)
+  c_green=$'\e[38;5;42m'     # success
+  c_red=$'\e[38;5;203m'      # errors
+  c_grey=$'\e[38;5;240m'     # dark grey (frame)
+  c_lgrey=$'\e[38;5;250m'    # light grey (subtitle)
+else
+  # 16-colour fallback: \e[33m = CGA "yellow" = brown-orange on Linux TTY
+  c_orange=$'\e[33m'
+  c_amber=$'\e[1;33m'        # bright yellow (analogous)
+  c_blue=$'\e[36m'           # cyan (complement)
+  c_green=$'\e[32m'
+  c_red=$'\e[31m'
+  c_grey=$'\e[2;37m'         # dim white = dark grey
+  c_lgrey=$'\e[37m'          # light grey
+fi
 info()  { printf '%s==>%s %s\n' "$c_orange" "$c_reset" "$*"; }
 ok()    { printf '%s==>%s %s\n' "$c_green"  "$c_reset" "$*"; }
 warn()  { printf '%s==>%s %s\n' "$c_amber"  "$c_reset" "$*" >&2; }
@@ -110,16 +126,27 @@ confirm() {  # confirm "Prompt" -> returns 0 on yes
 # Banner
 # ---------------------------------------------------------------------------
 clear 2>/dev/null || true
-printf '%s' "$c_orange"
-cat <<'BANNER'
-       _             _
- _ __ (_)      _ __ | | __ _ _   _  ___ _ __
-| '_ \| |_____| '_ \| |/ _` | | | |/ _ \ '__|
-| |_) | |_____| |_) | | (_| | |_| |  __/ |
-| .__/|_|     | .__/|_|\__,_|\__, |\___|_|
-|_|           |_|            |___/
-BANNER
-printf '%s            Arch Linux kiosk installer%s\n\n' "$c_dim" "$c_reset"
+# Colour aliases for the banner only
+_F="${c_grey}${c_bold}"       # frame (dark grey, bold)
+_O="${c_orange}${c_bold}"     # Pi-Player art (orange, bold)
+_P="${c_amber}"               # play button (amber/yellow)
+_S="${c_lgrey}${c_dim}"       # subtitle (light grey, dim)
+_R="${c_reset}"
+printf '\n'
+printf '%s  ╔════════════════════════════════════════════════════════╗%s\n' "$_F" "$_R"
+printf '%s  ║%s                                                        %s║%s\n' "$_F" "$_R" "$_F" "$_R"
+printf '%s  ║%s  %s ____  _          ____  _                 %s[ ▶ ]%s       %s║%s\n' "$_F" "$_R" "$_O" "$_P" "$_R" "$_F" "$_R"
+printf '%s  ║%s  %s|  _ \\(_)        |  _ \\| | __ _ _   _  ___ _ __%s       ║%s\n'   "$_F" "$_R" "$_O" "$_F$_R" "$_R"
+printf '%s  ║%s  %s| |_) | | ______ | |_) | |/ _\` | | | |/ _ \\ '"'"'__|%s      ║%s\n' "$_F" "$_R" "$_O" "$_F$_R" "$_R"
+printf '%s  ║%s  %s|  __/| ||______||  __/| | (_| | |_| |  __/ |%s         ║%s\n'    "$_F" "$_R" "$_O" "$_F$_R" "$_R"
+printf '%s  ║%s  %s|_|   |_|        |_|   |_|\\__,_|\\__, |\\___|_|%s         ║%s\n'   "$_F" "$_R" "$_O" "$_F$_R" "$_R"
+printf '%s  ║%s  %s                                |___/%s                 ║%s\n' "$_F" "$_R" "$_O" "$_F$_R" "$_R"
+printf '%s  ║%s                                                        %s║%s\n' "$_F" "$_R" "$_F" "$_R"
+printf '%s  ║%s  %sArch Linux  ·  Kiosk Installer%s                        %s║%s\n' "$_F" "$_R" "$_S" "$_R" "$_F" "$_R"
+printf '%s  ╚═══════════════════════════╦════════════════════════════╝%s\n' "$_F" "$_R"
+printf '%s                              ║%s\n' "$_F" "$_R"
+printf '%s                        ══════╩══════%s\n\n' "$_F" "$_R"
+unset _F _O _P _S _R
 
 # ---------------------------------------------------------------------------
 # Pre-flight checks
@@ -171,6 +198,20 @@ GEO="$(curl -fsS --max-time 6 https://ipapi.co/json/ 2>/dev/null || true)"
 [[ -n "$GEO" ]] || warn "Geolocation lookup failed — using Arch defaults (UTC, en_US.UTF-8, us keymap)."
 dbg "GEO response: ${GEO:-(empty)}"
 geo_field() { printf '%s' "$GEO" | grep -oP "\"$1\"\s*:\s*\"?\K[^\",}]*" | head -n1 || true; }
+GEO_TZ="$(geo_field timezone)"
+GEO_CC="$(geo_field country_code)"
+GEO_LANG="$(geo_field languages | cut -d, -f1)"
+
+# Mirror selection runs here so pacstrap uses the fastest mirrors from the start.
+sed -i 's/^#ParallelDownloads.*/ParallelDownloads = 5/' /etc/pacman.conf || true
+if command -v reflector >/dev/null && [[ -n "$GEO_CC" ]]; then
+  info "Selecting fastest mirrors for country '$GEO_CC' with reflector..."
+  reflector --country "$GEO_CC" --age 12 --protocol https --sort rate \
+    --save /etc/pacman.d/mirrorlist 2>/dev/null \
+    || warn "reflector failed for '$GEO_CC'; using the ISO's default mirrorlist."
+else
+  warn "Skipping mirror selection (reflector unavailable or country undetected)."
+fi
 
 ok "Pre-flight checks passed."
 
@@ -187,10 +228,6 @@ if confirm "Use the same password for root?"; then
 else
   ROOTPASS="$(ask_secret "Root password")"
 fi
-
-GEO_TZ="$(geo_field timezone)"
-GEO_CC="$(geo_field country_code)"            # e.g. ZA
-GEO_LANG="$(geo_field languages | cut -d, -f1)"  # e.g. en-ZA
 
 # Timezone — fall back to UTC if detection fails or is invalid.
 TIMEZONE="$GEO_TZ"
@@ -279,19 +316,6 @@ ${c_orange}===================================================================${
 SUMMARY
 
 confirm "Proceed with installation?" || die "Aborted by user."
-
-# ---------------------------------------------------------------------------
-# Speed up pacman on the live ISO + refresh mirrors
-# ---------------------------------------------------------------------------
-sed -i 's/^#ParallelDownloads.*/ParallelDownloads = 5/' /etc/pacman.conf || true
-if command -v reflector >/dev/null && [[ -n "$GEO_CC" ]]; then
-  info "Selecting fastest mirrors for country '$GEO_CC' with reflector..."
-  reflector --country "$GEO_CC" --age 12 --protocol https --sort rate \
-    --save /etc/pacman.d/mirrorlist 2>/dev/null \
-    || warn "reflector failed for '$GEO_CC'; using the ISO's default mirrorlist."
-else
-  warn "Skipping mirror selection (reflector unavailable or country undetected)."
-fi
 
 # ---------------------------------------------------------------------------
 # Partition, format, mount

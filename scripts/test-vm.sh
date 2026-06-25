@@ -3,17 +3,17 @@
 # test-vm.sh — spin up a disposable UEFI QEMU VM for testing scripts/install.sh
 # ----------------------------------------------------------------------------
 # Usage:
-#   scripts/test-vm.sh            # boot the VM (creates disk/ISO/firmware on first run)
-#   scripts/test-vm.sh --fresh    # wipe the disk first, for a clean install test
-#   scripts/test-vm.sh --no-cdrom # boot the installed system without the ISO attached
+#   scripts/test-vm.sh            # boot the VM (HDD boots first; CD is fallback when HDD is blank)
+#   scripts/test-vm.sh --fresh    # wipe the disk and NVRAM for a clean reinstall
 #
 # Tunables (env vars):
 #   VM_DIR=.vm   DISK_SIZE=20G   RAM=4096   CPUS=4   SSH_PORT=2222
 #   ISO=<path>   (defaults to the latest Arch ISO, downloaded into VM_DIR)
 #
 # All large/disposable artifacts (ISO, qcow2 disk, NVRAM) live under VM_DIR,
-# which is gitignored. The VM uses user-mode networking with host:SSH_PORT ->
-# guest:22 forwarded, so once installed you can `ssh -p $SSH_PORT user@localhost`.
+# which is gitignored. The VM uses user-mode networking with:
+#   host:SSH_PORT (2222) -> guest:22   ssh -p 2222 user@localhost
+#   host:8080     (8080) -> guest:8080 http://localhost:8080  (pi-player web UI)
 #
 set -euo pipefail
 cd "$(dirname "$0")/.."   # repo root, so VM_DIR is repo-relative regardless of cwd
@@ -30,12 +30,10 @@ NVRAM="$VM_DIR/OVMF_VARS.4m.fd"
 ISO="${ISO:-$VM_DIR/archlinux-x86_64.iso}"
 
 FRESH=0
-ATTACH_CDROM=1
 for arg in "$@"; do
   case "$arg" in
-    --fresh)    FRESH=1 ;;
-    --no-cdrom) ATTACH_CDROM=0 ;;
-    -h|--help)  sed -n '2,18p' "$0"; exit 0 ;;
+    --fresh)   FRESH=1 ;;
+    -h|--help) sed -n '2,8p' "$0"; exit 0 ;;
     *) echo "unknown option: $arg" >&2; exit 1 ;;
   esac
 done
@@ -64,16 +62,16 @@ fi
 
 # Disk: create on first run, or recreate with --fresh.
 if [[ "$FRESH" == 1 && -f "$DISK" ]]; then
-  echo "==> --fresh: removing existing disk"
-  rm -f "$DISK"
+  echo "==> --fresh: removing existing disk and NVRAM"
+  rm -f "$DISK" "$NVRAM"
 fi
 if [[ ! -f "$DISK" ]]; then
   echo "==> Creating blank $DISK_SIZE disk -> $DISK"
   qemu-img create -f qcow2 "$DISK" "$DISK_SIZE" >/dev/null
 fi
 
-# NVRAM: a fresh writable copy whenever the disk is (re)created.
-if [[ ! -f "$NVRAM" || "$FRESH" == 1 ]]; then
+# NVRAM: initialize whenever not present (includes after --fresh wipe above).
+if [[ ! -f "$NVRAM" ]]; then
   echo "==> Initializing UEFI NVRAM from $OVMF_VARS_TEMPLATE"
   cp "$OVMF_VARS_TEMPLATE" "$NVRAM"
 fi
@@ -82,17 +80,20 @@ fi
 ACCEL=()
 [[ -w /dev/kvm ]] && ACCEL=(-enable-kvm -cpu host) || { echo "==> /dev/kvm unavailable: running without KVM (slow)."; ACCEL=(-cpu max); }
 
-CDROM=()
-[[ "$ATTACH_CDROM" == 1 ]] && CDROM=(-cdrom "$ISO" -boot menu=on)
+# CD-ROM always attached but with lower boot priority than the HDD (bootindex=2 vs 1).
+# On a blank disk OVMF finds no EFI content on the HDD and falls through to the CD.
+# After install the bootloader writes an NVRAM entry that takes priority, so the CD is skipped.
 
 DISPLAY_ARGS=(-device virtio-serial-pci
               -chardev spicevmc,id=vdagent,name=vdagent
               -device virtserialport,chardev=vdagent,name=com.redhat.spice.0
               -vga qxl
+              -global qxl-vga.xres=1920
+              -global qxl-vga.yres=1080
               -display spice-app)
-echo "==> Tip: pass --testing to install.sh inside the VM to enable spice-vdagent clipboard sync"
 
-echo "==> Booting VM (disk=$DISK, ram=${RAM}M, cpus=$CPUS, ssh=localhost:$SSH_PORT -> :22)"
+echo "==> Booting VM (disk=$DISK, ram=${RAM}M, cpus=$CPUS, ssh=localhost:$SSH_PORT, web=localhost:8080)"
+echo "==> Tip: pass --testing to install.sh inside the VM to enable spice-vdagent clipboard sync"
 exec qemu-system-x86_64 \
   "${ACCEL[@]}" \
   -machine q35 \
@@ -100,8 +101,10 @@ exec qemu-system-x86_64 \
   -m "$RAM" \
   -drive if=pflash,format=raw,readonly=on,file="$OVMF_CODE" \
   -drive if=pflash,format=raw,file="$NVRAM" \
-  -drive if=virtio,format=qcow2,file="$DISK" \
-  "${CDROM[@]}" \
-  -netdev user,id=net0,hostfwd=tcp::"$SSH_PORT"-:22 \
+  -drive id=hd0,if=none,format=qcow2,file="$DISK" \
+  -device virtio-blk-pci,drive=hd0,bootindex=1 \
+  -drive id=cd0,if=none,media=cdrom,readonly=on,file="$ISO" \
+  -device ide-cd,drive=cd0,bootindex=2 \
+  -netdev user,id=net0,hostfwd=tcp::"$SSH_PORT"-:22,hostfwd=tcp::8080-:8080 \
   -device virtio-net,netdev=net0 \
   "${DISPLAY_ARGS[@]}"
