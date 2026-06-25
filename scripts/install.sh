@@ -10,7 +10,7 @@
 #   - systemd-boot + UKI, btrfs (@ @home @log @pkg, compress=zstd), 1GiB FAT32 ESP
 #   - systemd-networkd (DHCP or static), systemd-resolved, NTP via timesyncd
 #   - zram swap (zstd), pipewire audio, ufw firewall, openssh (for Ansible)
-#   - en_ZA.UTF-8 locale, us keymap, auto-detected timezone
+#   - en_US.UTF-8 locale, us keymap, auto-detected timezone (falls back to UTC)
 #
 # Interactive prompts: hostname, username/password, root password, target disk,
 # DHCP vs static IP, timezone (auto-detected), mirror country.
@@ -163,6 +163,15 @@ dbg "connectivity OK"
 
 dbg "syncing clock: timedatectl set-ntp true"
 timedatectl set-ntp true >/dev/null 2>&1 || dbg "timedatectl set-ntp failed (non-fatal)"
+
+# Geolocation runs here, after connectivity is confirmed, so the result is
+# ready before configuration prompts begin.
+info "Detecting location-based settings from your IP address..."
+GEO="$(curl -fsS --max-time 6 https://ipapi.co/json/ 2>/dev/null || true)"
+[[ -n "$GEO" ]] || warn "Geolocation lookup failed — using Arch defaults (UTC, en_US.UTF-8, us keymap)."
+dbg "GEO response: ${GEO:-(empty)}"
+geo_field() { printf '%s' "$GEO" | grep -oP "\"$1\"\s*:\s*\"?\K[^\",}]*" | head -n1 || true; }
+
 ok "Pre-flight checks passed."
 
 # ---------------------------------------------------------------------------
@@ -179,27 +188,19 @@ else
   ROOTPASS="$(ask_secret "Root password")"
 fi
 
-# --- Auto-detect location-based settings (timezone, mirrors, locale, keymap) ---
-# A single IP-geolocation lookup drives all of these so the user isn't prompted.
-info "Detecting location-based settings from your IP address..."
-GEO="$(curl -fsS --max-time 6 https://ipapi.co/json/ 2>/dev/null || true)"
-[[ -n "$GEO" ]] || warn "Geolocation lookup failed — using defaults (Africa/Johannesburg, en_ZA.UTF-8, us keymap)."
-dbg "GEO response: ${GEO:-(empty)}"
-geo_field() { printf '%s' "$GEO" | grep -oP "\"$1\"\s*:\s*\"?\K[^\",}]*" | head -n1 || true; }
-
 GEO_TZ="$(geo_field timezone)"
 GEO_CC="$(geo_field country_code)"            # e.g. ZA
 GEO_LANG="$(geo_field languages | cut -d, -f1)"  # e.g. en-ZA
 
-# Timezone — fall back to Africa/Johannesburg if detection fails or is invalid.
+# Timezone — fall back to UTC if detection fails or is invalid.
 TIMEZONE="$GEO_TZ"
-[[ -n "$TIMEZONE" && -f "/usr/share/zoneinfo/$TIMEZONE" ]] || TIMEZONE="Africa/Johannesburg"
+[[ -n "$TIMEZONE" && -f "/usr/share/zoneinfo/$TIMEZONE" ]] || TIMEZONE="UTC"
 
 # Locale — derive from the primary IP language ("en-ZA" -> "en_ZA.UTF-8").
 if [[ "$GEO_LANG" =~ ^[a-z]{2}-[A-Z]{2}$ ]]; then
   LOCALE="${GEO_LANG/-/_}.UTF-8"
 else
-  LOCALE="en_ZA.UTF-8"
+  LOCALE="en_US.UTF-8"
 fi
 
 # Console keymap — map the country code to a keymap (most default to "us").
