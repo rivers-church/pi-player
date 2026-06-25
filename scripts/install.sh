@@ -40,10 +40,12 @@ die()   { _DYING=1; printf '%s ✗ %s%s\n' "$c_red" "$*" "$c_reset" >&2; exit 1;
 #   (noisy, and may echo values — avoid while entering passwords).
 # ---------------------------------------------------------------------------
 DEBUG="${DEBUG:-0}"
+TESTING="${TESTING:-0}"
 for _arg in "$@"; do
   case "$_arg" in
     -d|--debug|-v|--verbose) DEBUG=1 ;;
     --trace) DEBUG=1; PP_TRACE=1 ;;
+    --testing) TESTING=1 ;;
   esac
 done
 dbg() { [[ "$DEBUG" == 1 ]] && printf '%s  [dbg]%s %s\n' "$c_dim" "$c_reset" "$*" >&2 || true; }
@@ -269,6 +271,7 @@ ${c_orange}========================= INSTALL SUMMARY =========================${
   Microcode    : ${UCODE:-none detected}
   Network      : $NET_TYPE${IFACE:+  iface=$IFACE}${STATIC_ADDR:+  addr=$STATIC_ADDR gw=$STATIC_GW}
   Target disk  : $DISK  ->  ESP=$ESP_PART  root=$ROOT_PART
+  Testing mode : ${TESTING/0/no}${TESTING/1/yes (spice-vdagent for clipboard)}
 ${c_red}  ALL DATA ON $DISK WILL BE PERMANENTLY ERASED.${c_reset}
 ${c_orange}===================================================================${c_reset}
 
@@ -323,13 +326,16 @@ mount "$ESP_PART" /mnt/boot
 # Install base system
 # ---------------------------------------------------------------------------
 info "Installing base system (pacstrap)... this can take a while."
+TESTING_PKGS=()
+[[ "$TESTING" == 1 ]] && TESTING_PKGS=(spice-vdagent)
 pacstrap -K /mnt \
   base linux linux-firmware ${UCODE} \
   btrfs-progs sudo git vim ansible \
   openssh python \
   zram-generator ufw \
   pipewire pipewire-pulse pipewire-alsa wireplumber \
-  efibootmgr
+  efibootmgr \
+  "${TESTING_PKGS[@]}"
 
 info "Generating fstab..."
 genfstab -U /mnt >> /mnt/etc/fstab
@@ -388,7 +394,8 @@ info "Configuring the installed system..."
 # Export everything the chroot script needs. Secrets travel via the environment
 # (inherited through arch-chroot) so they never appear in a here-doc or argv.
 export PP_HOSTNAME="$HOSTNAME" PP_USERNAME="$USERNAME" PP_TIMEZONE="$TIMEZONE" \
-       PP_LOCALE="$LOCALE" PP_KEYMAP="$KEYMAP" PP_ROOTPASS="$ROOTPASS" PP_USERPASS="$USERPASS"
+       PP_LOCALE="$LOCALE" PP_KEYMAP="$KEYMAP" PP_ROOTPASS="$ROOTPASS" PP_USERPASS="$USERPASS" \
+       PP_TESTING="$TESTING"
 
 # Filesystem UUID of the btrfs root, needed for the UKI kernel cmdline.
 export PP_ROOT_UUID="$(blkid -s UUID -o value "$ROOT_PART")"
@@ -476,9 +483,14 @@ systemctl enable systemd-resolved
 systemctl enable systemd-timesyncd
 systemctl enable sshd
 systemctl enable ufw
-rm -f /etc/resolv.conf
-ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+[[ "$PP_TESTING" == 1 ]] && systemctl enable spice-vdagentd
 CHROOT
+
+# arch-chroot bind-mounts a tmpfs onto /etc/resolv.conf inside the chroot,
+# so rm fails with "Device or resource busy" if done from inside. Do it here
+# against /mnt/etc/resolv.conf instead, where it's just a regular file.
+rm -f /mnt/etc/resolv.conf
+ln -sf /run/systemd/resolve/stub-resolv.conf /mnt/etc/resolv.conf
 
 # ---------------------------------------------------------------------------
 # First-boot setup service (runs ansible-pull as root on first boot)

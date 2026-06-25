@@ -6,6 +6,8 @@
 #   scripts/test-vm.sh            # boot the VM (creates disk/ISO/firmware on first run)
 #   scripts/test-vm.sh --fresh    # wipe the disk first, for a clean install test
 #   scripts/test-vm.sh --no-cdrom # boot the installed system without the ISO attached
+#   scripts/test-vm.sh --testing  # enable SPICE display for clipboard paste support
+#                                 # (also pass --testing to install.sh inside the VM)
 #
 # Tunables (env vars):
 #   VM_DIR=.vm   DISK_SIZE=20G   RAM=4096   CPUS=4   SSH_PORT=2222
@@ -31,11 +33,13 @@ ISO="${ISO:-$VM_DIR/archlinux-x86_64.iso}"
 
 FRESH=0
 ATTACH_CDROM=1
+TESTING=0
 for arg in "$@"; do
   case "$arg" in
     --fresh)    FRESH=1 ;;
     --no-cdrom) ATTACH_CDROM=0 ;;
-    -h|--help)  sed -n '2,18p' "$0"; exit 0 ;;
+    --testing)  TESTING=1 ;;
+    -h|--help)  sed -n '2,20p' "$0"; exit 0 ;;
     *) echo "unknown option: $arg" >&2; exit 1 ;;
   esac
 done
@@ -85,6 +89,18 @@ ACCEL=()
 CDROM=()
 [[ "$ATTACH_CDROM" == 1 ]] && CDROM=(-cdrom "$ISO" -boot menu=on)
 
+if [[ "$TESTING" == 1 ]]; then
+  DISPLAY_ARGS=(-device virtio-serial-pci
+                -chardev spicevmc,id=vdagent,name=vdagent
+                -device virtserialport,chardev=vdagent,name=com.redhat.spice.0
+                -vga qxl
+                -display spice-app)
+  echo "==> Testing mode: SPICE display with clipboard support"
+  echo "==> Run install.sh with --testing inside the VM to enable spice-vdagent"
+else
+  DISPLAY_ARGS=(-display gtk)
+fi
+
 echo "==> Booting VM (disk=$DISK, ram=${RAM}M, cpus=$CPUS, ssh=localhost:$SSH_PORT -> :22)"
 exec qemu-system-x86_64 \
   "${ACCEL[@]}" \
@@ -97,8 +113,4 @@ exec qemu-system-x86_64 \
   "${CDROM[@]}" \
   -netdev user,id=net0,hostfwd=tcp::"$SSH_PORT"-:22 \
   -device virtio-net,netdev=net0 \
-  -device virtio-serial-pci \
-  -chardev spicevmc,id=vdagent,name=vdagent \
-  -device virtserialport,chardev=vdagent,name=com.redhat.spice.0 \
-  -vga qxl \
-  -display spice-app
+  "${DISPLAY_ARGS[@]}"
