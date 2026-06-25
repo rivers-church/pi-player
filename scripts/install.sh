@@ -462,9 +462,6 @@ ExecStart=
 ExecStart=-/sbin/agetty -o '-p -f -- \\u' --noclear --autologin $PP_USERNAME %I \$TERM
 AUTOLOGIN
 
-# --- ansible collections ----------------------------------------------------
-ansible-galaxy collection install kewlfft.aur
-
 # --- setup motd -------------------------------------------------------------
 cat > /etc/motd <<'MOTD'
 
@@ -474,7 +471,11 @@ cat > /etc/motd <<'MOTD'
 MOTD
 
 # --- services ---------------------------------------------------------------
-systemctl enable systemd-networkd systemd-resolved systemd-timesyncd sshd ufw
+systemctl enable systemd-networkd
+systemctl enable systemd-resolved
+systemctl enable systemd-timesyncd
+systemctl enable sshd
+systemctl enable ufw
 rm -f /etc/resolv.conf
 ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
 CHROOT
@@ -492,6 +493,7 @@ ConditionPathExists=!/etc/pi-player-setup-done
 
 [Service]
 Type=oneshot
+ExecStartPre=/usr/bin/ansible-galaxy collection install kewlfft.aur
 ExecStart=/usr/bin/ansible-pull -U https://github.com/rivers-church/pi-player --extra-vars "pi_user=$USERNAME" ansible/playbook.yml
 ExecStartPost=/usr/bin/touch /etc/pi-player-setup-done
 ExecStartPost=-/usr/bin/systemctl disable pi-player-setup.service
