@@ -475,7 +475,8 @@ MOTD
 
 # --- services ---------------------------------------------------------------
 systemctl enable systemd-networkd systemd-resolved systemd-timesyncd sshd ufw
-ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf || true
+rm -f /etc/resolv.conf
+ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
 CHROOT
 
 # ---------------------------------------------------------------------------

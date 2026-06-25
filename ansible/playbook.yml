@@ -140,6 +140,15 @@
             state: absent
           when: not nvim_config.stat.exists
 
+    - name: Ensure user config directory is owned by the user.
+      become: true
+      ansible.builtin.file:
+        path: /home/{{ target_user }}/.config
+        state: directory
+        mode: '0755'
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+
     - name: Create a directory for the pi-player binary.
       become: true
       ansible.builtin.file:
@@ -205,8 +214,8 @@
         marker: "# {mark} ANSIBLE MANAGED BLOCK - Auto-start Hyprland"
         block: |
           # Start Hyprland on tty1
-          if [ -z "$DISPLAY" ] && [ -n "$XDG_VTNR" ] && [ "$XDG_VTNR" -eq 1 ]; then
-            exec Hyprland
+          if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
+            exec start-hyprland
           fi
 
     - name: Remove setup MOTD.
