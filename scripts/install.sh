@@ -368,12 +368,7 @@ if confirm "Add a network (Samba/SMB) share mount?"; then
     MOUNT_PASS="$(ask_secret "Share password")"
   fi
 
-  # Try to detect the Windows domain from the DHCP-provided search domain.
-  _dhcp_domain="$(awk '/^(domain|search)/{print $2; exit}' /etc/resolv.conf 2>/dev/null || true)"
-  [[ -z "$_dhcp_domain" ]] && \
-    _dhcp_domain="$(resolvectl status "${DEFAULT_IFACE:-}" 2>/dev/null \
-      | grep -oP '(?<=DNS Domain: )\S+' | grep -v '^\.' | head -n1 || true)"
-  MOUNT_DOMAIN="$(ask "Windows domain (leave blank if not required)" "${_dhcp_domain:-}")"
+  MOUNT_DOMAIN="$(ask "Windows domain (leave blank if not required)" "${CURRENT_DOMAIN:-}")"
 
   MOUNT_POINT="$(ask_required "Mount point" "/mnt/${_mount_dir:-network}")"
 
