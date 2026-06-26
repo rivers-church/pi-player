@@ -165,7 +165,7 @@ clear 2>/dev/null || true
 # Colour aliases for the banner only
 _F="${c_blue}${c_bold}"   # frame (blue, bold — complementary to orange)
 _O="${c_orange}" # Pi-Player art (orange — no bold, matches the ==> prompt colour)
-_P="${c_amber}"           # play button (amber/yellow)
+_P="${c_green}"           # play button (green)
 _S="${c_lgrey}${c_dim}"   # subtitle (light grey, dim)
 _R="${c_reset}"
 
