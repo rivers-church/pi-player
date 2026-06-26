@@ -134,11 +134,18 @@ ask_secret() { # ask_secret "Prompt" -> echoes password (confirmed twice)
   done
 }
 
-confirm() { # confirm "Prompt" -> returns 0 on yes
+confirm() { # confirm "Prompt" -> returns 0 on yes (default No)
   local ans
   printf '%s [y/N]: ' "$1" >/dev/tty
   read -r ans </dev/tty
   [[ "$ans" =~ ^[Yy] ]]
+}
+
+confirm_yes() { # confirm_yes "Prompt" -> returns 0 on yes (default Yes)
+  local ans
+  printf '%s [Y/n]: ' "$1" >/dev/tty
+  read -r ans </dev/tty
+  [[ ! "$ans" =~ ^[Nn] ]]
 }
 
 # ---------------------------------------------------------------------------
@@ -146,7 +153,7 @@ confirm() { # confirm "Prompt" -> returns 0 on yes
 # ---------------------------------------------------------------------------
 clear 2>/dev/null || true
 # Colour aliases for the banner only
-_F="${c_grey}${c_bold}"   # frame (dark grey, bold)
+_F="${c_blue}${c_bold}"   # frame (blue, bold — complementary to orange)
 _O="${c_orange}${c_bold}" # Pi-Player art (orange, bold)
 _P="${c_amber}"           # play button (amber/yellow)
 _S="${c_lgrey}${c_dim}"   # subtitle (light grey, dim)
@@ -327,7 +334,7 @@ if confirm "Add a network (Samba/SMB) share mount?"; then
     | sed 's|^smb:||; s|^//||' | tr '/' '\n' | grep -v '^$' | tail -n1)"
 
   MOUNT_USER="$(ask_required "Share username" "$USERNAME")"
-  if confirm "Use the same password as '$USERNAME' for the share?"; then
+  if confirm_yes "Use the same password as '$USERNAME' for the share?"; then
     MOUNT_PASS="$USERPASS"
   else
     MOUNT_PASS="$(ask_secret "Share password")"
