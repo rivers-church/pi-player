@@ -115,6 +115,40 @@
         owner: "{{ target_user }}"
         group: "{{ target_user }}"
 
+    - name: Create pi-player config directory.
+      become: true
+      ansible.builtin.file:
+        path: /home/{{ target_user }}/.config/pi-player
+        state: directory
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0755'
+
+    - name: Write default pi-player config.json (skipped if already exists).
+      become: true
+      ansible.builtin.copy:
+        dest: /home/{{ target_user }}/.config/pi-player/config.json
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0600'
+        force: false
+        content: |
+          {
+            "Location": "PiPlayer",
+            "Mount": {
+              "URL": "{{ ansible_local.pi_player.mount_where | default('/home/' + target_user + '/Documents/pi-player') }}"
+            },
+            "AudioOutput": "",
+            "Streamer": "",
+            "Debug": true,
+            "Login": {},
+            "Remote": {
+              "Names": ["keyboard"],
+              "Vendor": 0,
+              "Product": 0
+            }
+          }
+
     - name: Download the pi-player binary.
       become: true
       ansible.builtin.get_url:
