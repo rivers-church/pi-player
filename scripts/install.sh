@@ -10,7 +10,7 @@
 #   - systemd-boot + UKI, btrfs (@ @home @log @pkg, compress=zstd), 1GiB FAT32 ESP
 #   - systemd-networkd (DHCP or static), systemd-resolved, NTP via timesyncd
 #   - zram swap (zstd), pipewire audio, ufw firewall, openssh (for Ansible)
-#   - en_US.UTF-8 locale, us keymap, auto-detected timezone (falls back to UTC)
+#   - locale from geolocation (e.g. en_ZA.UTF-8), us keymap, auto-detected timezone (falls back to UTC)
 #
 # Interactive prompts: hostname, username/password, root password, target disk,
 # DHCP vs static IP, timezone (auto-detected), mirror country.
@@ -256,8 +256,12 @@ TIMEZONE="$GEO_TZ"
 [[ -n "$TIMEZONE" && -f "/usr/share/zoneinfo/$TIMEZONE" ]] || TIMEZONE="UTC"
 
 # Locale — derive from the primary IP language ("en-ZA" -> "en_ZA.UTF-8").
+# Fall back to the country code ("ZA" -> "en_ZA.UTF-8") when the language
+# field is missing or lacks a region subtag, then fall back to en_US.
 if [[ "$GEO_LANG" =~ ^[a-z]{2}-[A-Z]{2}$ ]]; then
   LOCALE="${GEO_LANG/-/_}.UTF-8"
+elif [[ -n "$GEO_CC" ]]; then
+  LOCALE="en_${GEO_CC}.UTF-8"
 else
   LOCALE="en_US.UTF-8"
 fi
@@ -279,6 +283,26 @@ ok "Detected: timezone=$TIMEZONE  locale=$LOCALE  keymap=$KEYMAP  country=${GEO_
 # --- Network ---------------------------------------------------------------
 # Detect the first wired interface as a sensible default.
 DEFAULT_IFACE="$(ip -o link show 2>/dev/null | awk -F': ' '{print $2}' | grep -E '^(en|eth)' | head -n1 || true)"
+
+# Probe the live environment for DHCP-assigned settings to use as defaults
+# when the user switches to a static IP configuration.
+CURRENT_IP=""
+CURRENT_GW=""
+CURRENT_DNS=""
+if [[ -n "$DEFAULT_IFACE" ]]; then
+  CURRENT_IP="$(ip -4 addr show "$DEFAULT_IFACE" 2>/dev/null \
+    | grep -oP '(?<=inet )\d+\.\d+\.\d+\.\d+/\d+' | head -n1 || true)"
+fi
+CURRENT_GW="$(ip route show default 2>/dev/null \
+  | grep -oP '(?<=via )\S+' | head -n1 || true)"
+# Prefer resolvectl (shows actual DHCP-given servers, not the stub resolver)
+CURRENT_DNS="$(resolvectl dns "${DEFAULT_IFACE:-}" 2>/dev/null \
+  | grep -oP '\b(?!127\.)\d+\.\d+\.\d+\.\d+\b' | head -n2 | tr '\n' ' ' | sed 's/ *$//' || true)"
+[[ -z "$CURRENT_DNS" ]] && \
+  CURRENT_DNS="$(awk '/^nameserver/ && $2 !~ /^127\./{print $2}' /etc/resolv.conf 2>/dev/null \
+    | head -n2 | tr '\n' ' ' | sed 's/ *$//' || true)"
+dbg "current IP=${CURRENT_IP:-?}  gw=${CURRENT_GW:-?}  dns=${CURRENT_DNS:-?}"
+
 NET_TYPE="dhcp"
 IFACE="" STATIC_ADDR="" STATIC_GW="" STATIC_DNS=""
 if confirm "Use DHCP for networking? (No = configure a static IP)"; then
@@ -286,9 +310,37 @@ if confirm "Use DHCP for networking? (No = configure a static IP)"; then
 else
   NET_TYPE="static"
   IFACE="$(ask_required "Interface name" "${DEFAULT_IFACE:-eth0}")"
-  STATIC_ADDR="$(ask_required "Static address (CIDR, e.g. 192.168.1.50/24)")"
-  STATIC_GW="$(ask_required "Gateway (e.g. 192.168.1.1)")"
-  STATIC_DNS="$(ask "DNS servers (space-separated)" "1.1.1.1 8.8.8.8")"
+  STATIC_ADDR="$(ask_required "Static address (CIDR)" "${CURRENT_IP:-192.168.1.50/24}")"
+  STATIC_GW="$(ask_required "Gateway" "${CURRENT_GW:-192.168.1.1}")"
+  STATIC_DNS="$(ask "DNS servers (space-separated)" "${CURRENT_DNS:-1.1.1.1 8.8.8.8}")"
+fi
+
+# --- Network mount (Samba/SMB) ---------------------------------------------
+MOUNT_ENABLED=0
+MOUNT_ADDR="" MOUNT_USER="" MOUNT_PASS="" MOUNT_DOMAIN="" MOUNT_POINT=""
+if confirm "Add a network (Samba/SMB) share mount?"; then
+  MOUNT_ENABLED=1
+  MOUNT_ADDR="$(ask_required "Share address (e.g. //fileserver/media)")"
+
+  # Default mount point: /mnt/<last path segment of the share address>
+  _mount_dir="$(printf '%s' "$MOUNT_ADDR" \
+    | sed 's|^smb:||; s|^//||' | tr '/' '\n' | grep -v '^$' | tail -n1)"
+
+  MOUNT_USER="$(ask_required "Share username" "$USERNAME")"
+  if confirm "Use the same password as '$USERNAME' for the share?"; then
+    MOUNT_PASS="$USERPASS"
+  else
+    MOUNT_PASS="$(ask_secret "Share password")"
+  fi
+
+  # Try to detect the Windows domain from the DHCP-provided search domain.
+  _dhcp_domain="$(awk '/^(domain|search)/{print $2; exit}' /etc/resolv.conf 2>/dev/null || true)"
+  [[ -z "$_dhcp_domain" ]] && \
+    _dhcp_domain="$(resolvectl status "${DEFAULT_IFACE:-}" 2>/dev/null \
+      | grep -oP '(?<=DNS Domain: )\S+' | grep -v '^\.' | head -n1 || true)"
+  MOUNT_DOMAIN="$(ask "Windows domain (leave blank if not required)" "${_dhcp_domain:-}")"
+
+  MOUNT_POINT="$(ask_required "Mount point" "/mnt/${_mount_dir:-network}")"
 fi
 
 # --- Target disk -----------------------------------------------------------
@@ -333,6 +385,7 @@ ${c_orange}========================= INSTALL SUMMARY =========================${
   Mirrors      : country ${GEO_CC:-unknown} via reflector
   Microcode    : ${UCODE:-none detected}
   Network      : $NET_TYPE${IFACE:+  iface=$IFACE}${STATIC_ADDR:+  addr=$STATIC_ADDR gw=$STATIC_GW}
+  SMB mount    : ${MOUNT_ADDR:+$MOUNT_ADDR  ->  $MOUNT_POINT  (user: $MOUNT_USER${MOUNT_DOMAIN:+  domain: $MOUNT_DOMAIN})}${MOUNT_ADDR:-none}
   Target disk  : $DISK  ->  ESP=$ESP_PART  root=$ROOT_PART
   Testing mode : ${TESTING/0/no}${TESTING/1/yes (spice-vdagent for clipboard)}
 ${c_red}  ALL DATA ON $DISK WILL BE PERMANENTLY ERASED.${c_reset}
@@ -542,6 +595,44 @@ CHROOT
 # against /mnt/etc/resolv.conf instead, where it's just a regular file.
 rm -f /mnt/etc/resolv.conf
 ln -sf /run/systemd/resolve/stub-resolv.conf /mnt/etc/resolv.conf
+
+# ---------------------------------------------------------------------------
+# Network mount config (consumed by ansible-pull on first boot)
+# ---------------------------------------------------------------------------
+# Per-device values + secrets can't live in the public repo that ansible-pull
+# clones, so we seed them on the target here. The playbook reads the non-secret
+# values as Ansible local facts and templates the .mount unit from them; the
+# password lives only in the root-only credentials file below.
+if [[ "$MOUNT_ENABLED" == 1 ]]; then
+  info "Writing network mount configuration..."
+
+  # Local facts: ansible reads this as ansible_local.pi_player.* (no secrets).
+  mkdir -p /mnt/etc/ansible/facts.d
+  cat >/mnt/etc/ansible/facts.d/pi_player.fact <<FACTS
+{
+  "mount_enabled": true,
+  "mount_what": "$MOUNT_ADDR",
+  "mount_where": "$MOUNT_POINT",
+  "mount_user": "$MOUNT_USER",
+  "mount_domain": "$MOUNT_DOMAIN"
+}
+FACTS
+  chmod 0644 /mnt/etc/ansible/facts.d/pi_player.fact
+
+  # CIFS credentials — root-only, never enters git or any ansible-readable var.
+  mkdir -p /mnt/etc/samba
+  {
+    printf 'username=%s\n' "$MOUNT_USER"
+    printf 'password=%s\n' "$MOUNT_PASS"
+    [[ -n "$MOUNT_DOMAIN" ]] && printf 'domain=%s\n' "$MOUNT_DOMAIN"
+  } >/mnt/etc/samba/credentials
+  chmod 0600 /mnt/etc/samba/credentials
+else
+  # Record that no mount was requested so the playbook skips the section.
+  mkdir -p /mnt/etc/ansible/facts.d
+  printf '{ "mount_enabled": false }\n' >/mnt/etc/ansible/facts.d/pi_player.fact
+  chmod 0644 /mnt/etc/ansible/facts.d/pi_player.fact
+fi
 
 # ---------------------------------------------------------------------------
 # First-boot setup service (runs ansible-pull as root on first boot)

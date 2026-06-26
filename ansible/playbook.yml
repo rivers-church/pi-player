@@ -34,51 +34,8 @@
             groups: input
             append: true
 
-        - name: Create mount point for network share.
-          ansible.builtin.file:
-            path: /mnt/networkshare
-            state: directory
-            mode: '0755'
-
-        - name: Create samba credentials directory.
-          ansible.builtin.file:
-            path: /etc/samba
-            state: directory
-            mode: '0755'
-
-        - name: Check if local mount file exists.
-          ansible.builtin.stat:
-            path: "{{ playbook_dir }}/../services/mnt-networkshare.mount"
-          register: local_mount_file
-          delegate_to: localhost
-          become: false
-
-        - name: Check if local credentials file exists.
-          ansible.builtin.stat:
-            path: "{{ playbook_dir }}/../services/samba-credentials"
-          register: local_credentials_file
-          delegate_to: localhost
-          become: false
-
-        - name: Copy mount unit file if it exists.
-          ansible.builtin.copy:
-            src: "{{ playbook_dir }}/../services/mnt-networkshare.mount"
-            dest: /etc/systemd/system/mnt-networkshare.mount
-            mode: '0644'
-          when: local_mount_file.stat.exists
-
-        - name: Copy samba credentials file if it exists.
-          ansible.builtin.copy:
-            src: "{{ playbook_dir }}/../services/samba-credentials"
-            dest: /etc/samba/credentials
-            mode: '0600'
-          when: local_credentials_file.stat.exists
-
-        - name: Enable network share mount.
-          ansible.builtin.systemd_service:
-            name: mnt-networkshare.mount
-            enabled: true
-          when: local_mount_file.stat.exists and local_credentials_file.stat.exists
+        - name: Configure the SMB network mount (from install-time device facts).
+          ansible.builtin.include_tasks: tasks/network-mount.yml
 
         - name: Create the `aur_builder` user.
           ansible.builtin.user:
