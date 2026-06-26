@@ -324,7 +324,7 @@ fi
 
 # --- Network mount (Samba/SMB) ---------------------------------------------
 MOUNT_ENABLED=0
-MOUNT_ADDR="" MOUNT_USER="" MOUNT_PASS="" MOUNT_DOMAIN="" MOUNT_POINT=""
+MOUNT_ADDR="" MOUNT_USER="" MOUNT_PASS="" MOUNT_DOMAIN="" MOUNT_POINT="" PIPLAYER_DIR=""
 if confirm "Add a network (Samba/SMB) share mount?"; then
   MOUNT_ENABLED=1
   MOUNT_ADDR="$(ask_required "Share address (e.g. //fileserver/media)")"
@@ -348,6 +348,15 @@ if confirm "Add a network (Samba/SMB) share mount?"; then
   MOUNT_DOMAIN="$(ask "Windows domain (leave blank if not required)" "${_dhcp_domain:-}")"
 
   MOUNT_POINT="$(ask_required "Mount point" "/mnt/${_mount_dir:-network}")"
+
+  # The pi-player media directory may be the mount root or a subdirectory within it.
+  if confirm_yes "Use '$MOUNT_POINT' as the pi-player media directory?"; then
+    PIPLAYER_DIR="$MOUNT_POINT"
+  else
+    PIPLAYER_DIR="$(ask_required "Pi-player media directory" "$MOUNT_POINT/")"
+  fi
+else
+  PIPLAYER_DIR=""
 fi
 
 # --- Target disk -----------------------------------------------------------
@@ -393,6 +402,7 @@ ${c_orange}========================= INSTALL SUMMARY =========================${
   Microcode    : ${UCODE:-none detected}
   Network      : $NET_TYPE${IFACE:+  iface=$IFACE}${STATIC_ADDR:+  addr=$STATIC_ADDR gw=$STATIC_GW}
   SMB mount    : ${MOUNT_ADDR:+$MOUNT_ADDR  ->  $MOUNT_POINT  (user: $MOUNT_USER${MOUNT_DOMAIN:+  domain: $MOUNT_DOMAIN})}${MOUNT_ADDR:-none}
+  Pi-Player dir: ${PIPLAYER_DIR:-n/a}
   Target disk  : $DISK  ->  ESP=$ESP_PART  root=$ROOT_PART
   Testing mode : ${TESTING/0/no}${TESTING/1/yes (spice-vdagent for clipboard)}
 ${c_red}  ALL DATA ON $DISK WILL BE PERMANENTLY ERASED.${c_reset}
@@ -621,7 +631,8 @@ if [[ "$MOUNT_ENABLED" == 1 ]]; then
   "mount_what": "$MOUNT_ADDR",
   "mount_where": "$MOUNT_POINT",
   "mount_user": "$MOUNT_USER",
-  "mount_domain": "$MOUNT_DOMAIN"
+  "mount_domain": "$MOUNT_DOMAIN",
+  "piplayer_dir": "$PIPLAYER_DIR"
 }
 FACTS
   chmod 0644 /mnt/etc/ansible/facts.d/pi_player.fact

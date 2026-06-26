@@ -34,9 +34,8 @@
         mode: '0644'
       register: mount_unit_file
 
-    - name: Enable and (re)start the network share mount.
+    - name: Enable the network share mount (starts on next boot after network is up).
       ansible.builtin.systemd_service:
         name: "{{ mount_unit.stdout }}"
         enabled: true
-        state: "{{ 'restarted' if mount_unit_file.changed else 'started' }}"
         daemon_reload: true

@@ -136,7 +136,7 @@
           {
             "Location": "PiPlayer",
             "Mount": {
-              "URL": "{{ ansible_local.pi_player.mount_where | default('/home/' + target_user + '/Documents/pi-player') }}"
+              "URL": "{{ ansible_local.pi_player.piplayer_dir | default(ansible_local.pi_player.mount_where) | default('/home/' + target_user + '/Documents/pi-player') }}"
             },
             "AudioOutput": "",
             "Streamer": "",
