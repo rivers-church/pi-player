@@ -117,6 +117,16 @@ ask_required() { # like ask but loops until non-empty
   done
 }
 
+ask_prefilled() { # ask_prefilled "Prompt" "prefill" -> editable prefilled input, loops until non-empty
+  local prompt="$1" prefill="$2" reply
+  while :; do
+    printf '%s: ' "$prompt" >/dev/tty
+    read -re -i "$prefill" reply </dev/tty
+    [[ -n "$reply" ]] && { printf '%s' "$reply"; return; }
+    warn "A value is required."
+  done
+}
+
 ask_secret() { # ask_secret "Prompt" -> echoes password (confirmed twice)
   local prompt="$1" p1 p2
   while :; do
@@ -154,7 +164,7 @@ confirm_yes() { # confirm_yes "Prompt" -> returns 0 on yes (default Yes)
 clear 2>/dev/null || true
 # Colour aliases for the banner only
 _F="${c_blue}${c_bold}"   # frame (blue, bold — complementary to orange)
-_O="${c_orange}${c_bold}" # Pi-Player art (orange, bold)
+_O="${c_orange}" # Pi-Player art (orange — no bold, matches the ==> prompt colour)
 _P="${c_amber}"           # play button (amber/yellow)
 _S="${c_lgrey}${c_dim}"   # subtitle (light grey, dim)
 _R="${c_reset}"
@@ -349,12 +359,8 @@ if confirm "Add a network (Samba/SMB) share mount?"; then
 
   MOUNT_POINT="$(ask_required "Mount point" "/mnt/${_mount_dir:-network}")"
 
-  # The pi-player media directory may be the mount root or a subdirectory within it.
-  if confirm_yes "Use '$MOUNT_POINT' as the pi-player media directory?"; then
-    PIPLAYER_DIR="$MOUNT_POINT"
-  else
-    PIPLAYER_DIR="$(ask_required "Pi-player media directory" "$MOUNT_POINT/")"
-  fi
+  # Pre-fill with the mount point — press Enter to accept, or edit to point at a subfolder.
+  PIPLAYER_DIR="$(ask_prefilled "Pi-player media directory" "$MOUNT_POINT")"
 else
   PIPLAYER_DIR=""
 fi
