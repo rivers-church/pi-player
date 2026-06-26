@@ -319,11 +319,22 @@ CURRENT_DNS="$(resolvectl dns "${DEFAULT_IFACE:-}" 2>/dev/null \
 [[ -z "$CURRENT_DNS" ]] && \
   CURRENT_DNS="$(awk '/^nameserver/ && $2 !~ /^127\./{print $2}' /etc/resolv.conf 2>/dev/null \
     | head -n2 | tr '\n' ' ' | sed 's/ *$//' || true)"
-# Search domain — resolv.conf 'search'/'domain' line, falling back to resolvectl
-CURRENT_DOMAIN="$(awk '/^(search|domain)/{print $2; exit}' /etc/resolv.conf 2>/dev/null || true)"
+# Search domain — try resolvectl per-interface first (most accurate for DHCP),
+# then fall back to the search line in resolv.conf (covers dhcpcd / stub-resolver)
+CURRENT_DOMAIN=""
+if [[ -n "$DEFAULT_IFACE" ]]; then
+  CURRENT_DOMAIN="$(resolvectl status "$DEFAULT_IFACE" 2>/dev/null \
+    | grep -oP '(?<=DNS Domain: )\S+' | grep -v '^[~.]' | head -n1 || true)"
+fi
+# Fallback: systemd-networkd lease file (DHCP option 15, present on live ISO)
+if [[ -z "$CURRENT_DOMAIN" && -n "$DEFAULT_IFACE" ]]; then
+  _ifindex="$(ip link show "$DEFAULT_IFACE" 2>/dev/null | awk 'NR==1{sub(/:$/,"",$1); print $1}')"
+  CURRENT_DOMAIN="$(awk -F= '/^(DOMAIN|DOMAINNAME)=/{print $2; exit}' \
+    "/run/systemd/netif/leases/${_ifindex:-_}" 2>/dev/null || true)"
+fi
 [[ -z "$CURRENT_DOMAIN" ]] && \
-  CURRENT_DOMAIN="$(resolvectl status "${DEFAULT_IFACE:-}" 2>/dev/null \
-    | grep -oP '(?<=DNS Domain: )\S+' | grep -v '^\.' | head -n1 || true)"
+  CURRENT_DOMAIN="$(awk '/^(search|domain)/{for(i=2;i<=NF;i++) if($i !~ /^[~.]/) {print $i; exit}}' \
+    /etc/resolv.conf 2>/dev/null || true)"
 dbg "current IP=${CURRENT_IP:-?}  gw=${CURRENT_GW:-?}  dns=${CURRENT_DNS:-?}  domain=${CURRENT_DOMAIN:-?}"
 
 NET_TYPE="dhcp"
