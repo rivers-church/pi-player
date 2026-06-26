@@ -1,0 +1,28 @@
+---
+# Update the device location label shown in the pi-player web interface.
+# Called from maintenance.yml when device_location is defined in secrets.yml.
+#
+# Reads the current config.json, patches only the Location field, and writes
+# it back — all other settings are preserved.
+
+- name: Read current pi-player config.
+  ansible.builtin.slurp:
+    src: "/home/{{ ansible_user }}/.config/pi-player/config.json"
+  register: _pi_config
+
+- name: Write updated pi-player config with new Location.
+  ansible.builtin.copy:
+    content: "{{ (_pi_config.content | b64decode | from_json) | combine({'Location': device_location}) | to_nice_json }}\n"
+    dest: "/home/{{ ansible_user }}/.config/pi-player/config.json"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0600'
+  register: _pi_config_updated
+
+- name: Restart pi-player to apply new location.
+  become_user: "{{ ansible_user }}"
+  ansible.builtin.systemd_service:
+    name: pi-player
+    state: restarted
+    scope: user
+  when: _pi_config_updated.changed

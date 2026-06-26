@@ -2,48 +2,50 @@
 
 [![Go](https://github.com/rivers-church/pi-player/actions/workflows/build.yml/badge.svg)](https://github.com/rivers-church/pi-player/actions/workflows/build.yml)
 
-A simple remotely controlled video and image player for a linux based computer. Currently working on Arch with Hyprland.
+A remotely controlled video and image player for Linux kiosk deployments. Runs on Arch Linux with Hyprland and exposes a web interface at `:8080` for control, playback, and settings.
 
-## Provisioning a new unit
+---
 
-Provisioning a kiosk is a two-stage process: a base Arch install from the live
-ISO, followed by the Ansible playbook that configures the pi-player environment.
+## Provisioning a new device
 
-### 1. Base Arch install (from the live ISO)
+Provisioning is a two-stage process: a scripted Arch install from the live ISO, followed by an automatic first-boot Ansible run that installs and configures pi-player.
 
-Boot the target machine from an Arch Linux ISO **in UEFI mode**, connect it to
-the network (ethernet is automatic; for wifi use `iwctl`), then run:
+### Stage 1 — Base install (from the live ISO)
+
+Boot the target machine from an Arch Linux ISO **in UEFI mode**, connect it to ethernet (automatic), then run:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/rivers-church/pi-player/master/scripts/install.sh | bash
 ```
 
-The installer ([`scripts/install.sh`](scripts/install.sh)) replicates the old
-archinstall config and prompts only for the things that genuinely vary per unit:
+The installer prompts for everything that varies per device:
 
-- **Prompts:** hostname, username + password, root password, target disk
-  (with a typed confirmation before wiping), and DHCP vs. static IP.
-- **Auto-detected from your IP** (no prompts): timezone, the closest/fastest
-  pacman mirrors (via `reflector`), system locale, and console keymap.
-- **Layout:** systemd-boot + UKI, GPT with a 1 GiB FAT32 ESP, and btrfs
-  subvolumes (`@`, `@home`, `@log`, `@pkg`) with `compress=zstd`.
-- **Installed/enabled:** systemd-networkd + resolved, NTP, zram swap (zstd),
-  pipewire, ufw, `python` (required by Ansible), and `openssh` (enabled) so the
-  playbook below can connect immediately after first boot.
+| Prompt | Notes |
+|---|---|
+| Hostname | e.g. `pi-lounge` |
+| Username + password | Used for login, sudo, and SMB credentials default |
+| Root password | |
+| DHCP or static IP | Static prompts pre-fill current DHCP values as defaults |
+| SMB network mount | Optional — prompts for share address, credentials, domain, mount point |
+| Target disk | Interactive list — all data on selected disk will be erased |
 
-Reboot when it finishes and remove the install media.
+Auto-detected from your IP (no prompts needed): timezone, locale, console keymap, and fastest pacman mirrors via `reflector`.
 
-> Passwords are entered interactively during install, so there is **no**
-> committed credentials file. (The previous `scripts/user_credentials.json` has
-> been removed.) `scripts/user_configuration.json` is kept only as a reference
-> of the original archinstall layout.
+Reboot when the installer finishes and remove the install media.
+
+### Stage 2 — First-boot setup (automatic)
+
+On the first boot the `pi-player-setup` systemd service runs automatically. It executes `ansible-pull` to install Hyprland, pi-player, and all dependencies from this repo, then reboots. No manual steps are required — watch progress with:
+
+```bash
+journalctl -u pi-player-setup.service -f
+```
+
+After the reboot the web interface is available at `http://<device-ip>:8080/control`.
 
 ### Testing the installer in a VM
 
-Before running `install.sh` on real hardware, test it in a disposable UEFI VM.
-[`scripts/test-vm.sh`](scripts/test-vm.sh) wraps QEMU with all the right flags
-(UEFI firmware, a blank virtio disk, the Arch ISO, and `localhost:2222 -> :22`
-SSH forwarding):
+[`scripts/test-vm.sh`](scripts/test-vm.sh) wraps QEMU with UEFI firmware, a blank virtio disk, the Arch ISO, and SSH forwarding (`localhost:2222 → :22`):
 
 ```bash
 # Requires: qemu-full, edk2-ovmf
@@ -52,73 +54,110 @@ scripts/test-vm.sh --fresh    # wipe the disk first, for a clean install test
 scripts/test-vm.sh --no-cdrom # boot the installed system without the ISO attached
 ```
 
-Notes:
+- The target disk inside the VM is `/dev/vda` — enter that at the disk prompt.
+- After install, reboot with `--no-cdrom` to boot the installed system.
+- SSH into the guest with `ssh -p 2222 <username>@localhost`.
+- VM artifacts (ISO, disk image, UEFI NVRAM) live under `.vm/` (gitignored).
+- Tunables: `RAM`, `CPUS`, `DISK_SIZE`, `SSH_PORT` (e.g. `DISK_SIZE=40G scripts/test-vm.sh`).
 
-- The target disk inside the VM is `/dev/vda` (virtio), so enter `/dev/vda` at
-  the installer's disk prompt.
-- After a successful install, reboot with `--no-cdrom` so it boots the installed
-  system instead of the live ISO again.
-- Once SSH is up you can reach the guest with `ssh -p 2222 <username>@localhost`.
-- All VM artifacts (ISO, disk image, UEFI NVRAM) live under `.vm/`, which is
-  gitignored. Tunables: `RAM`, `CPUS`, `DISK_SIZE`, `SSH_PORT` (e.g.
-  `DISK_SIZE=40G RAM=8192 scripts/test-vm.sh`).
-
-To debug a failing install run, the installer accepts a debug flag:
+For a verbose install run:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/rivers-church/pi-player/master/scripts/install.sh | DEBUG=1 bash
+curl -fsSL .../install.sh | DEBUG=1 bash
 ```
 
-### 2. Configure with Ansible
+#### Testing network mounts in the VM
 
-From your workstation, point the inventory at the new host (reachable over SSH
-as `<username>@<hostname>`) and run the playbook:
+The VM uses QEMU user-mode NAT — it cannot reach your LAN directly. However, `10.0.2.2` is always the host machine's address as seen from inside the VM, so you can expose a Samba share on your host and mount it from the VM without any networking changes.
+
+**1. Create a test share on your host** (one-time setup):
+
+Add to `/etc/samba/smb.conf`:
+```ini
+[pi-player-test]
+    path = /tmp/pi-player-test
+    read only = no
+    browsable = yes
+    guest ok = yes
+```
+
+Then:
+```bash
+mkdir -p /tmp/pi-player-test
+sudo systemctl start smb
+```
+
+**2. During the VM install**, when `install.sh` asks for the share address, enter:
+```
+//10.0.2.2/pi-player-test
+```
+
+`10.0.2.2` is QEMU's fixed gateway address — it always points to the host regardless of your LAN subnet, so this works on any machine running the VM.
+
+**Stop the test share when done:**
+```bash
+sudo systemctl stop smb
+```
+
+---
+
+## Fleet maintenance
+
+Once devices are provisioned, use the push-mode maintenance playbook to make changes across your fleet from a control machine (laptop or server).
+
+### Setup (once per control machine)
+
+1. **Install Ansible:**
+   ```bash
+   # Arch
+   sudo pacman -S ansible
+   # macOS
+   brew install ansible
+   ```
+
+2. **Create your inventory** from the example:
+   ```bash
+   cp ansible/inventory.example.yml ansible/inventory.yml
+   ```
+   Edit `ansible/inventory.yml` to add your device IPs grouped by location. This file is gitignored — it stays on your machine.
+
+3. **Create your secrets file** from the example:
+   ```bash
+   cp ansible/secrets.example.yml ansible/secrets.yml
+   ```
+   Edit `ansible/secrets.yml` with the values you want to change. This file is also gitignored.
+
+### Running maintenance
+
+Include only the sections in `secrets.yml` for changes you want to apply — omitted sections are skipped entirely.
 
 ```bash
-ansible-playbook -i ansible/inventory.yml ansible/playbook.yaml
+# Apply to all devices
+ansible-playbook -i ansible/inventory.yml ansible/maintenance.yml \
+  --extra-vars "@ansible/secrets.yml" -K
+
+# Apply to a single location only
+ansible-playbook -i ansible/inventory.yml ansible/maintenance.yml \
+  --extra-vars "@ansible/secrets.yml" -K --limit lounge
 ```
 
-Logout or restart.
+`-K` prompts for the sudo password on the target devices.
 
-Test project:
-```bash
-systemctl --user start pi-player
-# Check the status of the running service:
-systemctl --user status pi-player
-# You might have to update the config file at ~/.config/pi-player/config.json
-```
+### Available maintenance tasks
 
-Access the server from a browser to make sure it's running properly. Use the following address:.`http://<device-ip-address>:8080/control`
+| Variable in `secrets.yml` | Effect |
+|---|---|
+| `mount_what`, `mount_where`, `mount_user`, `mount_password`, `mount_domain` | Add or update the SMB network mount |
+| `device_location` | Update the location label in the pi-player web interface |
+| `new_hostname` | Change the device hostname |
+| `user_password` | Rotate the user account password |
+
+See [`ansible/secrets.example.yml`](ansible/secrets.example.yml) for the full format and comments.
+
+---
 
 ## Documentation
 
-- [DEBUG.md](DEBUG.md) - Debugging guide for local and remote debugging with Neovim/VSCode
-- [REMOTE_ADMIN.md](REMOTE_ADMIN.md) - Remote administration commands for managing kiosks over SSH
-- [CLAUDE.md](CLAUDE.md) - Instructions for Claude Code AI assistant
-
-### Setup Samba shares if required:
-```bash
-sudo apt install samba
-# setup user account. Note: this user has to already exist locally.
-sudo smbpasswd -a sandtonvisuals
-# enter password for this user. It can be the same password as the local user.
-
-# create directory that will be shared.
-mkdir -p ~/Documents/media
-# edit the samba configuration file.
-sudo vim /etc/samba/smb.conf
-```
-
-At the bottom of the file, add the following:
-```samba
-[media]
-    comment = Twinkle 2 media
-    path = /home/sandtonvisuals/documents/media
-    read only = no
-    browsable = yes
-```
-```bash
-# restart the samba service
-sudo systemctl restart smbd
-```
-
+- [`docs/INSTALL.md`](docs/INSTALL.md) — Detailed installation and troubleshooting guide
+- [`docs/REMOTE_ADMIN.md`](docs/REMOTE_ADMIN.md) — SSH-based remote administration commands
+- [`docs/DEBUG.md`](docs/DEBUG.md) — Local and remote debugging with Neovim/VSCode

@@ -9,6 +9,7 @@ config.json
 .claude
 
 ansible/inventory.yml
+ansible/secrets.yml
 services/samba-credentials
 services/mnt-networkshare.mount
 CLAUDE.md

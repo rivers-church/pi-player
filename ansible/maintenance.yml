@@ -1,0 +1,36 @@
+---
+# Pi-Player maintenance playbook — push mode (run from a control machine).
+#
+# Usage:
+#   ansible-playbook -i ansible/inventory.yml ansible/maintenance.yml \
+#     --extra-vars "@ansible/secrets.yml"
+#
+# Only tasks whose controlling variable is defined in secrets.yml will run.
+# Omit a section from secrets.yml entirely to skip it.
+#
+# See ansible/secrets.example.yml for all available variables.
+
+- name: Pi-Player maintenance
+  hosts: all
+  gather_facts: true
+
+  tasks:
+    - name: Update network mount.
+      become: true
+      ansible.builtin.include_tasks: tasks/set-network-mount.yml
+      when: mount_what is defined
+
+    - name: Update device location label.
+      become: true
+      ansible.builtin.include_tasks: tasks/set-location.yml
+      when: device_location is defined
+
+    - name: Change hostname.
+      become: true
+      ansible.builtin.include_tasks: tasks/set-hostname.yml
+      when: new_hostname is defined
+
+    - name: Rotate user password.
+      become: true
+      ansible.builtin.include_tasks: tasks/set-user-password.yml
+      when: user_password is defined

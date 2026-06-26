@@ -1,0 +1,64 @@
+---
+# Update or add an SMB network mount. Called from maintenance.yml when
+# mount_what is defined in secrets.yml.
+#
+# Also updates /etc/ansible/facts.d/pi_player.fact so the pull playbook
+# reflects the new state on subsequent runs.
+
+- name: Resolve target user's uid/gid for mount ownership.
+  ansible.builtin.getent:
+    database: passwd
+    key: "{{ ansible_user }}"
+
+- name: Set uid/gid facts for the mount template.
+  ansible.builtin.set_fact:
+    _mount_uid: "{{ ansible_facts.getent_passwd[ansible_user][1] }}"
+    _mount_gid: "{{ ansible_facts.getent_passwd[ansible_user][2] }}"
+
+- name: Update device-local facts (keeps pull playbook in sync).
+  ansible.builtin.copy:
+    dest: /etc/ansible/facts.d/pi_player.fact
+    mode: '0644'
+    content: |
+      {
+        "mount_enabled": true,
+        "mount_what": "{{ mount_what }}",
+        "mount_where": "{{ mount_where }}",
+        "mount_user": "{{ mount_user }}",
+        "mount_domain": "{{ mount_domain | default('') }}"
+      }
+
+- name: Write CIFS credentials file.
+  ansible.builtin.copy:
+    dest: /etc/samba/credentials
+    mode: '0600'
+    content: |
+      username={{ mount_user }}
+      password={{ mount_password }}
+      {% if mount_domain | default('') %}domain={{ mount_domain }}{% endif %}
+
+- name: Derive the systemd mount unit name from the mount point.
+  ansible.builtin.command:
+    cmd: "systemd-escape --path --suffix=mount {{ mount_where }}"
+  register: mount_unit
+  changed_when: false
+
+- name: Create the mount point directory.
+  ansible.builtin.file:
+    path: "{{ mount_where }}"
+    state: directory
+    mode: '0755'
+
+- name: Template the systemd mount unit.
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/templates/networkshare.mount.j2"
+    dest: "/etc/systemd/system/{{ mount_unit.stdout }}"
+    mode: '0644'
+  register: mount_unit_file
+
+- name: Enable and (re)start the network share mount.
+  ansible.builtin.systemd_service:
+    name: "{{ mount_unit.stdout }}"
+    enabled: true
+    state: "{{ 'restarted' if mount_unit_file.changed else 'started' }}"
+    daemon_reload: true

@@ -1,13 +1,20 @@
+# Copy this file to inventory.yml (gitignored) and fill in your device IPs.
+#
+# Devices are grouped by location so you can target a single site:
+#   ansible-playbook ... --limit lounge
+#
+# ansible_user must match the username set during install.
+
 all:
+  vars:
+    ansible_user: pi
+
   children:
-    devices:
-      vars:
-        ansible_user: sandtonvisuals
-        smb_username: visuals
-        smb_password: crazyshapes
-        smb_domain: riverschurch
+    lounge:
       hosts:
-        aud1-pp3:
-          ansible_host: sdt-vis-pp
-        # aud1-pp-foundation:
-        #   ansible_host: sdt-vis-aud1pp-foundation
+        192.168.1.100:
+        192.168.1.101:
+
+    hall:
+      hosts:
+        192.168.1.200:

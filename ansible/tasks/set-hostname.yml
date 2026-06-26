@@ -1,0 +1,13 @@
+---
+# Change the device hostname. Called from maintenance.yml when
+# new_hostname is defined in secrets.yml.
+
+- name: Set hostname.
+  ansible.builtin.hostname:
+    name: "{{ new_hostname }}"
+
+- name: Update /etc/hosts.
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.1\.1\s+'
+    line: "127.0.1.1   {{ new_hostname }}.localdomain {{ new_hostname }}"

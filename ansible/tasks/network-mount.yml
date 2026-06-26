@@ -10,6 +10,11 @@
         database: passwd
         key: "{{ target_user }}"
 
+    - name: Set uid/gid facts for the mount template.
+      ansible.builtin.set_fact:
+        _mount_uid: "{{ ansible_facts.getent_passwd[target_user][1] }}"
+        _mount_gid: "{{ ansible_facts.getent_passwd[target_user][2] }}"
+
     - name: Derive the systemd mount unit name from the mount point.
       ansible.builtin.command:
         cmd: "systemd-escape --path --suffix=mount {{ ansible_local.pi_player.mount_where }}"
