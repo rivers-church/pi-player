@@ -72,25 +72,32 @@ The VM uses QEMU user-mode NAT — it cannot reach your LAN directly. However, `
 
 **1. Create a test share on your host** (one-time setup):
 
+```bash
+mkdir -p /tmp/pi-player-test
+
+# Create a Samba password for your current host user.
+# Use this same password when install.sh prompts for the share password.
+sudo smbpasswd -a $USER
+```
+
 Add to `/etc/samba/smb.conf`:
 ```ini
 [pi-player-test]
     path = /tmp/pi-player-test
     read only = no
     browsable = yes
-    guest ok = yes
+    valid users = YOUR_HOST_USERNAME
 ```
 
-Then:
+Then start Samba:
 ```bash
-mkdir -p /tmp/pi-player-test
 sudo systemctl start smb
 ```
 
-**2. During the VM install**, when `install.sh` asks for the share address, enter:
-```
-//10.0.2.2/pi-player-test
-```
+**2. During the VM install**, when `install.sh` asks for the share details:
+- Share address: `//10.0.2.2/pi-player-test`
+- Username: your host machine username (the one you ran `smbpasswd -a` for)
+- Password: the Samba password you set above
 
 `10.0.2.2` is QEMU's fixed gateway address — it always points to the host regardless of your LAN subnet, so this works on any machine running the VM.
 

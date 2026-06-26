@@ -306,6 +306,7 @@ DEFAULT_IFACE="$(ip -o link show 2>/dev/null | awk -F': ' '{print $2}' | grep -E
 CURRENT_IP=""
 CURRENT_GW=""
 CURRENT_DNS=""
+CURRENT_DOMAIN=""
 if [[ -n "$DEFAULT_IFACE" ]]; then
   CURRENT_IP="$(ip -4 addr show "$DEFAULT_IFACE" 2>/dev/null \
     | grep -oP '(?<=inet )\d+\.\d+\.\d+\.\d+/\d+' | head -n1 || true)"
@@ -318,10 +319,15 @@ CURRENT_DNS="$(resolvectl dns "${DEFAULT_IFACE:-}" 2>/dev/null \
 [[ -z "$CURRENT_DNS" ]] && \
   CURRENT_DNS="$(awk '/^nameserver/ && $2 !~ /^127\./{print $2}' /etc/resolv.conf 2>/dev/null \
     | head -n2 | tr '\n' ' ' | sed 's/ *$//' || true)"
-dbg "current IP=${CURRENT_IP:-?}  gw=${CURRENT_GW:-?}  dns=${CURRENT_DNS:-?}"
+# Search domain — resolv.conf 'search'/'domain' line, falling back to resolvectl
+CURRENT_DOMAIN="$(awk '/^(search|domain)/{print $2; exit}' /etc/resolv.conf 2>/dev/null || true)"
+[[ -z "$CURRENT_DOMAIN" ]] && \
+  CURRENT_DOMAIN="$(resolvectl status "${DEFAULT_IFACE:-}" 2>/dev/null \
+    | grep -oP '(?<=DNS Domain: )\S+' | grep -v '^\.' | head -n1 || true)"
+dbg "current IP=${CURRENT_IP:-?}  gw=${CURRENT_GW:-?}  dns=${CURRENT_DNS:-?}  domain=${CURRENT_DOMAIN:-?}"
 
 NET_TYPE="dhcp"
-IFACE="" STATIC_ADDR="" STATIC_GW="" STATIC_DNS=""
+IFACE="" STATIC_ADDR="" STATIC_GW="" STATIC_DNS="" STATIC_DOMAIN=""
 if confirm "Use DHCP for networking? (No = configure a static IP)"; then
   NET_TYPE="dhcp"
 else
@@ -330,6 +336,7 @@ else
   STATIC_ADDR="$(ask_required "Static address (CIDR)" "${CURRENT_IP:-192.168.1.50/24}")"
   STATIC_GW="$(ask_required "Gateway" "${CURRENT_GW:-192.168.1.1}")"
   STATIC_DNS="$(ask "DNS servers (space-separated)" "${CURRENT_DNS:-1.1.1.1 8.8.8.8}")"
+  STATIC_DOMAIN="$(ask "DNS search domain (e.g. local, office.example.com)" "${CURRENT_DOMAIN:-}")"
 fi
 
 # --- Network mount (Samba/SMB) ---------------------------------------------
@@ -406,7 +413,7 @@ ${c_orange}========================= INSTALL SUMMARY =========================${
   Timezone     : $TIMEZONE   (auto-detected)
   Mirrors      : country ${GEO_CC:-unknown} via reflector
   Microcode    : ${UCODE:-none detected}
-  Network      : $NET_TYPE${IFACE:+  iface=$IFACE}${STATIC_ADDR:+  addr=$STATIC_ADDR gw=$STATIC_GW}
+  Network      : $NET_TYPE${IFACE:+  iface=$IFACE}${STATIC_ADDR:+  addr=$STATIC_ADDR gw=$STATIC_GW}${STATIC_DOMAIN:+  search=$STATIC_DOMAIN}
   SMB mount    : ${MOUNT_ADDR:+$MOUNT_ADDR  ->  $MOUNT_POINT  (user: $MOUNT_USER${MOUNT_DOMAIN:+  domain: $MOUNT_DOMAIN})}${MOUNT_ADDR:-none}
   Pi-Player dir: ${PIPLAYER_DIR:-n/a}
   Target disk  : $DISK  ->  ESP=$ESP_PART  root=$ROOT_PART
@@ -500,6 +507,7 @@ else
     printf '[Link]\nRequiredForOnline=routable\n\n'
     printf '[Network]\nAddress=%s\nGateway=%s\n' "$STATIC_ADDR" "$STATIC_GW"
     for d in $STATIC_DNS; do printf 'DNS=%s\n' "$d"; done
+    [[ -n "$STATIC_DOMAIN" ]] && printf 'Domains=%s\n' "$STATIC_DOMAIN"
   } >/mnt/etc/systemd/network/20-static.network
 fi
 
