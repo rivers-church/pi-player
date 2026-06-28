@@ -6,9 +6,11 @@ import (
 	"errors"
 	"html/template"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/17xande/keylogger"
 )
@@ -55,6 +57,47 @@ type Browser struct {
 	running bool
 	ctxt    *context.Context
 	cancel  *context.CancelFunc
+}
+
+type errorPageData struct {
+	Error string
+	Dir   string
+	IPs   []string
+	Port  string
+}
+
+func getLocalIPs() []string {
+	var ips []string
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return ips
+	}
+	for _, addr := range addrs {
+		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				ips = append(ips, ipnet.IP.String())
+			}
+		}
+	}
+	return ips
+}
+
+func (p *Player) renderErrorPage(w http.ResponseWriter, err error) {
+	data := errorPageData{
+		Error: err.Error(),
+		Dir:   p.conf.Mount.Dir,
+		IPs:   getLocalIPs(),
+		Port:  strings.TrimPrefix(p.Server.Addr, ":"),
+	}
+	t, tmplErr := template.New("error.html").ParseFS(p.api.statTemplates, "error.html")
+	if tmplErr != nil {
+		log.Println("Error loading error template:", tmplErr)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if tmplErr = t.Execute(w, data); tmplErr != nil {
+		log.Println("Error rendering error page:", tmplErr)
+	}
 }
 
 // var commandList = map[string]string{
@@ -294,11 +337,7 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Println("HandleControl: Error trying to read files from directory:\n", err)
-		t := template.Must(template.ParseFiles("pkg/piplayer/templates/error.html"))
-		err := t.Execute(w, err)
-		if err != nil {
-			log.Println("Error trying to render error page. #fail.", err)
-		}
+		p.renderErrorPage(w, err)
 		return
 	}
 
@@ -344,11 +383,7 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 func (p *Player) HandleViewer(w http.ResponseWriter, r *http.Request) {
 	if err := p.playlist.fromFolder(p.conf.Mount.Dir); err != nil {
 		log.Println("HandleViewer: Error trying to read files from directory:\n", err)
-		t := template.Must(template.ParseFiles("pkg/piplayer/templates/error.html"))
-		err := t.Execute(w, err)
-		if err != nil {
-			log.Println("Error trying to render error page. #fail.", err)
-		}
+		p.renderErrorPage(w, err)
 		return
 	}
 

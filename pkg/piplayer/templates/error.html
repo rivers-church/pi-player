@@ -4,16 +4,38 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title>Error</title>
+  <title>PiPlayer — Error</title>
   <link rel="stylesheet" href="/assets/css/milligram.css">
+  <style>
+    body { background: #111; color: #ddd; }
+    h1 { color: #e84040; margin-top: 4rem; }
+    .error-msg {
+      background: #1a0000;
+      border-left: 4px solid #e84040;
+      padding: 1rem 1.5rem;
+      margin: 1.5rem 0;
+      font-family: monospace;
+      font-size: 1.3rem;
+      word-break: break-all;
+    }
+    table { width: 100%; border-collapse: collapse; margin: 2rem 0; }
+    td { padding: 0.8rem 1rem; border-bottom: 1px solid #2a2a2a; }
+    td:first-child { color: #888; width: 130px; white-space: nowrap; }
+    code { background: #222; padding: 0.2rem 0.5rem; border-radius: 3px; }
+    a { color: #9b59b6; }
+  </style>
 </head>
 <body>
   <div class="container">
-    <h1>Error:</h1>
-    <p>{{.}}</p>
-    <div>
-      <a href="/settings">Back to Settings</a>
-    </div>
+    <h1>Configuration Error</h1>
+    <p>The media directory could not be found. Please update the path in Settings.</p>
+    <div class="error-msg">{{.Error}}</div>
+    <table>
+      <tr><td>Directory</td><td><code>{{.Dir}}</code></td></tr>
+      {{range .IPs}}<tr><td>IP Address</td><td><code>{{.}}</code></td></tr>{{end}}
+      <tr><td>Port</td><td><code>{{.Port}}</code></td></tr>
+    </table>
+    <a href="/settings">Go to Settings</a>
   </div>
 </body>
 </html>
