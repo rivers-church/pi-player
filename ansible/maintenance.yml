@@ -15,6 +15,16 @@
   gather_facts: true
 
   tasks:
+    - name: Update packages.
+      when: update_packages | default(true) | bool
+      become: true
+      block:
+        - name: Update all packages via yay.
+          become_user: aur_builder
+          kewlfft.aur.aur:
+            upgrade: true
+            use: yay
+
     - name: Update network mount.
       when: mount_what is defined
       become: true
