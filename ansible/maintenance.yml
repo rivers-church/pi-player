@@ -16,21 +16,25 @@
 
   tasks:
     - name: Update network mount.
-      become: true
-      ansible.builtin.include_tasks: tasks/set-network-mount.yml
       when: mount_what is defined
+      become: true
+      block:
+        - ansible.builtin.include_tasks: tasks/set-network-mount.yml
 
     - name: Update device location label.
-      become: true
-      ansible.builtin.include_tasks: tasks/set-location.yml
       when: device_location is defined
+      become: true
+      block:
+        - ansible.builtin.include_tasks: tasks/set-location.yml
 
     - name: Change hostname.
-      become: true
-      ansible.builtin.include_tasks: tasks/set-hostname.yml
       when: new_hostname is defined
+      become: true
+      block:
+        - ansible.builtin.include_tasks: tasks/set-hostname.yml
 
     - name: Rotate user password.
-      become: true
-      ansible.builtin.include_tasks: tasks/set-user-password.yml
       when: user_password is defined
+      become: true
+      block:
+        - ansible.builtin.include_tasks: tasks/set-user-password.yml

@@ -214,3 +214,20 @@
       ansible.builtin.file:
         path: /etc/motd
         state: absent
+
+    - name: Suppress sshd last-login banner.
+      become: true
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config.d/99-archlinux.conf
+        line: PrintLastLog no
+        regexp: '^PrintLastLog'
+        create: true
+        mode: '0644'
+      notify: Reload sshd
+
+  handlers:
+    - name: Reload sshd
+      become: true
+      ansible.builtin.systemd_service:
+        name: sshd
+        state: reloaded
