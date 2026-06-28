@@ -49,7 +49,7 @@ func NewPlaylist(p *Player, dir string) (*Playlist, error) {
 }
 
 // Handles requests to the playlist api
-func (p *Playlist) handleAPI(plr *Player, w http.ResponseWriter, h *http.Request) {
+func (p *Playlist) handleAPI(plr *Player, w http.ResponseWriter, _ *http.Request) {
 	var m resMessage
 
 	switch plr.api.message.Method {

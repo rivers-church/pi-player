@@ -28,7 +28,7 @@ type Streamer interface {
 }
 
 // NewStreamer creates a new streamer object based on the type supplied.
-func NewStreamer(name string, audioOutput string) (s Streamer, err error) {
+func NewStreamer(name string) (s Streamer, err error) {
 	switch name {
 	case "chrome":
 		s = &Chrome{
@@ -36,9 +36,7 @@ func NewStreamer(name string, audioOutput string) (s Streamer, err error) {
 			ConnControl: &connWS{},
 		}
 	case "omx":
-		s = &OMXPlayer{
-			audioOutput: audioOutput,
-		}
+		s = &OMXPlayer{}
 	default:
 		err = fmt.Errorf("cannot create streamer. Unsupported streamer name: %s", name)
 	}

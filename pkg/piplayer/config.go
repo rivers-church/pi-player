@@ -16,11 +16,10 @@ import (
 
 // Config holds the configuration of the pi-player
 type Config struct {
-	Location    string
-	Mount       mount
-	AudioOutput string
-	Streamer    string
-	Debug       bool
+	Location string
+	Mount    mount
+	Streamer string
+	Debug    bool
 	Login       Login
 	Remote      remote
 }
@@ -64,10 +63,10 @@ func ConfigLoad(statsAssets embed.FS) (*Config, error) {
 	if _, err := os.Stat(configFile); os.IsNotExist(err) {
 		// Create the file
 		f, err := os.Create(configFile)
-		defer f.Close()
 		if err != nil {
 			return nil, fmt.Errorf("error creating config file: %w", err)
 		}
+		defer f.Close()
 
 		login, _ := newLogin()
 
@@ -137,11 +136,9 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 			tempControl := TemplateHandler{
 				filename:      "settings.html",
 				statTemplates: p.api.statTemplates,
-				data: map[string]interface{}{
+				data: map[string]any{
 					"location": conf.Location,
-					// "directory":   conf.Directory,
-					"audioOutput": conf.AudioOutput,
-					"debug":       conf.Debug,
+					"debug":    conf.Debug,
 					"username":    conf.Login.Username,
 					"mount":       conf.Mount,
 					"mountURL":    mu,
@@ -162,7 +159,6 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 		mountURL := r.PostFormValue("mountURL")
 		mountUsername := r.PostFormValue("mountUsername")
 		mountPassword := r.PostFormValue("mountPassword")
-		audioOutput := r.PostFormValue("audioOutput")
 		username := r.PostFormValue("username")
 		password := r.PostFormValue("password")
 		debug := r.PostFormValue("debug")
@@ -175,10 +171,6 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 
 		if location != "" {
 			conf.Location = location
-		}
-
-		if audioOutput != "" {
-			conf.AudioOutput = audioOutput
 		}
 
 		if username != "" && password != "" {

@@ -344,7 +344,7 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 	tempControl := TemplateHandler{
 		filename:      "control.html",
 		statTemplates: p.api.statTemplates,
-		data: map[string]interface{}{
+		data: map[string]any{
 			"location": p.conf.Location,
 			"Mount":    p.conf.Mount.URL,
 			"playlist": p.playlist,
@@ -390,7 +390,7 @@ func (p *Player) HandleViewer(w http.ResponseWriter, r *http.Request) {
 	th := TemplateHandler{
 		filename:      "viewer.html",
 		statTemplates: p.api.statTemplates,
-		data: map[string]interface{}{
+		data: map[string]any{
 			"playlist": p.playlist,
 		},
 	}

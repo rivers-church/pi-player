@@ -12,7 +12,7 @@ type TemplateHandler struct {
 	// once     sync.Once
 	filename      string
 	templ         *template.Template
-	data          map[string]interface{}
+	data          map[string]any
 	statTemplates fs.FS
 }
 
