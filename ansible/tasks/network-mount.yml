@@ -41,18 +41,21 @@
         src: "{{ playbook_dir }}/templates/networkshare.dns-wait.service.j2"
         dest: "/etc/systemd/system/{{ dns_wait_unit }}"
         mode: '0644'
+      register: dns_wait_unit_file
 
     - name: Template the systemd mount unit.
       ansible.builtin.template:
         src: "{{ playbook_dir }}/templates/networkshare.mount.j2"
         dest: "/etc/systemd/system/{{ mount_unit }}"
         mode: '0644'
+      register: mount_unit_file
 
     - name: Template the systemd automount unit.
       ansible.builtin.template:
         src: "{{ playbook_dir }}/templates/networkshare.automount.j2"
         dest: "/etc/systemd/system/{{ automount_unit }}"
         mode: '0644'
+      register: automount_unit_file
 
     - name: Disable direct mount unit (managed by automount).
       ansible.builtin.systemd_service:
@@ -61,8 +64,9 @@
         daemon_reload: true
       failed_when: false
 
-    - name: Enable the automount unit.
+    - name: Enable and (re)start the automount unit.
       ansible.builtin.systemd_service:
         name: "{{ automount_unit }}"
         enabled: true
+        state: "{{ 'restarted' if (automount_unit_file.changed or mount_unit_file.changed or dns_wait_unit_file.changed) else 'started' }}"
         daemon_reload: true

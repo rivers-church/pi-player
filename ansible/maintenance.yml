@@ -5,14 +5,18 @@
 #   ansible-playbook -i ansible/inventory.yml ansible/maintenance.yml \
 #     --extra-vars "@ansible/secrets.yml"
 #
-# Only tasks whose controlling variable is defined in secrets.yml will run.
-# Omit a section from secrets.yml entirely to skip it.
+# By default this playbook updates system packages and the pi-player binary.
+# Set update_packages or update_piplayer to false in secrets.yml to skip either.
+# All other tasks only run when their controlling variable is defined.
 #
 # See ansible/secrets.example.yml for all available variables.
 
 - name: Pi-Player maintenance
   hosts: all
   gather_facts: true
+
+  vars:
+    target_user: "{{ ansible_user }}"
 
   tasks:
     - name: Update packages.
@@ -25,7 +29,42 @@
             upgrade: true
             use: yay
 
-    - name: Update network mount.
+    - name: Update pi-player binary and service.
+      when: update_piplayer | default(true) | bool
+      become: true
+      block:
+        - name: Download latest pi-player binary.
+          ansible.builtin.get_url:
+            url: https://github.com/rivers-church/pi-player/releases/latest/download/pi-player
+            dest: /home/{{ ansible_user }}/.local/bin/pi-player
+            mode: '0744'
+            owner: "{{ ansible_user }}"
+            group: "{{ ansible_user }}"
+            force: true
+
+        - name: Download latest service file.
+          ansible.builtin.get_url:
+            url: https://github.com/rivers-church/pi-player/raw/master/services/pi-player.service
+            dest: /home/{{ ansible_user }}/.config/systemd/user/pi-player.service
+            mode: '0644'
+            owner: "{{ ansible_user }}"
+            group: "{{ ansible_user }}"
+            force: true
+
+        - name: Restart pi-player.
+          become_user: "{{ ansible_user }}"
+          ansible.builtin.systemd:
+            name: pi-player
+            state: restarted
+            daemon_reload: true
+            scope: user
+
+    - name: Redeploy mount and DNS service files.
+      become: true
+      block:
+        - ansible.builtin.include_tasks: tasks/network-mount.yml
+
+    - name: Update network mount credentials and config.
       when: mount_what is defined
       become: true
       block:

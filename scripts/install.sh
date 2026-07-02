@@ -686,7 +686,7 @@ ConditionPathExists=!/etc/pi-player-setup-done
 [Service]
 Type=oneshot
 ExecStartPre=/usr/bin/ansible-galaxy collection install kewlfft.aur
-ExecStart=/usr/bin/ansible-pull -U https://github.com/rivers-church/pi-player --extra-vars "pi_user=$USERNAME" ansible/playbook.yml
+ExecStart=/usr/bin/ansible-pull -U https://github.com/rivers-church/pi-player --extra-vars "pi_user=$USERNAME" ansible/setup.yml
 ExecStartPost=/usr/bin/touch /etc/pi-player-setup-done
 ExecStartPost=-/usr/bin/systemctl disable pi-player-setup.service
 ExecStartPost=-/usr/bin/rm /etc/systemd/system/pi-player-setup.service
