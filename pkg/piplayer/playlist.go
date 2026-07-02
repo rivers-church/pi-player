@@ -44,7 +44,9 @@ func NewPlaylist(p *Player, dir string) (*Playlist, error) {
 	if p.conf.Debug {
 		log.Printf("starting directory watcher for dir: %s\n", dir)
 	}
-	err = pl.watcher.Add(dir)
+	if exists(dir) {
+		err = pl.watcher.Add(dir)
+	}
 	return pl, err
 }
 

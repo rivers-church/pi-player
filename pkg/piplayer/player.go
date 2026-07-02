@@ -136,8 +136,7 @@ func NewPlayer(api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *P
 	var err error
 	p.playlist, err = NewPlaylist(&p, conf.Mount.Dir)
 	if err != nil {
-		log.Printf("error trying to create playlist. Bailing out:\n%v\n", err)
-		return nil
+		log.Printf("error creating playlist: %v\n", err)
 	}
 
 	if api.debug {
