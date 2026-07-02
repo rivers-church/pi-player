@@ -37,5 +37,20 @@
     </table>
     <a href="/settings">Go to Settings</a>
   </div>
+  <script>
+    const redirect = "{{.Redirect}}";
+    async function check() {
+      try {
+        const res = await fetch("/api/dircheck");
+        const data = await res.json();
+        if (data.ok) {
+          window.location.href = redirect;
+          return;
+        }
+      } catch (_) {}
+      setTimeout(check, 3000);
+    }
+    setTimeout(check, 3000);
+  </script>
 </body>
 </html>

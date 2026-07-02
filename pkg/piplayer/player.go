@@ -60,10 +60,11 @@ type Browser struct {
 }
 
 type errorPageData struct {
-	Error string
-	Dir   string
-	IPs   []string
-	Port  string
+	Error    string
+	Dir      string
+	IPs      []string
+	Port     string
+	Redirect string
 }
 
 func getLocalIPs() []string {
@@ -82,12 +83,13 @@ func getLocalIPs() []string {
 	return ips
 }
 
-func (p *Player) renderErrorPage(w http.ResponseWriter, err error) {
+func (p *Player) renderErrorPage(w http.ResponseWriter, err error, redirect string) {
 	data := errorPageData{
-		Error: err.Error(),
-		Dir:   p.conf.Mount.Dir,
-		IPs:   getLocalIPs(),
-		Port:  strings.TrimPrefix(p.Server.Addr, ":"),
+		Error:    err.Error(),
+		Dir:      p.conf.Mount.Dir,
+		IPs:      getLocalIPs(),
+		Port:     strings.TrimPrefix(p.Server.Addr, ":"),
+		Redirect: redirect,
 	}
 	t, tmplErr := template.New("error.html").ParseFS(p.api.statTemplates, "error.html")
 	if tmplErr != nil {
@@ -336,7 +338,7 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Println("HandleControl: Error trying to read files from directory:\n", err)
-		p.renderErrorPage(w, err)
+		p.renderErrorPage(w, err, "/control")
 		return
 	}
 
@@ -377,12 +379,24 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 // TODO: The Two handlers below only apply to the Chrome player, should they be moved
 // the the chrome streamer file? surely not, because they belong to player right?
 
+// HandleDirCheck returns whether the configured media directory currently exists.
+func (p *Player) HandleDirCheck(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	ok := exists(p.conf.Mount.Dir)
+	if ok {
+		if err := p.playlist.watcher.Add(p.conf.Mount.Dir); err != nil {
+			log.Println("HandleDirCheck: error adding watcher:", err)
+		}
+	}
+	json.NewEncoder(w).Encode(map[string]bool{"ok": ok})
+}
+
 // HandleViewer handles requests to the image viewer page
 // This handler has a dependency on Playlist.
 func (p *Player) HandleViewer(w http.ResponseWriter, r *http.Request) {
 	if err := p.playlist.fromFolder(p.conf.Mount.Dir); err != nil {
 		log.Println("HandleViewer: Error trying to read files from directory:\n", err)
-		p.renderErrorPage(w, err)
+		p.renderErrorPage(w, err, "/viewer")
 		return
 	}
 

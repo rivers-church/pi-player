@@ -32,6 +32,7 @@ func setupRoutes(content string, p *Player) *http.ServeMux {
 	mux.HandleFunc("/ws/viewer", p.ConnViewer.HandlerWebsocket(p))
 	mux.HandleFunc("/ws/control", p.ConnControl.HandlerWebsocket(p))
 	mux.HandleFunc("/api", p.api.Handle(p))
+	mux.HandleFunc("/api/dircheck", p.HandleDirCheck)
 	mux.HandleFunc("/", p.api.handlerHome)
 
 	return mux
