@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -17,12 +18,20 @@ var statAssets embed.FS
 //go:embed pkg/piplayer/templates
 var statTemplates embed.FS
 
+var version = "dev"
+
 func main() {
 	addr := flag.String("addr", ":8080", "The addr of the application.")
 	test := flag.String("test", "", "send \"mac\", \"linux\", or \"web\" to test the code on mac or linux or to test only the web interface.")
 	debug := flag.Bool("debug", false, "print extra information for debugging.")
+	ver := flag.Bool("version", false, "print version and exit.")
 	// dlv := flag.Bool("dlv", false, "Let the program know if delve is being used to debug so the application directory can be changed.")
 	flag.Parse()
+
+	if *ver {
+		fmt.Println(version)
+		os.Exit(0)
+	}
 
 	ex, err := os.Executable()
 	if err != nil {

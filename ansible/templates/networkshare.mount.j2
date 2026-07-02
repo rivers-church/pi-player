@@ -1,13 +1,10 @@
 [Unit]
 Description=Mount SMB share for pi-player
-After=network-online.target nss-lookup.target
-Wants=network-online.target nss-lookup.target
+After=network-online.target {{ dns_wait_unit }}
+Requires={{ dns_wait_unit }}
 
 [Mount]
 What={{ mount_what | default(ansible_local.pi_player.mount_what) }}
 Where={{ mount_where | default(ansible_local.pi_player.mount_where) }}
 Type=cifs
 Options=credentials=/etc/samba/credentials,uid={{ _mount_uid }},gid={{ _mount_gid }},iocharset=utf8,file_mode=0755,dir_mode=0755,vers=3.0,_netdev
-
-[Install]
-WantedBy=multi-user.target

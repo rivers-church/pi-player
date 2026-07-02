@@ -15,11 +15,20 @@
         _mount_uid: "{{ ansible_facts.getent_passwd[target_user][1] }}"
         _mount_gid: "{{ ansible_facts.getent_passwd[target_user][2] }}"
 
-    - name: Derive the systemd mount unit name from the mount point.
+    - name: Derive the systemd unit names from the mount point.
       ansible.builtin.command:
-        cmd: "systemd-escape --path --suffix=mount {{ ansible_local.pi_player.mount_where }}"
-      register: mount_unit
+        cmd: "systemd-escape --path --suffix={{ item }} {{ ansible_local.pi_player.mount_where }}"
+      register: unit_names
       changed_when: false
+      loop:
+        - mount
+        - automount
+
+    - name: Set unit name facts.
+      ansible.builtin.set_fact:
+        mount_unit: "{{ unit_names.results[0].stdout }}"
+        automount_unit: "{{ unit_names.results[1].stdout }}"
+        dns_wait_unit: "smb-dns-wait-{{ ansible_local.pi_player.mount_what | regex_replace('^//([^/]+)/.*$', '\\1') }}.service"
 
     - name: Create the mount point directory.
       ansible.builtin.file:
@@ -27,15 +36,33 @@
         state: directory
         mode: '0755'
 
+    - name: Template the DNS-wait service unit.
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/networkshare.dns-wait.service.j2"
+        dest: "/etc/systemd/system/{{ dns_wait_unit }}"
+        mode: '0644'
+
     - name: Template the systemd mount unit.
       ansible.builtin.template:
         src: "{{ playbook_dir }}/templates/networkshare.mount.j2"
-        dest: "/etc/systemd/system/{{ mount_unit.stdout }}"
+        dest: "/etc/systemd/system/{{ mount_unit }}"
         mode: '0644'
-      register: mount_unit_file
 
-    - name: Enable the network share mount (starts on next boot after network is up).
+    - name: Template the systemd automount unit.
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/networkshare.automount.j2"
+        dest: "/etc/systemd/system/{{ automount_unit }}"
+        mode: '0644'
+
+    - name: Disable direct mount unit (managed by automount).
       ansible.builtin.systemd_service:
-        name: "{{ mount_unit.stdout }}"
+        name: "{{ mount_unit }}"
+        enabled: false
+        daemon_reload: true
+      failed_when: false
+
+    - name: Enable the automount unit.
+      ansible.builtin.systemd_service:
+        name: "{{ automount_unit }}"
         enabled: true
         daemon_reload: true

@@ -1,0 +1,9 @@
+[Unit]
+Description=Automount SMB share for pi-player
+
+[Automount]
+Where={{ mount_where | default(ansible_local.pi_player.mount_where) }}
+TimeoutIdleSec=0
+
+[Install]
+WantedBy=multi-user.target
