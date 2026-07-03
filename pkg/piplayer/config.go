@@ -18,13 +18,14 @@ import (
 type Config struct {
 	Location string
 	Mount    mount
-	Streamer string
 	Debug    bool
 	Login       Login
 	Remote      remote
 }
 
-// Load reads the config file and unmarshalls it to the config struct
+// ConfigLoad reads the config file and unmarshalls it to the config struct.
+// It resolves the real config and media directories and delegates to
+// configLoadFromPath, which holds the testable core logic.
 func ConfigLoad(statsAssets embed.FS) (*Config, error) {
 	configPath := configdir.LocalConfig("pi-player")
 	userHome, err := os.UserHomeDir()
@@ -32,22 +33,27 @@ func ConfigLoad(statsAssets embed.FS) (*Config, error) {
 		return nil, fmt.Errorf("error trying to get user dir: %w", err)
 	}
 
-	defaultDir := filepath.Join(userHome, "Documents", "pi-player")
+	mediaDir := filepath.Join(userHome, "Documents", "pi-player")
 
-	if _, err := os.Stat(defaultDir); os.IsNotExist(err) {
-		// Create the media directory if it doesn't exist
-		if err := os.MkdirAll(defaultDir, 0744); err != nil {
+	return configLoadFromPath(configPath, mediaDir, statsAssets)
+}
+
+// configLoadFromPath loads (or first-time creates) the config at configPath,
+// creating mediaDir and seeding it with the logo from assets if it's missing.
+// Paths are injected so this can be exercised against temp dirs in tests.
+func configLoadFromPath(configPath, mediaDir string, assets fs.FS) (*Config, error) {
+	if _, err := os.Stat(mediaDir); os.IsNotExist(err) {
+		// Create the media directory if it doesn't exist.
+		if err := os.MkdirAll(mediaDir, 0744); err != nil {
 			return nil, fmt.Errorf("error trying to create default pi-player dir: %w", err)
 		}
 
-		// Copy the logo file to the media directory
-		logoFile, err := fs.ReadFile(statsAssets, "pkg/piplayer/assets/img/PiPlayer Logo.png")
-		if err != nil {
-			return nil, fmt.Errorf("error trying to read logo file: %w", err)
-		}
-
-		if err := os.WriteFile(filepath.Join(defaultDir, "PiPlayer Logo.png"), logoFile, 0644); err != nil {
-			return nil, fmt.Errorf("error trying to write logo file: %w", err)
+		// Copy the logo file to the media directory (best effort — a missing
+		// embedded asset shouldn't prevent the player from starting).
+		if logoFile, err := fs.ReadFile(assets, "pkg/piplayer/assets/img/PiPlayer Logo.png"); err != nil {
+			log.Printf("could not read embedded logo file, skipping copy: %v", err)
+		} else if err := os.WriteFile(filepath.Join(mediaDir, "PiPlayer Logo.png"), logoFile, 0644); err != nil {
+			log.Printf("could not write logo file to media dir: %v", err)
 		}
 	}
 
@@ -61,21 +67,14 @@ func ConfigLoad(statsAssets embed.FS) (*Config, error) {
 	configFile := filepath.Join(configPath, "config.json")
 	// Does the file not exist?
 	if _, err := os.Stat(configFile); os.IsNotExist(err) {
-		// Create the file
-		f, err := os.Create(configFile)
-		if err != nil {
-			return nil, fmt.Errorf("error creating config file: %w", err)
-		}
-		defer f.Close()
-
 		login, _ := newLogin()
 
 		// Set some default values for config.
 		conf = &Config{
 			Location: "PiPlayer",
 			Mount: mount{
-				URL: sURL{URL: &url.URL{Path: defaultDir}},
-				Dir: defaultDir,
+				URL: sURL{URL: &url.URL{Path: mediaDir}},
+				Dir: mediaDir,
 			},
 
 			Debug:  true,
@@ -83,7 +82,9 @@ func ConfigLoad(statsAssets embed.FS) (*Config, error) {
 			Remote: remote{Names: []string{"keyboard"}},
 		}
 
-		conf.Save()
+		if err := conf.saveToPath(configPath); err != nil {
+			return nil, fmt.Errorf("error saving new config file: %w", err)
+		}
 
 		return conf, nil
 	}
@@ -102,9 +103,14 @@ func ConfigLoad(statsAssets embed.FS) (*Config, error) {
 	return conf, nil
 }
 
-// Save reads the config struct, marshalls it and writes it to the config file
+// Save marshalls the config struct and writes it to the real config file.
 func (conf *Config) Save() error {
 	configPath := configdir.LocalConfig("pi-player")
+	return conf.saveToPath(configPath)
+}
+
+// saveToPath writes the marshalled config to config.json under configPath.
+func (conf *Config) saveToPath(configPath string) error {
 	configFile := filepath.Join(configPath, "config.json")
 	jconf, err := json.MarshalIndent(conf, "", "  ")
 	if err != nil {
@@ -203,11 +209,36 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 					}
 
 					if su.Scheme == "" {
+						oldDir := conf.Mount.Dir
 						conf.Mount = newMount
 						if err := conf.Save(); err != nil {
 							log.Println("error trying to save config:", err)
 						}
-						restart(p)
+
+						// Point the directory watcher at the new media dir.
+						if oldDir != "" && oldDir != conf.Mount.Dir {
+							p.playlist.watcher.Remove(oldDir)
+						}
+						if exists(conf.Mount.Dir) {
+							if err := p.playlist.watcher.Add(conf.Mount.Dir); err != nil {
+								log.Println("error watching new media dir:", err)
+							}
+						}
+
+						// Tell the viewer and control page to reload the playlist
+						// from the new directory instead of restarting the server.
+						// (The control page also reloads via the redirect below.)
+						reload := wsMessage{
+							Component: "playlist",
+							Event:     "newItems",
+							Message:   "media directory changed. Get new items.",
+						}
+						if p.ConnViewer.isActive() {
+							p.ConnViewer.getChanSend() <- reload
+						}
+						if p.ConnControl.isActive() {
+							p.ConnControl.getChanSend() <- reload
+						}
 					}
 				}
 			}

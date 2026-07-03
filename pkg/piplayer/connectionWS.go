@@ -23,6 +23,12 @@ var upgrader = &websocket.Upgrader{
 }
 
 // ConnectionWS represents a WebSocket connection.
+//
+// NOTE: the inbound path — read(), getChanReceive() and the receive channel —
+// is currently unused. The server only pushes messages out to the browser; it
+// never consumes structured messages back over the socket. This machinery is
+// left in place, reserved for future functionality (e.g. the browser reporting
+// playback state back to the server).
 type ConnectionWS interface {
 	HandlerWebsocket(p *Player) http.HandlerFunc
 	read()

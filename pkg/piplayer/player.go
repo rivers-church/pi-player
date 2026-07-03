@@ -15,17 +15,6 @@ import (
 	"github.com/17xande/keylogger"
 )
 
-// Player2 represents the entire program. It's the shell that holds the
-// components together. The other components are the Streamer, Playlist,
-// and Remote
-type Player2 interface {
-	Start(i Item)
-	Stop() error
-	Next() error
-	Previous() error
-	Listen(s chan string)
-}
-
 // Player is the object that renders images to the screen through omxplayer or chromium
 type Player struct {
 	ConnViewer  ConnectionWS
@@ -43,7 +32,6 @@ type Player struct {
 	// quit        chan error
 	browser   Browser
 	keylogger *keylogger.KeyLogger
-	streamer  Streamer
 }
 
 const (
@@ -128,11 +116,6 @@ func NewPlayer(api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *P
 		keylogger:   keylogger,
 		ConnViewer:  NewConnWS(),
 		ConnControl: NewConnWS(),
-		// TODO: Make this a config setting.
-		streamer: &Chrome{
-			ConnViewer:  &connWS{},
-			ConnControl: &connWS{},
-		},
 	}
 
 	var err error
@@ -256,18 +239,6 @@ func (p *Player) startBrowser() error {
 	return nil
 }
 
-// Next goes to the next item in the playlist.
-func (p *Player) Next() error {
-	// TODO: everything
-	return nil
-}
-
-// Previous goes to the previous item in the playlist.
-func (p *Player) Previous() error {
-	// TODO: everything
-	return nil
-}
-
 func handleAPIError(w *http.ResponseWriter, message string) {
 	m := &resMessage{
 		Success: false,
@@ -276,11 +247,6 @@ func handleAPIError(w *http.ResponseWriter, message string) {
 
 	log.Println(m)
 	json.NewEncoder(*w).Encode(m)
-}
-
-// Listen should listen to something, I forgot what
-func (p *Player) Listen(s chan string) {
-	// TODO: everything
 }
 
 // Handles requets to the player api

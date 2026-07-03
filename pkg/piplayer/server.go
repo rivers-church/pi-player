@@ -1,29 +1,25 @@
 package piplayer
 
 import (
-	"context"
 	"log"
 	"net/http"
-	"time"
 )
 
 // NewServer returns a new http.Server for the piplayer interface.
 func NewServer(p *Player, addr string) *http.Server {
-	mux := setupRoutes(p.conf.Mount.Dir, p)
+	mux := setupRoutes(p)
 	serv := http.Server{Addr: addr, Handler: mux}
 
 	return &serv
 }
 
-// setupRoutes registers the routes for the server, accepting a new directory where
-// the content can be found. This will be called whenever there is a change of content
-// given from the settings page.
-func setupRoutes(content string, p *Player) *http.ServeMux {
+// setupRoutes registers the routes for the server.
+func setupRoutes(p *Player) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	mux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(p.api.statAssets))))
 	// mux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("pkg/piplayer/assets"))))
-	mux.HandleFunc("/content/", etagWrapper(content))
+	mux.HandleFunc("/content/", etagWrapper(p))
 	mux.HandleFunc("/login", LoginHandler(p))
 	mux.HandleFunc("/logout", LogoutHandler)
 	mux.HandleFunc("/control", p.HandleControl)
@@ -38,39 +34,26 @@ func setupRoutes(content string, p *Player) *http.ServeMux {
 	return mux
 }
 
-// etagWrapper calculates an Etag value for the requested content.
-func etagWrapper(content string) func(http.ResponseWriter, *http.Request) {
+// etagWrapper serves files from the currently configured media directory.
+// The directory is read from the config on each request so that a media
+// directory change from the settings page takes effect immediately, without
+// needing to re-register routes or restart the server.
+func etagWrapper(p *Player) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		fs := http.StripPrefix("/content/", http.FileServer(http.Dir(content)))
+		fs := http.StripPrefix("/content/", http.FileServer(http.Dir(p.conf.Mount.Dir)))
 
-		// TODO: Everything
+		// TODO: calculate and set an Etag header for the requested content.
 
 		fs.ServeHTTP(w, r)
 	}
 }
 
-// Restart the http server.
-func restart(plr *Player) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	if err := plr.Server.Shutdown(ctx); err != nil {
-		log.Printf("Error shutting down server for re-registration of routes: %v\n", err)
-	}
-	go func() {
-		time.Sleep(5 * time.Second)
-		cancel()
-	}()
-}
-
-// Start the http server.
+// Start the http server. This blocks until the server stops; a failure to
+// listen is fatal, so the process exits and lets the service supervisor
+// (systemd Restart=on-failure) decide whether to bring it back up.
 func Start(plr *Player) {
 	log.Printf("Listening on port %s\n", plr.Server.Addr)
-	err := plr.Server.ListenAndServe()
-	if err != nil {
-		log.Println("ListenAndServe: ", err)
+	if err := plr.Server.ListenAndServe(); err != nil {
+		log.Fatalf("ListenAndServe: %v", err)
 	}
-
-	// Restart the server.
-	// TODO: This needs to become a config option
-	plr.Server = NewServer(plr, ":8080")
-	Start(plr)
 }

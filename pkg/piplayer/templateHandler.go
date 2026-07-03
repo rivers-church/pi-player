@@ -16,11 +16,6 @@ type TemplateHandler struct {
 	statTemplates fs.FS
 }
 
-// NewTemplateHandler returns a new template handler for a specific page
-func NewTemplateHandler(filename string, statTemplates fs.FS) TemplateHandler {
-	return TemplateHandler{filename: filename, statTemplates: statTemplates}
-}
-
 // ServeHTTP handles HTTP requests for the templates
 func (t *TemplateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// once keeps track of which of these anonymous functions have already been called,
