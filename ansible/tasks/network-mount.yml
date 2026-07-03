@@ -64,9 +64,21 @@
         daemon_reload: true
       failed_when: false
 
-    - name: Enable and (re)start the automount unit.
+    - name: Check if mount point is currently active.
+      ansible.builtin.command:
+        cmd: mountpoint -q {{ ansible_local.pi_player.mount_where }}
+      register: mountpoint_check
+      changed_when: false
+      failed_when: false
+
+    - name: Enable the automount unit.
       ansible.builtin.systemd_service:
         name: "{{ automount_unit }}"
         enabled: true
-        state: "{{ 'restarted' if (automount_unit_file.changed or mount_unit_file.changed or dns_wait_unit_file.changed) else 'started' }}"
         daemon_reload: true
+
+    - name: Start or restart the automount unit (skipped if already mounted).
+      ansible.builtin.systemd_service:
+        name: "{{ automount_unit }}"
+        state: "{{ 'restarted' if (automount_unit_file.changed or mount_unit_file.changed or dns_wait_unit_file.changed) else 'started' }}"
+      when: mountpoint_check.rc != 0
