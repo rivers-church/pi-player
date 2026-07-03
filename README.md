@@ -136,16 +136,20 @@ Once devices are provisioned, use the push-mode maintenance playbook to make cha
 
 ### Running maintenance
 
+All Ansible commands must be run from the `ansible/` directory so that `ansible.cfg` is picked up automatically.
+
 Include only the sections in `secrets.yml` for changes you want to apply — omitted sections are skipped entirely.
 
 ```bash
+cd ansible
+
 # Apply to all devices
-ansible-playbook -i ansible/inventory.yml ansible/maintenance.yml \
-  --extra-vars "@ansible/secrets.yml" -K
+ansible-playbook -i inventory.yml maintenance.yml \
+  --extra-vars "@secrets.yml" -K
 
 # Apply to a single location only
-ansible-playbook -i ansible/inventory.yml ansible/maintenance.yml \
-  --extra-vars "@ansible/secrets.yml" -K --limit lounge
+ansible-playbook -i inventory.yml maintenance.yml \
+  --extra-vars "@secrets.yml" -K --limit lounge
 ```
 
 `-K` prompts for the sudo password on the target devices.
