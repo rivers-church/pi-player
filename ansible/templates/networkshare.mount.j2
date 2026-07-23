@@ -2,9 +2,13 @@
 Description=Mount SMB share for pi-player
 After=network-online.target {{ dns_wait_unit }}
 Requires={{ dns_wait_unit }}
+# Never wedge into start-limit-hit: if the server is down, autofs retriggers
+# the mount on every access and 5 failures in 10s would otherwise disable the
+# unit permanently — it must be able to self-heal when the share returns.
+StartLimitIntervalSec=0
 
 [Mount]
 What={{ mount_what | default(ansible_local.pi_player.mount_what) }}
 Where={{ mount_where | default(ansible_local.pi_player.mount_where) }}
 Type=cifs
-Options=credentials=/etc/samba/credentials,uid={{ _mount_uid }},gid={{ _mount_gid }},iocharset=utf8,file_mode=0755,dir_mode=0755,vers=3.0,_netdev,soft,timeout=30,x-systemd.mount-timeout=60
+Options=credentials=/etc/samba/credentials,uid={{ _mount_uid }},gid={{ _mount_gid }},iocharset=utf8,file_mode=0755,dir_mode=0755,vers=3.0,_netdev,soft,echo_interval=10,x-systemd.mount-timeout=60
