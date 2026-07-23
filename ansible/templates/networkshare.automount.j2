@@ -1,5 +1,6 @@
 [Unit]
 Description=Automount SMB share for pi-player
+After=network-online.target
 
 [Automount]
 Where={{ mount_where | default(ansible_local.pi_player.mount_where) }}

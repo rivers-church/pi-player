@@ -7,4 +7,4 @@ Requires={{ dns_wait_unit }}
 What={{ mount_what | default(ansible_local.pi_player.mount_what) }}
 Where={{ mount_where | default(ansible_local.pi_player.mount_where) }}
 Type=cifs
-Options=credentials=/etc/samba/credentials,uid={{ _mount_uid }},gid={{ _mount_gid }},iocharset=utf8,file_mode=0755,dir_mode=0755,vers=3.0,_netdev
+Options=credentials=/etc/samba/credentials,uid={{ _mount_uid }},gid={{ _mount_gid }},iocharset=utf8,file_mode=0755,dir_mode=0755,vers=3.0,_netdev,soft,timeout=30,x-systemd.mount-timeout=60

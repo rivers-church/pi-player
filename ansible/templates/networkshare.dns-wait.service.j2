@@ -6,4 +6,5 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/bin/sh -c 'until getent hosts {{ mount_what | default(ansible_local.pi_player.mount_what) | regex_replace("^//([^/]+)/.*$", "\\1") }} > /dev/null 2>&1; do sleep 2; done'
+TimeoutStartSec=120
+ExecStart=/bin/sh -c 'h="{{ mount_what | default(ansible_local.pi_player.mount_what) | regex_replace("^//([^/]+)/.*$", "\\1") }}"; echo "$h" | grep -qE "^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$" && exit 0; until getent hosts "$h" > /dev/null 2>&1; do sleep 2; done'

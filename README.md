@@ -15,7 +15,7 @@ Provisioning is a two-stage process: a scripted Arch install from the live ISO, 
 Boot the target machine from an Arch Linux ISO **in UEFI mode**, connect it to ethernet (automatic), then run:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/rivers-church/pi-player/master/scripts/install.sh | bash
+curl -fsSL pp.rivers.church/install | bash
 ```
 
 The installer prompts for everything that varies per device:
@@ -63,7 +63,7 @@ scripts/test-vm.sh --no-cdrom # boot the installed system without the ISO attach
 For a verbose install run:
 
 ```bash
-curl -fsSL .../install.sh | DEBUG=1 bash
+curl -fsSL pp.rivers.church/install | DEBUG=1 bash
 ```
 
 #### Testing network mounts in the VM

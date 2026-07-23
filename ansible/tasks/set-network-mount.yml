@@ -52,17 +52,21 @@
     automount_unit: "{{ unit_names.results[1].stdout }}"
     dns_wait_unit: "smb-dns-wait-{{ mount_what | regex_replace('^//([^/]+)/.*$', '\\1') }}.service"
 
-- name: Create the mount point directory.
-  ansible.builtin.file:
-    path: "{{ mount_where }}"
-    state: directory
-    mode: '0755'
+# Read /proc/mounts directly — never stat the mount point, which would
+# trigger the autofs mount and can hang the play.
+- name: Check if mount point is currently active.
+  ansible.builtin.shell:
+    cmd: grep -q ' {{ mount_where }} ' /proc/mounts
+  register: mountpoint_check
+  changed_when: false
+  failed_when: false
 
 - name: Template the DNS-wait service unit.
   ansible.builtin.template:
     src: "{{ playbook_dir }}/templates/networkshare.dns-wait.service.j2"
     dest: "/etc/systemd/system/{{ dns_wait_unit }}"
     mode: '0644'
+  register: dns_wait_unit_file
 
 - name: Template the systemd mount unit.
   ansible.builtin.template:
@@ -78,18 +82,36 @@
     mode: '0644'
   register: automount_unit_file
 
+- name: Note whether the mount units changed.
+  ansible.builtin.set_fact:
+    _mount_units_changed: "{{ automount_unit_file.changed or mount_unit_file.changed or dns_wait_unit_file.changed }}"
+
+# Tear down the live automount trigger BEFORE enabling/starting, so nothing
+# can re-trigger a mount against the old config mid-run. Only when the units
+# changed or the share isn't currently mounted — a healthy mount is left be.
+- name: Stop the automount trigger before reconfiguring.
+  ansible.builtin.systemd_service:
+    name: "{{ automount_unit }}"
+    state: stopped
+  failed_when: false
+  when: _mount_units_changed or mountpoint_check.rc != 0
+
+# Only after the trigger is down — the file module stats the path, which
+# would fire autofs and hang if the automount were still armed. Skipped
+# when the share is already mounted and unchanged (the dir exists as the
+# live mount root, so there's nothing to create and nothing to stat).
+- name: Create the mount point directory.
+  ansible.builtin.file:
+    path: "{{ mount_where }}"
+    state: directory
+    mode: '0755'
+  when: _mount_units_changed or mountpoint_check.rc != 0
+
 - name: Disable direct mount unit (managed by automount).
   ansible.builtin.systemd_service:
     name: "{{ mount_unit }}"
     enabled: false
     daemon_reload: true
-  failed_when: false
-
-- name: Check if mount point is currently active.
-  ansible.builtin.command:
-    cmd: mountpoint -q {{ mount_where }}
-  register: mountpoint_check
-  changed_when: false
   failed_when: false
 
 - name: Enable the automount unit.
@@ -98,8 +120,8 @@
     enabled: true
     daemon_reload: true
 
-- name: Start or restart the automount unit (skipped if already mounted).
+- name: Start or restart the automount unit (skipped if already mounted and unchanged).
   ansible.builtin.systemd_service:
     name: "{{ automount_unit }}"
-    state: "{{ 'restarted' if automount_unit_file.changed or mount_unit_file.changed else 'started' }}"
-  when: mountpoint_check.rc != 0
+    state: "{{ 'restarted' if _mount_units_changed else 'started' }}"
+  when: _mount_units_changed or mountpoint_check.rc != 0
