@@ -180,9 +180,11 @@ class Viewer {
       case 'KEY_STOP':
         break;
       case 'KEY_FASTFORWARD':
+      case 'KEY_NEXTSONG':
         this.seek(e, 15);
         break;
       case 'KEY_REWIND':
+      case 'KEY_PREVIOUSSONG':
         this.seek(e, -15);
         break;
       case 'KEY_BACK':
