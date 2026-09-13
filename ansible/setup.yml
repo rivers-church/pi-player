@@ -187,11 +187,17 @@
     - name: Download Hyprland config file.
       become: true
       ansible.builtin.get_url:
-        url: https://github.com/rivers-church/pi-player/raw/master/scripts/hyprland.conf
-        dest: /home/{{ target_user }}/.config/hypr/hyprland.conf
+        url: https://github.com/rivers-church/pi-player/raw/master/scripts/hyprland.lua
+        dest: /home/{{ target_user }}/.config/hypr/hyprland.lua
         mode: '0644'
         owner: "{{ target_user }}"
         group: "{{ target_user }}"
+
+    - name: Remove legacy Hyprland .conf config.
+      become: true
+      ansible.builtin.file:
+        path: /home/{{ target_user }}/.config/hypr/hyprland.conf
+        state: absent
 
     - name: Auto-start Hyprland on login.
       become: true
