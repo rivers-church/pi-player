@@ -1,6 +1,7 @@
 package piplayer
 
 import (
+	"bytes"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -156,7 +157,7 @@ func TestSettingsHandlerSavesNewCredentials(t *testing.T) {
 		Mount:    mount{URL: sURL{URL: &url.URL{Path: mediaDir}}, Dir: mediaDir},
 		Login:    login,
 	}
-	p := &Player{conf: conf, api: &APIHandler{}}
+	p := &Player{conf: conf, api: &APIHandler{}, store: newSessionStore(testSessionKey)}
 
 	form := url.Values{
 		"username": {"alex"},
@@ -166,7 +167,7 @@ func TestSettingsHandlerSavesNewCredentials(t *testing.T) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	sessionRecorder := httptest.NewRecorder()
-	session, err := store.Get(request, "piplayer-session")
+	session, err := p.store.Get(request, "piplayer-session")
 	if err != nil {
 		t.Fatalf("creating authenticated session failed: %v", err)
 	}
@@ -219,6 +220,7 @@ func TestSettingsHandlerConcurrentWithReaders(t *testing.T) {
 	p := &Player{
 		api:         &APIHandler{},
 		conf:        conf,
+		store:       newSessionStore(testSessionKey),
 		playlist:    &Playlist{},
 		ConnViewer:  NewConnWS(),
 		ConnControl: NewConnWS(),
@@ -226,7 +228,7 @@ func TestSettingsHandlerConcurrentWithReaders(t *testing.T) {
 	settings := conf.SettingsHandler(p)
 	content := http.HandlerFunc(contentHandler(p))
 
-	cookie := authenticatedCookie(t)
+	cookie := authenticatedCookie(t, p)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -261,10 +263,10 @@ func TestSettingsHandlerConcurrentWithReaders(t *testing.T) {
 }
 
 // authenticatedCookie returns a cookie for a logged-in session.
-func authenticatedCookie(t *testing.T) *http.Cookie {
+func authenticatedCookie(t *testing.T, p *Player) *http.Cookie {
 	t.Helper()
 	request := httptest.NewRequest(http.MethodGet, "http://piplayer.local/", nil)
-	session, err := store.Get(request, "piplayer-session")
+	session, err := p.store.Get(request, "piplayer-session")
 	if err != nil {
 		t.Fatalf("creating authenticated session failed: %v", err)
 	}
@@ -274,4 +276,58 @@ func authenticatedCookie(t *testing.T) *http.Cookie {
 		t.Fatalf("saving authenticated session failed: %v", err)
 	}
 	return recorder.Result().Cookies()[0]
+}
+
+// TestConfigLoadGeneratesSessionKey checks a config written before session
+// keys existed picks one up, and that a config that has one keeps it.
+func TestConfigLoadGeneratesSessionKey(t *testing.T) {
+	configPath := t.TempDir()
+	mediaDir := filepath.Join(t.TempDir(), "media")
+
+	conf, err := configLoadFromPath(configPath, mediaDir, emptyAssets)
+	if err != nil {
+		t.Fatalf("first run config load failed: %v", err)
+	}
+	if len(conf.SessionKey) != sessionKeyLength {
+		t.Fatalf("first run session key is %d bytes, want %d", len(conf.SessionKey), sessionKeyLength)
+	}
+
+	reloaded, err := configLoadFromPath(configPath, mediaDir, emptyAssets)
+	if err != nil {
+		t.Fatalf("reloading the config failed: %v", err)
+	}
+	if !bytes.Equal(reloaded.SessionKey, conf.SessionKey) {
+		t.Error("the session key changed on reload, which would log everyone out")
+	}
+}
+
+func TestConfigLoadAddsSessionKeyToOlderConfig(t *testing.T) {
+	configPath := t.TempDir()
+	mediaDir := filepath.Join(t.TempDir(), "media")
+
+	// A config from before session keys were stored.
+	older := `{"Location":"PiPlayer","Mount":{"URL":"/tmp/media"},"Debug":false,"Login":{"Username":"admin","Password":"x"}}`
+	if err := os.WriteFile(filepath.Join(configPath, "config.json"), []byte(older), 0o600); err != nil {
+		t.Fatalf("writing the old config failed: %v", err)
+	}
+
+	conf, err := configLoadFromPath(configPath, mediaDir, emptyAssets)
+	if err != nil {
+		t.Fatalf("loading the old config failed: %v", err)
+	}
+	if len(conf.SessionKey) != sessionKeyLength {
+		t.Fatalf("session key is %d bytes, want %d", len(conf.SessionKey), sessionKeyLength)
+	}
+
+	data, err := os.ReadFile(filepath.Join(configPath, "config.json"))
+	if err != nil {
+		t.Fatalf("reading the saved config failed: %v", err)
+	}
+	var saved Config
+	if err := json.Unmarshal(data, &saved); err != nil {
+		t.Fatalf("saved config is not valid JSON: %v", err)
+	}
+	if !bytes.Equal(saved.SessionKey, conf.SessionKey) {
+		t.Error("the generated session key was not written back to the config file")
+	}
 }

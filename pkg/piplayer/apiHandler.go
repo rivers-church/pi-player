@@ -49,24 +49,6 @@ func NewAPIHandler(debug bool, test *string, statAssets, statTemplates embed.FS)
 	}, nil
 }
 
-// Handles requests to the index page as well as any other requests
-// that don't match any other paths
-func (a *APIHandler) handlerHome(w http.ResponseWriter, r *http.Request) {
-	_, loggedIn, err := CheckLogin(w, r)
-	if err != nil {
-		log.Println("error trying to retrieve session on login page:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if loggedIn {
-		http.Redirect(w, r, "/control", http.StatusFound)
-		return
-	} else {
-		http.Redirect(w, r, "/login", http.StatusFound)
-		return
-	}
-}
-
 // Handle handles all calls to the API
 func (a *APIHandler) Handle(p *Player) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

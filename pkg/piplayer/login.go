@@ -14,11 +14,12 @@ type Login struct {
 	Password string
 }
 
-// TODO: use a random environment variable instead of hard coding the secret here.
-var store = newSessionStore()
-
-func newSessionStore() *sessions.CookieStore {
-	store := sessions.NewCookieStore([]byte("ip-player-session-secret"))
+// newSessionStore builds the cookie store that signs session cookies. The key
+// comes from the config, where it is generated per device on first run: a key
+// hardcoded here would be public in the repo, and anyone could then mint a
+// cookie that says they're logged in.
+func newSessionStore(key []byte) *sessions.CookieStore {
+	store := sessions.NewCookieStore(key)
 	store.Options = &sessions.Options{
 		Path:     "/",
 		MaxAge:   86400 * 30,
@@ -51,8 +52,8 @@ func checkHash(password, hash string) bool {
 }
 
 // CheckLogin checks if the user is logged in
-func CheckLogin(w http.ResponseWriter, r *http.Request) (*sessions.Session, bool, error) {
-	session, err := store.Get(r, "piplayer-session")
+func (p *Player) CheckLogin(w http.ResponseWriter, r *http.Request) (*sessions.Session, bool, error) {
+	session, err := p.store.Get(r, "piplayer-session")
 	if err != nil {
 		if session == nil {
 			return nil, false, err
@@ -80,7 +81,7 @@ func LoginHandler(p *Player) http.HandlerFunc {
 // behavior can be tested without writing to the user's real config directory.
 func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		session, loggedIn, err := CheckLogin(w, r)
+		session, loggedIn, err := p.CheckLogin(w, r)
 		if err != nil {
 			log.Println("error trying to retrieve session on login page:", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -141,7 +142,10 @@ func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 				log.Printf("login successful from %s\n", r.RemoteAddr)
 			}
 
-			session.Values["authenticated"] = r.RemoteAddr
+			// Start from a clean set of values rather than keeping whatever
+			// the incoming cookie carried. The session lives entirely in the
+			// signed cookie, so this is the whole of it.
+			session.Values = map[any]any{"authenticated": r.RemoteAddr}
 			if err := session.Save(r, w); err != nil {
 				log.Println("error trying to save login session:", err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -164,10 +168,10 @@ func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 }
 
 // LogoutHandler logs a user out and redirects them to the login page
-func LogoutHandler(w http.ResponseWriter, r *http.Request) {
+func (p *Player) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	// A cookie that can't be decoded still yields a usable session here, and
 	// expiring it is exactly what logging out wants to do anyway.
-	session, err := store.Get(r, "piplayer-session")
+	session, err := p.store.Get(r, "piplayer-session")
 	if err != nil {
 		log.Println("error trying to get session in logout page:", err)
 	}

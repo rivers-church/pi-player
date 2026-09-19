@@ -44,7 +44,7 @@ func setupRoutes(p *Player) *http.ServeMux {
 	login := LoginHandler(p)
 	mux.HandleFunc("GET /login", login)
 	mux.HandleFunc("POST /login", login)
-	mux.HandleFunc("POST /logout", LogoutHandler)
+	mux.HandleFunc("POST /logout", p.LogoutHandler)
 
 	settings := p.conf.SettingsHandler(p)
 	mux.HandleFunc("GET /settings", settings)
@@ -56,7 +56,7 @@ func setupRoutes(p *Player) *http.ServeMux {
 	mux.HandleFunc("GET /ws/control", p.ConnControl.HandlerWebsocket(p))
 	mux.HandleFunc("POST /api", p.api.Handle(p))
 	mux.HandleFunc("GET /api/dircheck", p.HandleDirCheck)
-	mux.HandleFunc("GET /{$}", p.api.handlerHome)
+	mux.HandleFunc("GET /{$}", p.handlerHome)
 
 	return mux
 }

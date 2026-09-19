@@ -14,6 +14,7 @@ import (
 	"sync"
 
 	"github.com/17xande/keylogger"
+	"github.com/gorilla/sessions"
 )
 
 // Player is the object that renders images to the screen through omxplayer or chromium
@@ -27,6 +28,7 @@ type Player struct {
 	// pipeIn      io.WriteCloser
 	playlist *Playlist
 	conf     *Config
+	store    *sessions.CookieStore
 	// running     bool
 	// quitting    bool
 	// status      int
@@ -139,6 +141,7 @@ func NewPlayer(ctx context.Context, api *APIHandler, conf *Config, keylogger *ke
 		api:         api,
 		conf:        conf,
 		keylogger:   keylogger,
+		store:       newSessionStore(conf.sessionKey()),
 		ConnViewer:  NewConnWS(),
 		ConnControl: NewConnWS(),
 	}
@@ -346,7 +349,7 @@ func (p *Player) handleAPI(msg reqMessage, w http.ResponseWriter) {
 
 // HandleControl Scan the folder for new files every time the page reloads and display contents
 func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
-	_, loggedIn, err := CheckLogin(w, r)
+	_, loggedIn, err := p.CheckLogin(w, r)
 	if err != nil {
 		log.Println("error trying to retrieve session on login page:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -402,6 +405,24 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 	p.ConnViewer.trySend(msg)
 
 	tempControl.ServeHTTP(w, r)
+}
+
+// handlerHome sends the browser to the control page or the login page,
+// depending on whether it is logged in.
+func (p *Player) handlerHome(w http.ResponseWriter, r *http.Request) {
+	_, loggedIn, err := p.CheckLogin(w, r)
+	if err != nil {
+		log.Println("error trying to retrieve session on login page:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if loggedIn {
+		http.Redirect(w, r, "/control", http.StatusFound)
+		return
+	} else {
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
 }
 
 // HandleDirCheck returns whether the configured media directory currently exists.

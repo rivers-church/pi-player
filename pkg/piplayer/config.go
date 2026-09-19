@@ -1,6 +1,7 @@
 package piplayer
 
 import (
+	"crypto/rand"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -29,6 +30,28 @@ type Config struct {
 	Debug    bool
 	Login    Login
 	Remote   remote
+	// SessionKey signs the session cookies. It is generated per device on
+	// first run, so a cookie minted on one player is worthless on another.
+	SessionKey []byte
+}
+
+// sessionKeyLength is the size of a generated session signing key.
+const sessionKeyLength = 32
+
+// sessionKey returns the key used to sign session cookies.
+func (conf *Config) sessionKey() []byte {
+	conf.mu.RLock()
+	defer conf.mu.RUnlock()
+	return conf.SessionKey
+}
+
+// newSessionKey returns a fresh random key for signing session cookies.
+func newSessionKey() ([]byte, error) {
+	key := make([]byte, sessionKeyLength)
+	if _, err := rand.Read(key); err != nil {
+		return nil, fmt.Errorf("error generating a session key: %w", err)
+	}
+	return key, nil
 }
 
 // MediaDir returns the directory the media files are read from.
@@ -141,7 +164,15 @@ func configLoadFromPath(configPath, mediaDir string, assets fs.FS) (*Config, err
 	configFile := filepath.Join(configPath, "config.json")
 	// Does the file not exist?
 	if _, err := os.Stat(configFile); os.IsNotExist(err) {
-		login, _ := newLogin()
+		login, err := newLogin()
+		if err != nil {
+			return nil, fmt.Errorf("error creating the default login: %w", err)
+		}
+
+		sessionKey, err := newSessionKey()
+		if err != nil {
+			return nil, err
+		}
 
 		// Set some default values for config.
 		conf = &Config{
@@ -151,9 +182,10 @@ func configLoadFromPath(configPath, mediaDir string, assets fs.FS) (*Config, err
 				Dir: mediaDir,
 			},
 
-			Debug:  true,
-			Login:  login,
-			Remote: remote{Names: []string{"keyboard"}},
+			Debug:      true,
+			Login:      login,
+			Remote:     remote{Names: []string{"keyboard"}},
+			SessionKey: sessionKey,
 		}
 
 		if err := conf.saveToPath(configPath); err != nil {
@@ -174,6 +206,19 @@ func configLoadFromPath(configPath, mediaDir string, assets fs.FS) (*Config, err
 	}
 
 	conf.Mount.Dir = conf.Mount.URL.Path
+
+	// Configs written before session keys were stored won't have one; give
+	// this device its own. Sessions signed with the old hardcoded key stop
+	// being accepted, so everyone logs in once more.
+	if len(conf.SessionKey) == 0 {
+		if conf.SessionKey, err = newSessionKey(); err != nil {
+			return nil, err
+		}
+		if err := conf.saveToPath(configPath); err != nil {
+			return nil, fmt.Errorf("error saving the new session key: %w", err)
+		}
+	}
+
 	return conf, nil
 }
 
@@ -200,7 +245,7 @@ func (conf *Config) saveToPath(configPath string) error {
 // SettingsHandler handles requests to the settings page
 func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		_, loggedIn, err := CheckLogin(w, r)
+		_, loggedIn, err := p.CheckLogin(w, r)
 		if err != nil {
 			log.Println("error trying to retrieve session on login page:", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
