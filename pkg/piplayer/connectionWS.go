@@ -97,11 +97,11 @@ func (c *connWS) HandlerWebsocket(p *Player) http.HandlerFunc {
 			c.active = false
 
 			if err := c.conn.WriteJSON(msg); err != nil {
-				log.Printf("error writting disconnect message: ConnectionWS.HandlerWebsocket: %v\n", err)
+				log.Printf("error writing disconnect message: ConnectionWS.HandlerWebsocket: %v\n", err)
 			}
 
 			if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
-				log.Printf("error writting close message: ConnectionWS.HandlerWebsocket(): %v\n", err)
+				log.Printf("error writing close message: ConnectionWS.HandlerWebsocket(): %v\n", err)
 			}
 
 			c.conn.Close()
@@ -149,7 +149,7 @@ func (c *connWS) write() {
 			if !ok {
 				log.Printf("Something is wrong reading from the send channel. Closing websocket.")
 				if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
-					log.Printf("error writting close message: ConnectionWS.write(): %v\n", err)
+					log.Printf("error writing close message: ConnectionWS.write(): %v\n", err)
 				}
 				return
 			}
@@ -188,7 +188,7 @@ func (c *connWS) read() {
 		err := c.conn.ReadJSON(&msg)
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("websocket unexpectadly closed, returning out of read() function: %v\n", err)
+				log.Printf("websocket unexpectedly closed, returning out of read() function: %v\n", err)
 			} else if websocket.IsCloseError(err) {
 				log.Printf("websocket closed, returning out of read() function.\n")
 			} else {

@@ -23,7 +23,7 @@ func TestContentServedFromCurrentDir(t *testing.T) {
 	}
 
 	p := &Player{conf: &Config{Mount: mount{Dir: dirA}}}
-	handler := http.HandlerFunc(etagWrapper(p))
+	handler := http.HandlerFunc(contentHandler(p))
 
 	get := func(path string) *httptest.ResponseRecorder {
 		rec := httptest.NewRecorder()

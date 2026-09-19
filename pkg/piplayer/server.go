@@ -19,7 +19,7 @@ func setupRoutes(p *Player) *http.ServeMux {
 
 	mux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(p.api.statAssets))))
 	// mux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("pkg/piplayer/assets"))))
-	mux.HandleFunc("/content/", etagWrapper(p))
+	mux.HandleFunc("/content/", contentHandler(p))
 	mux.HandleFunc("/login", LoginHandler(p))
 	mux.HandleFunc("/logout", LogoutHandler)
 	mux.HandleFunc("/control", p.HandleControl)
@@ -34,15 +34,13 @@ func setupRoutes(p *Player) *http.ServeMux {
 	return mux
 }
 
-// etagWrapper serves files from the currently configured media directory.
+// contentHandler serves files from the currently configured media directory.
 // The directory is read from the config on each request so that a media
 // directory change from the settings page takes effect immediately, without
 // needing to re-register routes or restart the server.
-func etagWrapper(p *Player) func(http.ResponseWriter, *http.Request) {
+func contentHandler(p *Player) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fs := http.StripPrefix("/content/", http.FileServer(http.Dir(p.conf.Mount.Dir)))
-
-		// TODO: calculate and set an Etag header for the requested content.
 
 		fs.ServeHTTP(w, r)
 	}

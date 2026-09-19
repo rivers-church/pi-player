@@ -107,7 +107,7 @@ func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 			return
 
 		} else if r.Method != "POST" {
-			log.Println("Unsuported request type for Login page:", r.Method)
+			log.Println("Unsupported request type for Login page:", r.Method)
 			return
 		}
 

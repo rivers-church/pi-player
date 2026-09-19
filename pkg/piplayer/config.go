@@ -19,8 +19,8 @@ type Config struct {
 	Location string
 	Mount    mount
 	Debug    bool
-	Login       Login
-	Remote      remote
+	Login    Login
+	Remote   remote
 }
 
 // ConfigLoad reads the config file and unmarshalls it to the config struct.
@@ -145,15 +145,15 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 				data: map[string]any{
 					"location": conf.Location,
 					"debug":    conf.Debug,
-					"username":    conf.Login.Username,
-					"mount":       conf.Mount,
-					"mountURL":    mu,
+					"username": conf.Login.Username,
+					"mount":    conf.Mount,
+					"mountURL": mu,
 				},
 			}
 			tempControl.ServeHTTP(w, r)
 			return
 		} else if r.Method != "POST" {
-			log.Println("Unsuported request type for Settings page:", r.Method)
+			log.Println("Unsupported request type for Settings page:", r.Method)
 			return
 		}
 

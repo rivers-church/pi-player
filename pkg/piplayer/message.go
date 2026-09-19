@@ -7,7 +7,7 @@ type reqMessage struct {
 	Arguments map[string]string `json:"arguments"`
 }
 
-// resMessage defines structure for reponse messages for json api
+// resMessage defines structure for response messages for json api
 type resMessage struct {
 	Success bool        `json:"success"`
 	Event   string      `json:"event"`

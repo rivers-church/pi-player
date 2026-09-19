@@ -107,7 +107,7 @@ func (a *APIHandler) handleMessage(p *Player, w http.ResponseWriter, r *http.Req
 		log.Printf("message received: %#v\n", a.message)
 	}
 
-	// displach execution based on which component was called
+	// dispatch execution based on which component was called
 	// in this case, the Player component
 	if a.message.Component == "player" {
 		p.ServeHTTP(w, r)

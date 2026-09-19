@@ -108,7 +108,8 @@ func (p *Player) renderErrorPage(w http.ResponseWriter, err error, redirect stri
 // 	"seekForward600":  "\x1b[A",
 // }
 
-// NewPlayer creates a new Player server *http.Server, router *mux.Router
+// NewPlayer creates a Player, starts its directory watcher and begins
+// listening to the remote control.
 func NewPlayer(api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *Player {
 	p := Player{
 		api:         api,
@@ -164,7 +165,7 @@ func (p *Player) Start(w *http.ResponseWriter) {
 	// fileName, ok := p.api.message.Arguments["path"]
 	sIndex, ok := p.api.message.Arguments["index"]
 	if !ok {
-		handleAPIError(w, "No intem index or provided")
+		handleAPIError(w, "No item index provided")
 		return
 	}
 
