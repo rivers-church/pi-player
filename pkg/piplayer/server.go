@@ -17,19 +17,27 @@ func NewServer(p *Player, addr string) *http.Server {
 func setupRoutes(p *Player) *http.ServeMux {
 	mux := http.NewServeMux()
 
-	mux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(p.api.statAssets))))
-	// mux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("pkg/piplayer/assets"))))
-	mux.HandleFunc("/content/", contentHandler(p))
-	mux.HandleFunc("/login", LoginHandler(p))
-	mux.HandleFunc("/logout", LogoutHandler)
-	mux.HandleFunc("/control", p.HandleControl)
-	mux.HandleFunc("/settings", p.conf.SettingsHandler(p))
-	mux.HandleFunc("/viewer", p.HandleViewer)
-	mux.HandleFunc("/ws/viewer", p.ConnViewer.HandlerWebsocket(p))
-	mux.HandleFunc("/ws/control", p.ConnControl.HandlerWebsocket(p))
-	mux.HandleFunc("/api", p.api.Handle(p))
-	mux.HandleFunc("/api/dircheck", p.HandleDirCheck)
-	mux.HandleFunc("/", p.api.handlerHome)
+	// Patterns carry their method, so the mux answers anything else with a 405
+	// and the handlers below don't have to check r.Method themselves.
+	mux.Handle("GET /assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(p.api.statAssets))))
+	mux.HandleFunc("GET /content/", contentHandler(p))
+
+	login := LoginHandler(p)
+	mux.HandleFunc("GET /login", login)
+	mux.HandleFunc("POST /login", login)
+	mux.HandleFunc("POST /logout", LogoutHandler)
+
+	settings := p.conf.SettingsHandler(p)
+	mux.HandleFunc("GET /settings", settings)
+	mux.HandleFunc("POST /settings", settings)
+
+	mux.HandleFunc("GET /control", p.HandleControl)
+	mux.HandleFunc("GET /viewer", p.HandleViewer)
+	mux.HandleFunc("GET /ws/viewer", p.ConnViewer.HandlerWebsocket(p))
+	mux.HandleFunc("GET /ws/control", p.ConnControl.HandlerWebsocket(p))
+	mux.HandleFunc("POST /api", p.api.Handle(p))
+	mux.HandleFunc("GET /api/dircheck", p.HandleDirCheck)
+	mux.HandleFunc("GET /{$}", p.api.handlerHome)
 
 	return mux
 }

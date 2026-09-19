@@ -50,3 +50,38 @@ func TestContentServedFromCurrentDir(t *testing.T) {
 		t.Errorf("stale file: got status %d, want 404", rec.Code)
 	}
 }
+
+// TestRouteMethods checks that the mux itself rejects the wrong method, so the
+// handlers don't have to. Logout in particular must not be reachable with a
+// GET, or any page can log the operator out with an <img> tag.
+func TestRouteMethods(t *testing.T) {
+	p := &Player{
+		api:         &APIHandler{},
+		conf:        &Config{Mount: mount{Dir: t.TempDir()}},
+		playlist:    &Playlist{},
+		ConnViewer:  NewConnWS(),
+		ConnControl: NewConnWS(),
+	}
+	mux := setupRoutes(p)
+
+	cases := []struct {
+		method, path string
+		want         int
+	}{
+		{http.MethodGet, "/logout", http.StatusMethodNotAllowed},
+		{http.MethodGet, "/api", http.StatusMethodNotAllowed},
+		{http.MethodPut, "/api", http.StatusMethodNotAllowed},
+		{http.MethodPost, "/control", http.StatusMethodNotAllowed},
+		{http.MethodPost, "/viewer", http.StatusMethodNotAllowed},
+		{http.MethodPost, "/api/dircheck", http.StatusMethodNotAllowed},
+		{http.MethodGet, "/no/such/page", http.StatusNotFound},
+	}
+
+	for _, c := range cases {
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(c.method, c.path, nil))
+		if rec.Code != c.want {
+			t.Errorf("%s %s: got status %d, want %d", c.method, c.path, rec.Code, c.want)
+		}
+	}
+}

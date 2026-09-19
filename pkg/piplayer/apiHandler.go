@@ -38,17 +38,6 @@ func NewAPIHandler(debug bool, test *string, statAssets, statTemplates embed.FS)
 // Handles requests to the index page as well as any other requests
 // that don't match any other paths
 func (a *APIHandler) handlerHome(w http.ResponseWriter, r *http.Request) {
-
-	if r.URL.Path != "/" {
-		http.Error(w, "Not found", 404)
-		log.Printf("Not found: %s", r.URL)
-		return
-	}
-	if r.Method != "GET" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		log.Printf("Method not allowed: %s", r.URL)
-		return
-	}
 	_, loggedIn, err := CheckLogin(w, r)
 	if err != nil {
 		log.Println("error trying to retrieve session on login page:", err)
@@ -68,14 +57,6 @@ func (a *APIHandler) handlerHome(w http.ResponseWriter, r *http.Request) {
 func (a *APIHandler) Handle(p *Player) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-
-		// ignore anything that's not a POST request
-		if r.Method != "POST" {
-			m := &resMessage{Success: false, Message: "Invalid request method: " + r.Method}
-			log.Println(m.Message)
-			json.NewEncoder(w).Encode(m)
-			return
-		}
 
 		// ignore anything that's not a application/json request
 		ct := r.Header.Get("Content-Type")

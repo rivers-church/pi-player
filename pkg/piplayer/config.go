@@ -134,7 +134,7 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 			return
 		}
 
-		if r.Method == "GET" {
+		if r.Method == http.MethodGet {
 			mu, err := url.PathUnescape(conf.Mount.URL.String())
 			if err != nil {
 				log.Printf("SettingsHandler: Error unescaping URL '%s'\n", conf.Mount.URL)
@@ -151,9 +151,6 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 				},
 			}
 			tempControl.ServeHTTP(w, r)
-			return
-		} else if r.Method != "POST" {
-			log.Println("Unsupported request type for Settings page:", r.Method)
 			return
 		}
 

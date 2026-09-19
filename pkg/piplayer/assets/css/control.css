@@ -80,3 +80,25 @@ a{
 input{
   color: white;
 }
+/* Log out is a POST so it can't be triggered by a stray GET, but it should
+   still look like the link it replaced. */
+.logout-form{
+  display: inline;
+}
+
+.link-button{
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  height: auto;
+  font-size: inherit;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  width: auto;
+}
+
+.link-button h2{
+  margin: 0;
+}

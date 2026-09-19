@@ -94,8 +94,7 @@ func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 			return
 		}
 
-		if r.Method == "GET" {
-
+		if r.Method == http.MethodGet {
 			tempControl := TemplateHandler{
 				filename:      "login.html",
 				statTemplates: p.api.statTemplates,
@@ -104,10 +103,6 @@ func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 				},
 			}
 			tempControl.ServeHTTP(w, r)
-			return
-
-		} else if r.Method != "POST" {
-			log.Println("Unsupported request type for Login page:", r.Method)
 			return
 		}
 

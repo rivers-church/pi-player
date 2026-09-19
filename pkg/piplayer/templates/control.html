@@ -31,7 +31,9 @@
     </div>
     <div>
       <a href="/settings">Settings</a>
-      <a href="/logout">Log out</a>
+      <form action="/logout" method="POST" class="logout-form">
+        <button type="submit" class="link-button">Log out</button>
+      </form>
     </div>
     <div>
       <h2>Playlist</h2>
@@ -67,7 +69,9 @@
     </div>
     <div id="divDisconnect" class="warning">
       <h1 id="h1OverlayMsg">You've been disconnected by another user.</h1>
-      <a href="/logout"><h2>Login again here to take back control.</h2></a>
+      <form action="/logout" method="POST" class="logout-form">
+        <button type="submit" class="link-button"><h2>Login again here to take back control.</h2></button>
+      </form>
     </div>
   </div>
   <script src="/assets/js/control.js"></script>
