@@ -151,6 +151,39 @@ func TestHandlerRejectsNonWebsocketRequest(t *testing.T) {
 	}
 }
 
+// TestWebsocketOutlivesReadTimeout pins the behaviour the kiosk depends on:
+// the server's ReadTimeout must not close an idle viewer socket.
+func TestWebsocketOutlivesReadTimeout(t *testing.T) {
+	c := NewConnWS()
+	p := &Player{conf: &Config{}}
+
+	server := httptest.NewUnstartedServer(c.HandlerWebsocket(p))
+	// Deliberately tiny, so the test doesn't have to wait 30 seconds.
+	server.Config.ReadTimeout = 300 * time.Millisecond
+	server.Config.ReadHeaderTimeout = 300 * time.Millisecond
+	server.Start()
+	defer server.Close()
+
+	conn, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(server.URL, "http"), nil)
+	if err != nil {
+		t.Fatalf("dial failed: %v", err)
+	}
+	defer conn.Close()
+
+	// Sit idle for well past the read timeout, then check the socket still works.
+	time.Sleep(time.Second)
+
+	waitActive(t, c)
+	if !c.trySend(wsMessage{Component: "playlist", Event: "newItems"}) {
+		t.Fatal("the connection was dropped while idle")
+	}
+	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	var got wsMessage
+	if err := conn.ReadJSON(&got); err != nil {
+		t.Fatalf("reading after the read timeout elapsed failed: %v", err)
+	}
+}
+
 // waitActive waits for the handler goroutine to finish registering the
 // connection, which happens just after the upgrade completes.
 func waitActive(t *testing.T, c ConnectionWS) {
