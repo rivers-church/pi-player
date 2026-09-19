@@ -10,18 +10,81 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/fsnotify/fsnotify"
 )
 
 // Playlist stores the media items that can be played.
+//
+// Items and Current are rebuilt whenever the media directory is rescanned,
+// which happens on every control and viewer page load, so mu guards them
+// against the handlers reading them at the same time.
 type Playlist struct {
+	mu      sync.RWMutex
 	Name    string
 	Items   []Item
 	Current *Item
 	watcher *fsnotify.Watcher
+}
+
+// PlaylistView is a snapshot of a playlist, safe to hand to a template while
+// the playlist itself is being rescanned.
+type PlaylistView struct {
+	Name    string
+	Items   []Item
+	Current *Item
+}
+
+// snapshot copies the playlist so a template can range over it without
+// holding a lock.
+func (p *Playlist) snapshot() PlaylistView {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	view := PlaylistView{Name: p.Name, Items: slices.Clone(p.Items)}
+	if p.Current != nil {
+		// Point Current into the copy, not the original backing array.
+		for i := range view.Items {
+			if view.Items[i].Name() == p.Current.Name() {
+				view.Current = &view.Items[i]
+				break
+			}
+		}
+	}
+	return view
+}
+
+// currentName returns the name of the current item, if there is one.
+func (p *Playlist) currentName() (string, bool) {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	if p.Current == nil {
+		return "", false
+	}
+	return p.Current.Name(), true
+}
+
+// setCurrent points Current at the item at index, and reports whether the
+// index was in range.
+func (p *Playlist) setCurrent(index int) bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if index < 0 || index >= len(p.Items) {
+		return false
+	}
+	p.Current = &p.Items[index]
+	return true
+}
+
+// dir returns the directory the playlist was last read from.
+func (p *Playlist) dir() string {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.Name
 }
 
 // Presentation is used to read the presentation.json file for added cues.
@@ -56,11 +119,11 @@ func (p *Playlist) handleAPI(plr *Player, msg reqMessage, w http.ResponseWriter)
 
 	switch msg.Method {
 	case "getCurrent":
-		if p.Current != nil {
+		if name, ok := p.currentName(); ok {
 			m = resMessage{
 				Success: true,
 				Event:   "current",
-				Message: p.Current.Name(),
+				Message: name,
 			}
 		} else {
 			m = resMessage{
@@ -82,15 +145,13 @@ func (p *Playlist) handleAPI(plr *Player, msg reqMessage, w http.ResponseWriter)
 			log.Printf("Error converting argument to int: playlist.HandleAPI.setCurrent\n%v", err)
 		}
 
-		if err != nil || index < 0 || index >= len(p.Items) {
+		if err != nil || !p.setCurrent(index) {
 			m = resMessage{
 				Success: false,
 				Event:   "argumentInvalid",
 			}
 			break
 		}
-
-		p.Current = &p.Items[index]
 
 		m = resMessage{
 			Success: true,
@@ -109,8 +170,8 @@ func (p *Playlist) handleAPI(plr *Player, msg reqMessage, w http.ResponseWriter)
 			log.Println("set current item index to:", index)
 		}
 	case "getItems":
-		if err := p.fromFolder(p.Name); err != nil {
-			log.Printf("Api call failed. Can't get items from folder %s\n%v", p.Name, err)
+		if err := p.fromFolder(p.dir()); err != nil {
+			log.Printf("Api call failed. Can't get items from folder %s\n%v", p.dir(), err)
 		}
 
 		m = resMessage{
@@ -125,19 +186,47 @@ func (p *Playlist) handleAPI(plr *Player, msg reqMessage, w http.ResponseWriter)
 	json.NewEncoder(w).Encode(m)
 }
 
+// fromFolder rescans dir and replaces the playlist's items with what it finds.
+// The scan happens outside the lock, so readers only ever see the old items or
+// the new ones. The current item is carried over by name where it still exists.
 func (p *Playlist) fromFolder(dir string) error {
-	// Remove all items from the current playlist if there are any.
-	p.Items = []Item{}
+	items, err := scanFolder(dir)
+	if err != nil {
+		return err
+	}
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	currentName := ""
+	if p.Current != nil {
+		currentName = p.Current.Name()
+	}
+
 	p.Name = dir
+	p.Items = items
+	p.Current = nil
+	for i := range p.Items {
+		if p.Items[i].Name() == currentName {
+			p.Current = &p.Items[i]
+			break
+		}
+	}
+
+	return nil
+}
+
+// scanFolder reads dir and returns the playable items it contains.
+func scanFolder(dir string) ([]Item, error) {
+	items := []Item{}
 
 	// Read files from a certain folder into a playlist.
 	if !exists(dir) {
-		return fmt.Errorf("fromFolder: Can't read files from directory '%s' because it does not exist", dir)
+		return nil, fmt.Errorf("fromFolder: Can't read files from directory '%s' because it does not exist", dir)
 	}
-	// files, err := ioutil.ReadDir(dir)
 	files, err := os.ReadDir(dir)
 	if err != nil {
-		return errors.New("fromFolder: Can't read folder for items: " + err.Error())
+		return nil, errors.New("fromFolder: Can't read folder for items: " + err.Error())
 	}
 
 	// Filter out all files except for supported ones.
@@ -146,11 +235,11 @@ func (p *Playlist) fromFolder(dir string) error {
 		e := strings.ToLower(path.Ext(file.Name()))
 		switch e {
 		case ".mp4", ".webm":
-			p.Items = append(p.Items, Item{Visual: file, Type: "video", Cues: c})
+			items = append(items, Item{Visual: file, Type: "video", Cues: c})
 		case ".jpg", ".jpeg", ".png":
-			p.Items = append(p.Items, Item{Visual: file, Type: "image", Cues: c})
+			items = append(items, Item{Visual: file, Type: "image", Cues: c})
 		case ".html":
-			p.Items = append(p.Items, Item{Visual: file, Type: "browser", Cues: c})
+			items = append(items, Item{Visual: file, Type: "browser", Cues: c})
 		}
 	}
 
@@ -162,15 +251,15 @@ func (p *Playlist) fromFolder(dir string) error {
 		}
 
 		audioBase := file.Name()[0 : len(file.Name())-len(e)]
-		for i, item := range p.Items {
+		for i, item := range items {
 			visual := item.Visual.Name()
 			visualBase := visual[0 : len(visual)-len(path.Ext(visual))]
 			if audioBase == visualBase {
 				switch e {
 				case ".mp3":
-					p.Items[i].Audio = file
+					items[i].Audio = file
 				case ".mp0":
-					p.Items[i].Cues["clear"] = "audio"
+					items[i].Cues["clear"] = "audio"
 				}
 				break
 			}
@@ -184,12 +273,15 @@ func (p *Playlist) fromFolder(dir string) error {
 		data, err := os.ReadFile(file)
 		if err != nil {
 			log.Printf("Error trying to read presentation file '%s': %v", file, err)
-			return nil
+			return items, nil
 		}
 
 		var presentation Presentation
 
-		json.Unmarshal(data, &presentation)
+		if err := json.Unmarshal(data, &presentation); err != nil {
+			log.Printf("Error trying to parse presentation file '%s', ignoring its cues: %v", file, err)
+			return items, nil
+		}
 
 		// Loop through presentation data and attach cues to items.
 		for _, presItem := range presentation.Items {
@@ -198,7 +290,7 @@ func (p *Playlist) fromFolder(dir string) error {
 			if err != nil {
 				log.Printf("Could not compile regex with text '%s', comparing using visual name only.", presItem.Visual)
 			}
-			for _, playItem := range p.Items {
+			for _, playItem := range items {
 				// If the regex can't compile, use the file name, otherwise use the regex.
 				if err != nil && presItem.Visual == playItem.Visual.Name() {
 					maps.Copy(playItem.Cues, presItem.Cues)
@@ -210,7 +302,7 @@ func (p *Playlist) fromFolder(dir string) error {
 		}
 	}
 
-	return nil
+	return items, nil
 }
 
 // watch for changes in the supplied directory
@@ -287,6 +379,9 @@ func (p *Playlist) watch(plr *Player) {
 // }
 
 func (p *Playlist) itemsString() []ItemString {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
 	var res []ItemString
 
 	for _, item := range p.Items {

@@ -3,6 +3,7 @@ package piplayer
 import (
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 )
 
@@ -192,5 +193,99 @@ func TestItemsString(t *testing.T) {
 	}
 	if got[1].Visual != "photo.jpg" || got[1].Audio != "" || got[1].Type != "image" {
 		t.Errorf("unexpected second ItemString: %+v", got[1])
+	}
+}
+
+// TestFromFolderConcurrentWithReaders rescans the playlist while other
+// goroutines read it, the way /control, /viewer and the getItems API call do.
+// Without the mutex this reports a data race, and a template ranging over a
+// half-rebuilt slice can panic.
+func TestFromFolderConcurrentWithReaders(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"one.mp4", "two.jpg", "three.png"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("x"), 0o644); err != nil {
+			t.Fatalf("writing fixture %s failed: %v", name, err)
+		}
+	}
+
+	p := &Playlist{}
+	if err := p.fromFolder(dir); err != nil {
+		t.Fatalf("initial scan failed: %v", err)
+	}
+	p.setCurrent(0)
+
+	var wg sync.WaitGroup
+	for range 4 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for range 50 {
+				if err := p.fromFolder(dir); err != nil {
+					t.Errorf("rescan failed: %v", err)
+					return
+				}
+			}
+		}()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for range 50 {
+				view := p.snapshot()
+				for i := range view.Items {
+					_ = view.Items[i].Name()
+				}
+				if view.Current != nil {
+					_ = view.Current.Name()
+				}
+				_ = p.itemsString()
+			}
+		}()
+	}
+	wg.Wait()
+}
+
+// TestFromFolderKeepsCurrentAcrossRescan guards against Current being left
+// pointing into the slice that the previous scan abandoned.
+func TestFromFolderKeepsCurrentAcrossRescan(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"one.mp4", "two.jpg"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("x"), 0o644); err != nil {
+			t.Fatalf("writing fixture %s failed: %v", name, err)
+		}
+	}
+
+	p := &Playlist{}
+	if err := p.fromFolder(dir); err != nil {
+		t.Fatalf("initial scan failed: %v", err)
+	}
+	if !p.setCurrent(1) {
+		t.Fatal("setCurrent(1) reported the index was out of range")
+	}
+	want, _ := p.currentName()
+
+	if err := p.fromFolder(dir); err != nil {
+		t.Fatalf("rescan failed: %v", err)
+	}
+
+	got, ok := p.currentName()
+	if !ok {
+		t.Fatal("the current item was lost by the rescan")
+	}
+	if got != want {
+		t.Errorf("current item is %q after the rescan, want %q", got, want)
+	}
+	if p.Current != &p.Items[1] {
+		t.Error("current item does not point into the rebuilt item slice")
+	}
+}
+
+// TestSetCurrentRejectsOutOfRange documents that an index the browser made up
+// is refused rather than panicking.
+func TestSetCurrentRejectsOutOfRange(t *testing.T) {
+	p := &Playlist{}
+	for _, index := range []int{-1, 0, 5} {
+		if p.setCurrent(index) {
+			t.Errorf("setCurrent(%d) was accepted on an empty playlist", index)
+		}
 	}
 }

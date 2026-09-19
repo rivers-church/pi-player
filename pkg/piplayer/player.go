@@ -152,11 +152,9 @@ func (p *Player) FirstRun() {
 		p.browser.running = false
 	}
 
-	if len(p.playlist.Items) == 0 {
+	if len(p.playlist.snapshot().Items) == 0 {
 		log.Println("No items in current directory.")
-		return
 	}
-
 }
 
 // startBrowser starts Chromium browser, or Google Chrome with the relevant flags.
@@ -285,20 +283,22 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	view := p.playlist.snapshot()
+
 	tempControl := TemplateHandler{
 		filename:      "control.html",
 		statTemplates: p.api.statTemplates,
 		data: map[string]any{
 			"location": p.conf.Location,
 			"Mount":    p.conf.Mount.URL,
-			"playlist": p.playlist,
+			"playlist": view,
 			"error":    err,
 		},
 	}
 
 	if p.api.debug {
 		log.Println("files in playlist:")
-		for _, item := range p.playlist.Items {
+		for _, item := range view.Items {
 			log.Printf("visual: %s", item.Name())
 			if item.Audio != nil {
 				log.Printf("\taudio: %s", item.Audio.Name())
@@ -347,7 +347,7 @@ func (p *Player) HandleViewer(w http.ResponseWriter, r *http.Request) {
 		filename:      "viewer.html",
 		statTemplates: p.api.statTemplates,
 		data: map[string]any{
-			"playlist": p.playlist,
+			"playlist": p.playlist.snapshot(),
 		},
 	}
 
