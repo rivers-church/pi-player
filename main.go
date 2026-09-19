@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/17xande/keylogger"
 	piplayer "github.com/17xande/pi-player/pkg/piplayer"
 )
 
@@ -28,7 +27,6 @@ func main() {
 	test := flag.String("test", "", "send \"mac\", \"linux\", or \"web\" to test the code on mac or linux or to test only the web interface.")
 	debug := flag.Bool("debug", false, "print extra information for debugging.")
 	ver := flag.Bool("version", false, "print version and exit.")
-	// dlv := flag.Bool("dlv", false, "Let the program know if delve is being used to debug so the application directory can be changed.")
 	flag.Parse()
 
 	if *ver {
@@ -57,11 +55,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error setting up the web interface.\n%v", err)
 	}
-	kl := keylogger.NewKeyLogger(conf.Remote.Names)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	p := piplayer.NewPlayer(ctx, &a, conf, kl)
+	p := piplayer.NewPlayer(ctx, &a, conf)
 	p.Server = piplayer.NewServer(p, *addr)
 
 	// Start the browser

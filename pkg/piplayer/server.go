@@ -36,8 +36,8 @@ func NewServer(p *Player, addr string) *http.Server {
 }
 
 // securityHeaders sets the headers every response should carry. There is no
-// Content-Security-Policy yet: error.html and menu.html still carry inline
-// script and style that would need a nonce first.
+// Content-Security-Policy yet: error.html still carries inline script and
+// style that would need a nonce first.
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")

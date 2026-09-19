@@ -79,8 +79,6 @@ type connWS struct {
 
 // NewConnWS returns a new websocket connection struct.
 func NewConnWS() ConnectionWS {
-	// NOTE: interfaces are always pointers...
-	// So I have to return a pointer here.
 	return &connWS{
 		send: make(chan wsMessage, sendBuffer),
 	}

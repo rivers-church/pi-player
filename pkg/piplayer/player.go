@@ -13,34 +13,20 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/17xande/keylogger"
 	"github.com/gorilla/sessions"
 )
 
-// Player is the object that renders images to the screen through omxplayer or chromium
+// Player is the object that renders images to the screen through chromium.
 type Player struct {
 	ConnViewer  ConnectionWS
 	ConnControl ConnectionWS
 	Server      *http.Server
-	// serveMux    *http.ServeMux
-	api *APIHandler
-	// command     *exec.Cmd
-	// pipeIn      io.WriteCloser
-	playlist *Playlist
-	conf     *Config
-	store    *sessions.CookieStore
-	// running     bool
-	// quitting    bool
-	// status      int
-	// quit        chan error
-	browser   Browser
-	keylogger *keylogger.KeyLogger
+	api         *APIHandler
+	playlist    *Playlist
+	conf        *Config
+	store       *sessions.CookieStore
+	browser     Browser
 }
-
-const (
-// statusMenu = 1
-// statusLive = 0
-)
 
 // Browser represents the chromium process that is used to display web pages
 // and still images to the screen.
@@ -115,32 +101,13 @@ func (p *Player) renderErrorPage(w http.ResponseWriter, err error, redirect stri
 	}
 }
 
-// var commandList = map[string]string{
-// 	"speedIncrease":   "1",
-// 	"speedDecrease":   "2",
-// 	"rewind":          "<",
-// 	"fastForward":     ">",
-// 	"chapterPrevious": "i",
-// 	"chapterNext":     "o",
-// 	"exit":            "q",
-// 	"quit":            "q",
-// 	"pauseResume":     "p",
-// 	"volumeDecrease":  "-",
-// 	"volumeIncrease":  "+",
-// 	"seekBack30":      "\x1b[D",
-// 	"seekForward30":   "\x1b[C",
-// 	"seekBack600":     "\x1b[B",
-// 	"seekForward600":  "\x1b[A",
-// }
-
 // NewPlayer creates a Player, starts its directory watcher and begins
 // listening to the remote control.
 // The context stops the remote control listener when the player shuts down.
-func NewPlayer(ctx context.Context, api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *Player {
+func NewPlayer(ctx context.Context, api *APIHandler, conf *Config) *Player {
 	p := Player{
 		api:         api,
 		conf:        conf,
-		keylogger:   keylogger,
 		store:       newSessionStore(conf.sessionKey()),
 		ConnViewer:  NewConnWS(),
 		ConnControl: NewConnWS(),
@@ -156,9 +123,6 @@ func NewPlayer(ctx context.Context, api *APIHandler, conf *Config, keylogger *ke
 		log.Println("initializing remote")
 	}
 	go remoteRead(ctx, &p)
-
-	// Listen for websocket messages from the browser.
-	// go p.HandleWebSocketMessage()
 
 	return &p
 }
