@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 
 	"github.com/17xande/keylogger"
 )
@@ -39,12 +40,19 @@ const (
 // statusLive = 0
 )
 
-// Browser represents the chromium process that is used to display web pages and still images to the screen
+// Browser represents the chromium process that is used to display web pages
+// and still images to the screen.
 type Browser struct {
+	mu      sync.Mutex
 	command *exec.Cmd
 	running bool
-	ctxt    *context.Context
-	cancel  *context.CancelFunc
+}
+
+// isRunning reports whether the browser process is still up.
+func (b *Browser) isRunning() bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.running
 }
 
 type errorPageData struct {
@@ -125,7 +133,8 @@ func (p *Player) renderErrorPage(w http.ResponseWriter, err error, redirect stri
 
 // NewPlayer creates a Player, starts its directory watcher and begins
 // listening to the remote control.
-func NewPlayer(api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *Player {
+// The context stops the remote control listener when the player shuts down.
+func NewPlayer(ctx context.Context, api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *Player {
 	p := Player{
 		api:         api,
 		conf:        conf,
@@ -143,8 +152,7 @@ func NewPlayer(api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *P
 	if api.debug {
 		log.Println("initializing remote")
 	}
-	// TODO: get context from caller?
-	go remoteRead(context.Background(), &p)
+	go remoteRead(ctx, &p)
 
 	// Listen for websocket messages from the browser.
 	// go p.HandleWebSocketMessage()
@@ -164,7 +172,6 @@ func (p *Player) FirstRun() {
 
 	if err := p.startBrowser(); err != nil {
 		log.Println("Error trying to start the browser:\n", err)
-		p.browser.running = false
 	}
 
 	if len(p.playlist.snapshot().Items) == 0 {
@@ -174,9 +181,11 @@ func (p *Player) FirstRun() {
 
 // startBrowser starts Chromium browser, or Google Chrome with the relevant flags.
 func (p *Player) startBrowser() error {
-	if p.browser.running {
+	if p.browser.isRunning() {
 		return errors.New("error: Browser already running, cannot start another instance")
 	}
+
+	viewerURL := p.viewerURL()
 
 	// https://peter.sh/experiments/chromium-command-line-switches/
 	flags := []string{
@@ -186,7 +195,7 @@ func (p *Player) startBrowser() error {
 		"--autoplay-policy=no-user-gesture-required",
 		"--disk-cache-dir=/dev/null", //this sets the cache store location to null
 		"--aggressive-cache-discard", //in theory this clears the chrome cache
-		"http://localhost:8080/viewer",
+		viewerURL,
 	}
 
 	browser := "chromium"
@@ -195,39 +204,100 @@ func (p *Player) startBrowser() error {
 	case "linux":
 		flags = []string{
 			"--incognito",
-			"http://localhost:8080/viewer",
+			viewerURL,
 		}
 
 		browser = "google-chrome"
 	case "mac":
 		flags = []string{
 			"--incognito",
-			"http://localhost:8080/viewer",
+			viewerURL,
 		}
 
 		browser = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 	}
 
-	p.browser.command = exec.Command(browser, flags...)
-	p.browser.command.Stdin = os.Stdin
+	command := exec.Command(browser, flags...)
 	if p.api.debug {
-
-		p.browser.command.Stdout = os.Stdout
+		command.Stdout = os.Stdout
 	}
-	p.browser.command.Stderr = os.Stderr
-	if err := p.browser.command.Start(); err != nil {
+	command.Stderr = os.Stderr
+	if err := command.Start(); err != nil {
 		return err
 	}
-	p.browser.running = true
 
-	ctxt, cancel := context.WithCancel(context.Background())
-	p.browser.ctxt = &ctxt
-	p.browser.cancel = &cancel
-	// not sure if this is appropriate here. Not sure if context is
-	// absolutely needed actually. I'm not gracefully terminating things
-	// defer cancel()
+	p.browser.mu.Lock()
+	p.browser.command = command
+	p.browser.running = true
+	p.browser.mu.Unlock()
+
+	// Reap the process when it exits, so it doesn't linger as a zombie and so
+	// the player knows the display is gone and can start it again.
+	go func() {
+		err := command.Wait()
+
+		p.browser.mu.Lock()
+		if p.browser.command == command {
+			p.browser.running = false
+		}
+		p.browser.mu.Unlock()
+
+		if err != nil {
+			log.Printf("browser exited: %v\n", err)
+			return
+		}
+		log.Println("browser exited")
+	}()
 
 	return nil
+}
+
+// viewerURL is the address the kiosk browser opens. It follows the port the
+// server was actually given rather than assuming the default.
+func (p *Player) viewerURL() string {
+	port := "8080"
+	if p.Server != nil {
+		if _, serverPort, err := net.SplitHostPort(p.Server.Addr); err == nil && serverPort != "" {
+			port = serverPort
+		}
+	}
+	return "http://localhost:" + port + "/viewer"
+}
+
+// stopBrowser asks the browser process to quit.
+func (p *Player) stopBrowser() {
+	p.browser.mu.Lock()
+	command := p.browser.command
+	running := p.browser.running
+	p.browser.mu.Unlock()
+
+	if !running || command == nil || command.Process == nil {
+		return
+	}
+	if err := command.Process.Signal(os.Interrupt); err != nil {
+		log.Printf("error asking the browser to quit: %v\n", err)
+	}
+}
+
+// Close shuts down everything the player owns: the browser, the directory
+// watcher and both websocket connections.
+func (p *Player) Close() {
+	farewell := wsMessage{
+		Component: "connection",
+		Event:     "disconnect",
+		Success:   true,
+		Message:   "The player is shutting down.",
+	}
+	p.ConnViewer.closeCurrent(farewell)
+	p.ConnControl.closeCurrent(farewell)
+
+	if p.playlist != nil && p.playlist.watcher != nil {
+		if err := p.playlist.watcher.Close(); err != nil {
+			log.Printf("error closing the directory watcher: %v\n", err)
+		}
+	}
+
+	p.stopBrowser()
 }
 
 func handleAPIError(w http.ResponseWriter, message string) {

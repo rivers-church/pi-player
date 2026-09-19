@@ -1,16 +1,35 @@
 package piplayer
 
 import (
+	"context"
+	"errors"
 	"log"
 	"net/http"
+	"time"
+)
+
+const (
+	readHeaderTimeout = 10 * time.Second
+	readTimeout       = 30 * time.Second
+	idleTimeout       = 120 * time.Second
+	shutdownTimeout   = 5 * time.Second
+	maxHeaderBytes    = 1 << 20
 )
 
 // NewServer returns a new http.Server for the piplayer interface.
 func NewServer(p *Player, addr string) *http.Server {
-	mux := setupRoutes(p)
-	serv := http.Server{Addr: addr, Handler: mux}
-
-	return &serv
+	return &http.Server{
+		Addr:              addr,
+		Handler:           setupRoutes(p),
+		ReadHeaderTimeout: readHeaderTimeout,
+		ReadTimeout:       readTimeout,
+		IdleTimeout:       idleTimeout,
+		MaxHeaderBytes:    maxHeaderBytes,
+		// WriteTimeout is deliberately left unset. Nothing here streams, and
+		// logging in takes about a second of bcrypt on a slow device.
+		// Websockets are unaffected either way: gorilla clears the deadlines
+		// on the hijacked connection once the handshake is done.
+	}
 }
 
 // setupRoutes registers the routes for the server.
@@ -54,12 +73,33 @@ func contentHandler(p *Player) func(http.ResponseWriter, *http.Request) {
 	}
 }
 
-// Start the http server. This blocks until the server stops; a failure to
-// listen is fatal, so the process exits and lets the service supervisor
-// (systemd Restart=on-failure) decide whether to bring it back up.
-func Start(plr *Player) {
+// Run serves until ctx is cancelled or the listener fails, then shuts the
+// server down gracefully. It returns nil on a clean shutdown.
+func Run(ctx context.Context, plr *Player) error {
 	log.Printf("Listening on port %s\n", plr.Server.Addr)
-	if err := plr.Server.ListenAndServe(); err != nil {
-		log.Fatalf("ListenAndServe: %v", err)
+
+	serveErr := make(chan error, 1)
+	go func() {
+		serveErr <- plr.Server.ListenAndServe()
+	}()
+
+	select {
+	case err := <-serveErr:
+		if errors.Is(err, http.ErrServerClosed) {
+			return nil
+		}
+		return err
+	case <-ctx.Done():
 	}
+
+	log.Println("Shutting down...")
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+
+	// Shutdown doesn't wait for hijacked connections, so an idle websocket
+	// can't hold this up.
+	if err := plr.Server.Shutdown(shutdownCtx); err != nil {
+		return err
+	}
+	return nil
 }

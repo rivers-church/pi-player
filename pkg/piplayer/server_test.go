@@ -1,11 +1,13 @@
 package piplayer
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 // TestContentServedFromCurrentDir verifies that /content/ resolves the media
@@ -83,5 +85,70 @@ func TestRouteMethods(t *testing.T) {
 		if rec.Code != c.want {
 			t.Errorf("%s %s: got status %d, want %d", c.method, c.path, rec.Code, c.want)
 		}
+	}
+}
+
+// TestRunShutsDownOnContextCancel checks the server stops cleanly on SIGTERM
+// instead of being killed mid-request. Start used to call log.Fatalf from
+// library code and treat the clean-shutdown sentinel as a fatal error.
+func TestRunShutsDownOnContextCancel(t *testing.T) {
+	p := &Player{
+		api:         &APIHandler{},
+		conf:        &Config{Mount: mount{Dir: t.TempDir()}},
+		playlist:    &Playlist{},
+		ConnViewer:  NewConnWS(),
+		ConnControl: NewConnWS(),
+	}
+	p.Server = NewServer(p, "127.0.0.1:0")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- Run(ctx, p) }()
+
+	// Give the listener a moment to come up, then ask it to stop.
+	time.Sleep(50 * time.Millisecond)
+	cancel()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Errorf("Run returned %v, want nil on a clean shutdown", err)
+		}
+	case <-time.After(shutdownTimeout + time.Second):
+		t.Fatal("Run did not return after its context was cancelled")
+	}
+}
+
+// TestServerHasTimeouts guards the read timeouts against being dropped again:
+// without them one stalled connection ties up a goroutine indefinitely.
+func TestServerHasTimeouts(t *testing.T) {
+	p := &Player{
+		api:         &APIHandler{},
+		conf:        &Config{},
+		playlist:    &Playlist{},
+		ConnViewer:  NewConnWS(),
+		ConnControl: NewConnWS(),
+	}
+	server := NewServer(p, ":8080")
+
+	if server.ReadHeaderTimeout == 0 {
+		t.Error("ReadHeaderTimeout is unset")
+	}
+	if server.ReadTimeout == 0 {
+		t.Error("ReadTimeout is unset")
+	}
+	if server.IdleTimeout == 0 {
+		t.Error("IdleTimeout is unset")
+	}
+}
+
+// TestViewerURLFollowsServerPort: the kiosk browser used to be pointed at a
+// hardcoded :8080 regardless of the -addr the server was given.
+func TestViewerURLFollowsServerPort(t *testing.T) {
+	p := &Player{conf: &Config{}}
+	p.Server = &http.Server{Addr: ":9090"}
+
+	if got, want := p.viewerURL(), "http://localhost:9090/viewer"; got != want {
+		t.Errorf("viewerURL() = %q, want %q", got, want)
 	}
 }

@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"flag"
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 
 	"github.com/17xande/keylogger"
 	piplayer "github.com/17xande/pi-player/pkg/piplayer"
@@ -55,7 +58,10 @@ func main() {
 		log.Fatalf("Error setting up the web interface.\n%v", err)
 	}
 	kl := keylogger.NewKeyLogger(conf.Remote.Names)
-	p := piplayer.NewPlayer(&a, conf, kl)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	p := piplayer.NewPlayer(ctx, &a, conf, kl)
 	p.Server = piplayer.NewServer(p, *addr)
 
 	// Start the browser
@@ -63,5 +69,9 @@ func main() {
 	// to carry on, so that the server comes online.
 	go p.FirstRun()
 
-	piplayer.Start(p)
+	err = piplayer.Run(ctx, p)
+	p.Close()
+	if err != nil {
+		log.Fatalf("server error: %v", err)
+	}
 }

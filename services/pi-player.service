@@ -8,5 +8,9 @@ Restart=on-failure
 RestartSec=10
 StartLimitInterval=60
 
+# pi-player shuts the browser and its websockets down on SIGTERM; give it a
+# few seconds to do that before systemd kills the process group.
+TimeoutStopSec=15
+
 WorkingDirectory=%h/.local/bin
 ExecStart=%h/.local/bin/pi-player
