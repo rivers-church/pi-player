@@ -89,7 +89,11 @@ func requireLogin(p *Player, next http.HandlerFunc) http.HandlerFunc {
 				log.Printf("refusing %s %s from %s: not logged in\n", r.Method, r.URL.Path, r.RemoteAddr)
 			}
 			if strings.HasPrefix(r.URL.Path, "/api") {
-				http.Error(w, `{"success":false,"message":"not logged in"}`, http.StatusUnauthorized)
+				writeAPIResponse(w, http.StatusUnauthorized, &resMessage{
+					Success: false,
+					Event:   "notLoggedIn",
+					Message: "Not logged in.",
+				})
 				return
 			}
 			http.Redirect(w, r, "/login", http.StatusFound)
@@ -129,7 +133,8 @@ func setupRoutes(p *Player) *http.ServeMux {
 
 	// Patterns carry their method, so the mux answers anything else with a 405
 	// and the handlers below don't have to check r.Method themselves.
-	// Static assets carry nothing worth protecting and the login page needs
+	//
+	// Static assets carry nothing worth protecting, and the login page needs
 	// its stylesheet before anyone can log in.
 	mux.Handle("GET /assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(p.api.statAssets))))
 
