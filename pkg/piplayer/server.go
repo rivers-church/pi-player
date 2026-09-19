@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -22,7 +23,7 @@ const (
 func NewServer(p *Player, addr string) *http.Server {
 	return &http.Server{
 		Addr:              addr,
-		Handler:           setupRoutes(p),
+		Handler:           securityHeaders(sameOriginPost(setupRoutes(p))),
 		ReadHeaderTimeout: readHeaderTimeout,
 		ReadTimeout:       readTimeout,
 		IdleTimeout:       idleTimeout,
@@ -32,6 +33,51 @@ func NewServer(p *Player, addr string) *http.Server {
 		// Websockets are unaffected either way: gorilla clears the deadlines
 		// on the hijacked connection once the handshake is done.
 	}
+}
+
+// securityHeaders sets the headers every response should carry. There is no
+// Content-Security-Policy yet: error.html and menu.html still carry inline
+// script and style that would need a nonce first.
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "same-origin")
+		next.ServeHTTP(w, r)
+	})
+}
+
+// sameOriginPost refuses a POST that came from another site. SameSite=Lax on
+// the session cookie already stops a cross-site form post from carrying the
+// session, so this is a second line rather than the only one - and unlike a
+// token it needs no plumbing through every form.
+func sameOriginPost(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		source := r.Header.Get("Origin")
+		if source == "" {
+			source = r.Header.Get("Referer")
+		}
+		if source == "" {
+			// Curl and the like send neither. Those requests still have to get
+			// past the session check on the route.
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		u, err := url.Parse(source)
+		if err != nil || !strings.EqualFold(u.Host, r.Host) {
+			log.Printf("refusing cross-origin POST to %s from %q\n", r.URL.Path, source)
+			http.Error(w, "Cross-origin request refused.", http.StatusForbidden)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
 
 // requireLogin refuses the request unless it carries a logged-in session.

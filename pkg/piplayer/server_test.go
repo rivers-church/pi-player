@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -237,6 +238,75 @@ func TestIsLoopback(t *testing.T) {
 		want := loopback && (addr == "127.0.0.1:40000" || addr == "[::1]:40000" || addr == "127.0.0.1")
 		if got := isLoopback(addr); got != want {
 			t.Errorf("isLoopback(%q) = %v, want %v", addr, got, want)
+		}
+	}
+}
+
+// TestCrossOriginPostRefused covers the case SameSite=Lax is meant to stop
+// anyway: a form on another site posting to the settings or login page.
+func TestCrossOriginPostRefused(t *testing.T) {
+	p := &Player{
+		api:         testAPIHandler(t, map[string]string{"control.html": "control"}),
+		conf:        &Config{Mount: mount{Dir: t.TempDir()}},
+		playlist:    &Playlist{},
+		store:       newSessionStore(testSessionKey),
+		ConnViewer:  NewConnWS(),
+		ConnControl: NewConnWS(),
+	}
+	handler := NewServer(p, ":8080").Handler
+	cookie := authenticatedCookie(t, p)
+
+	cases := []struct {
+		name       string
+		origin     string
+		wantStatus int
+	}{
+		{"from another site", "http://evil.example.com", http.StatusForbidden},
+		{"from the player itself", "http://piplayer.local", 0},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			form := url.Values{"location": {"Somewhere"}}.Encode()
+			request := httptest.NewRequest(http.MethodPost, "http://piplayer.local/settings", strings.NewReader(form))
+			request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			request.Header.Set("Origin", c.origin)
+			request.AddCookie(cookie)
+			recorder := httptest.NewRecorder()
+
+			handler.ServeHTTP(recorder, request)
+
+			if c.wantStatus != 0 && recorder.Code != c.wantStatus {
+				t.Errorf("got status %d, want %d", recorder.Code, c.wantStatus)
+			}
+			if c.wantStatus == 0 && recorder.Code == http.StatusForbidden {
+				t.Error("a same-origin POST was refused")
+			}
+		})
+	}
+}
+
+func TestSecurityHeaders(t *testing.T) {
+	p := &Player{
+		api:         testAPIHandler(t, map[string]string{"login.html": "login"}),
+		conf:        &Config{},
+		playlist:    &Playlist{},
+		store:       newSessionStore(testSessionKey),
+		ConnViewer:  NewConnWS(),
+		ConnControl: NewConnWS(),
+	}
+	recorder := httptest.NewRecorder()
+
+	NewServer(p, ":8080").Handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/login", nil))
+
+	want := map[string]string{
+		"X-Content-Type-Options": "nosniff",
+		"X-Frame-Options":        "DENY",
+		"Referrer-Policy":        "same-origin",
+	}
+	for header, value := range want {
+		if got := recorder.Header().Get(header); got != value {
+			t.Errorf("%s = %q, want %q", header, got, value)
 		}
 	}
 }
