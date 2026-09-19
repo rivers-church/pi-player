@@ -43,6 +43,22 @@ journalctl -u pi-player-setup.service -f
 
 After the reboot the web interface is available at `http://<device-ip>:8080/control`.
 
+### Logging in
+
+The first login is `admin` / `admin`; change it on the settings page. Session
+cookies are signed with a key generated on first run and kept in
+`~/.config/pi-player/config.json`, so a cookie from one player is worthless on
+another, and replacing that file logs everyone out.
+
+Every route needs a session except the login page and static assets. The three
+the kiosk browser needs — `/viewer`, `/ws/viewer` and `/content/` — also accept
+a request from localhost without one, which is how the local Chromium reaches
+the viewer. Nothing else on the network can read the media directory or take
+the display's websocket.
+
+Traffic is plain HTTP, so treat the player's network as trusted: the password
+and session cookie cross it in the clear.
+
 ### Testing the installer in a VM
 
 [`scripts/test-vm.sh`](scripts/test-vm.sh) wraps QEMU with UEFI firmware, a blank virtio disk, the Arch ISO, and SSH forwarding (`localhost:2222 → :22`):

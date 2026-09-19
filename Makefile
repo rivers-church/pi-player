@@ -1,4 +1,4 @@
-.PHONY: build test run debug-tunnel debug-remote-start debug-local help
+.PHONY: build test test-race run debug-tunnel debug-remote-start debug-local help
 
 # Build the pi-player binary
 build:
@@ -7,6 +7,12 @@ build:
 # Run tests
 test:
 	go test -v ./...
+
+# Run tests with the race detector. Most of the concurrency the player does -
+# websockets, the directory watcher, overlapping API calls - is only checked
+# under -race, so run this before shipping.
+test-race:
+	go test -race -count=2 ./...
 
 # Run locally
 run:
@@ -47,6 +53,7 @@ help:
 	@echo ""
 	@echo "  make build               - Build the pi-player binary"
 	@echo "  make test                - Run tests"
+	@echo "  make test-race           - Run tests with the race detector"
 	@echo "  make run                 - Run locally"
 	@echo "  make debug-local         - Start local debugging server (delve)"
 	@echo "  make debug-tunnel        - SSH tunnel for remote debugging"
