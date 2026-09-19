@@ -93,14 +93,18 @@ type Presentation struct {
 }
 
 // NewPlaylist creates a new playlist with media in the designated folder.
+// A playlist is always returned, even when the directory watcher can't be
+// created: the player works without one, it just won't notice files appearing
+// on its own. Callers dereference the playlist on every page load, so handing
+// back nil here would panic inside a handler later.
 func NewPlaylist(p *Player, dir string) (*Playlist, error) {
 	pl := &Playlist{Name: dir}
 
-	var err error
-	pl.watcher, err = fsnotify.NewWatcher()
+	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		return nil, fmt.Errorf("error creating watcher: %v", err)
+		return pl, fmt.Errorf("error creating watcher: %v", err)
 	}
+	pl.watcher = watcher
 
 	go pl.watch(p)
 
@@ -307,6 +311,9 @@ func scanFolder(dir string) ([]Item, error) {
 
 // watch for changes in the supplied directory
 func (p *Playlist) watch(plr *Player) {
+	if p.watcher == nil {
+		return
+	}
 	defer p.watcher.Close()
 	for {
 		select {

@@ -96,8 +96,8 @@ func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 
 		if r.Method == http.MethodGet {
 			tempControl := TemplateHandler{
-				filename:      "login.html",
-				statTemplates: p.api.statTemplates,
+				filename:  "login.html",
+				templates: p.api.templates,
 				data: map[string]interface{}{
 					"location": p.conf.LocationName(),
 				},
@@ -152,8 +152,8 @@ func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 		}
 
 		tempControl := TemplateHandler{
-			statTemplates: p.api.statTemplates,
-			filename:      "login.html",
+			templates: p.api.templates,
+			filename:  "login.html",
 			data: map[string]interface{}{
 				"location":     p.conf.LocationName(),
 				"flashMessage": "Incorrect username or password",
@@ -165,14 +165,20 @@ func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 
 // LogoutHandler logs a user out and redirects them to the login page
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {
+	// A cookie that can't be decoded still yields a usable session here, and
+	// expiring it is exactly what logging out wants to do anyway.
 	session, err := store.Get(r, "piplayer-session")
 	if err != nil {
-		log.Println("error trying to get session in logout page")
+		log.Println("error trying to get session in logout page:", err)
+	}
+	if session == nil {
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
 	}
 
 	session.Options.MaxAge = -1
 	if err := session.Save(r, w); err != nil {
-		log.Println("error trying to set MaxAge on session to logout")
+		log.Println("error trying to set MaxAge on session to logout:", err)
 	}
 
 	http.Redirect(w, r, "/login", http.StatusFound)

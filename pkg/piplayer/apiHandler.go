@@ -4,6 +4,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io/fs"
 	"log"
 	"net/http"
@@ -15,23 +16,37 @@ type APIHandler struct {
 	test          string
 	statAssets    fs.FS
 	statTemplates fs.FS
+	templates     *template.Template
 }
 
-// NewAPIHandler creates a new APIHandler
-func NewAPIHandler(debug bool, test *string, statAssets, statTemplates embed.FS) APIHandler {
+// NewAPIHandler creates a new APIHandler. An error here means the embedded
+// assets or templates are missing, which every page would then fail on, so it
+// is reported rather than logged and worked around.
+func NewAPIHandler(debug bool, test *string, statAssets, statTemplates embed.FS) (APIHandler, error) {
 	subAssets, err := fs.Sub(statAssets, "pkg/piplayer/assets")
 	if err != nil {
-		if debug {
-			log.Println("Error loading assets:", err)
-		}
+		return APIHandler{}, fmt.Errorf("error loading embedded assets: %w", err)
 	}
 	subTemplates, err := fs.Sub(statTemplates, "pkg/piplayer/templates")
 	if err != nil {
-		if debug {
-			log.Println("Error loading templates:", err)
-		}
+		return APIHandler{}, fmt.Errorf("error loading embedded templates: %w", err)
 	}
-	return APIHandler{debug: debug, test: *test, statAssets: subAssets, statTemplates: subTemplates}
+
+	// Parse every page once at startup rather than on each request. The
+	// templates are embedded, so they can't change while the player runs, and
+	// a broken one is a build problem worth failing on immediately.
+	templates, err := template.ParseFS(subTemplates, "*.html")
+	if err != nil {
+		return APIHandler{}, fmt.Errorf("error parsing templates: %w", err)
+	}
+
+	return APIHandler{
+		debug:         debug,
+		test:          *test,
+		statAssets:    subAssets,
+		statTemplates: subTemplates,
+		templates:     templates,
+	}, nil
 }
 
 // Handles requests to the index page as well as any other requests

@@ -50,7 +50,10 @@ func main() {
 		log.Println("Debug mode enabled")
 	}
 
-	a := piplayer.NewAPIHandler(conf.DebugEnabled(), test, statAssets, statTemplates)
+	a, err := piplayer.NewAPIHandler(conf.DebugEnabled(), test, statAssets, statTemplates)
+	if err != nil {
+		log.Fatalf("Error setting up the web interface.\n%v", err)
+	}
 	kl := keylogger.NewKeyLogger(conf.Remote.Names)
 	p := piplayer.NewPlayer(&a, conf, kl)
 	p.Server = piplayer.NewServer(p, *addr)

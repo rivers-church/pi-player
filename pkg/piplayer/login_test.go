@@ -1,6 +1,7 @@
 package piplayer
 
 import (
+	"html/template"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -94,11 +95,7 @@ func TestLoginWorksOnFirstAttemptOverHTTP(t *testing.T) {
 func TestControlPageLoadsWithoutViewerConnection(t *testing.T) {
 	mediaDir := t.TempDir()
 	p := &Player{
-		api: &APIHandler{
-			statTemplates: fstest.MapFS{
-				"control.html": &fstest.MapFile{Data: []byte("control page")},
-			},
-		},
+		api:        testAPIHandler(t, map[string]string{"control.html": "control page"}),
 		conf:       &Config{Mount: mount{Dir: mediaDir}},
 		playlist:   &Playlist{},
 		ConnViewer: NewConnWS(),
@@ -170,4 +167,21 @@ func TestLoginPageRecoversFromUndecodableCookie(t *testing.T) {
 	if !authenticated {
 		t.Fatal("the replacement cookie did not create an authenticated session")
 	}
+}
+
+// testAPIHandler builds an APIHandler whose templates are the given stubs,
+// keyed by file name.
+func testAPIHandler(t *testing.T, files map[string]string) *APIHandler {
+	t.Helper()
+
+	fsys := fstest.MapFS{}
+	for name, body := range files {
+		fsys[name] = &fstest.MapFile{Data: []byte(body)}
+	}
+
+	templates, err := template.ParseFS(fsys, "*.html")
+	if err != nil {
+		t.Fatalf("parsing test templates failed: %v", err)
+	}
+	return &APIHandler{statTemplates: fsys, templates: templates}
 }

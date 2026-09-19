@@ -219,8 +219,8 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 				mu = mountURL.String()
 			}
 			tempControl := TemplateHandler{
-				filename:      "settings.html",
-				statTemplates: p.api.statTemplates,
+				filename:  "settings.html",
+				templates: p.api.templates,
 				data: map[string]any{
 					"location": conf.LocationName(),
 					"debug":    conf.DebugEnabled(),

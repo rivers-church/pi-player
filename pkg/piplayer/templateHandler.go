@@ -1,36 +1,40 @@
 package piplayer
 
 import (
+	"bytes"
 	"html/template"
-	"io/fs"
 	"log"
 	"net/http"
 )
 
-// TemplateHandler handles rendering html templates
+// TemplateHandler renders one of the parsed html templates.
 type TemplateHandler struct {
-	// once     sync.Once
-	filename      string
-	templ         *template.Template
-	data          map[string]any
-	statTemplates fs.FS
+	filename  string
+	data      map[string]any
+	templates *template.Template
 }
 
 // ServeHTTP handles HTTP requests for the templates
 func (t *TemplateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// once keeps track of which of these anonymous functions have already been called,
-	// and stores their result. If they are called again it just returns the stored result.
-	// t.once.Do(func(){
-
-	// t.templ = template.Must(template.ParseFiles(filepath.Join(templateDir, t.filename)))
-	var err error
-	t.templ, err = template.New(t.filename).ParseFS(t.statTemplates, t.filename)
-	if err != nil {
-		panic(err)
+	if t.templates == nil {
+		log.Println("no templates available to render: ", t.filename)
+		http.Error(w, "Could not render the page.", http.StatusInternalServerError)
+		return
 	}
 
-	err = t.templ.Execute(w, t.data)
-	if err != nil {
+	// Render into a buffer first. Writing straight to the response commits a
+	// 200 and part of the page before a failure halfway through the template
+	// can be reported, which leaves the browser with a truncated page and the
+	// error only in the log.
+	var page bytes.Buffer
+	if err := t.templates.ExecuteTemplate(&page, t.filename, t.data); err != nil {
 		log.Println("Error trying to render page: ", t.filename, err)
+		http.Error(w, "Could not render the page.", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if _, err := page.WriteTo(w); err != nil {
+		log.Println("Error trying to write page: ", t.filename, err)
 	}
 }

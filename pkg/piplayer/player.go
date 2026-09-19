@@ -1,10 +1,10 @@
 package piplayer
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"html/template"
 	"log"
 	"net"
 	"net/http"
@@ -71,22 +71,37 @@ func getLocalIPs() []string {
 	return ips
 }
 
+// renderErrorPage shows the operator what went wrong and how to reach the
+// player, with a 500 so the failure isn't reported to the browser as success.
 func (p *Player) renderErrorPage(w http.ResponseWriter, err error, redirect string) {
+	port := ""
+	if p.Server != nil {
+		port = strings.TrimPrefix(p.Server.Addr, ":")
+	}
 	data := errorPageData{
 		Error:    err.Error(),
 		Dir:      p.conf.MediaDir(),
 		IPs:      getLocalIPs(),
-		Port:     strings.TrimPrefix(p.Server.Addr, ":"),
+		Port:     port,
 		Redirect: redirect,
 	}
-	t, tmplErr := template.New("error.html").ParseFS(p.api.statTemplates, "error.html")
-	if tmplErr != nil {
-		log.Println("Error loading error template:", tmplErr)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+	var page bytes.Buffer
+	if p.api.templates == nil {
+		log.Println("no templates available to render the error page")
+		http.Error(w, "Something went wrong.", http.StatusInternalServerError)
 		return
 	}
-	if tmplErr = t.Execute(w, data); tmplErr != nil {
+	if tmplErr := p.api.templates.ExecuteTemplate(&page, "error.html", data); tmplErr != nil {
 		log.Println("Error rendering error page:", tmplErr)
+		http.Error(w, "Something went wrong.", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusInternalServerError)
+	if _, wErr := page.WriteTo(w); wErr != nil {
+		log.Println("Error writing error page:", wErr)
 	}
 }
 
@@ -286,8 +301,8 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 	view := p.playlist.snapshot()
 
 	tempControl := TemplateHandler{
-		filename:      "control.html",
-		statTemplates: p.api.statTemplates,
+		filename:  "control.html",
+		templates: p.api.templates,
 		data: map[string]any{
 			"location": p.conf.LocationName(),
 			"Mount":    p.conf.MountURL(),
@@ -319,15 +334,13 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 	tempControl.ServeHTTP(w, r)
 }
 
-// TODO: The Two handlers below only apply to the Chrome player, should they be moved
-// the the chrome streamer file? surely not, because they belong to player right?
-
 // HandleDirCheck returns whether the configured media directory currently exists.
 func (p *Player) HandleDirCheck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	ok := exists(p.conf.MediaDir())
-	if ok {
-		if err := p.playlist.watcher.Add(p.conf.MediaDir()); err != nil {
+	dir := p.conf.MediaDir()
+	ok := exists(dir)
+	if ok && p.playlist.watcher != nil {
+		if err := p.playlist.watcher.Add(dir); err != nil {
 			log.Println("HandleDirCheck: error adding watcher:", err)
 		}
 	}
@@ -344,8 +357,8 @@ func (p *Player) HandleViewer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	th := TemplateHandler{
-		filename:      "viewer.html",
-		statTemplates: p.api.statTemplates,
+		filename:  "viewer.html",
+		templates: p.api.templates,
 		data: map[string]any{
 			"playlist": p.playlist.snapshot(),
 		},
