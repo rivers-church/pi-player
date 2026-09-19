@@ -349,23 +349,7 @@ func (p *Player) handleAPI(msg reqMessage, w http.ResponseWriter) {
 
 // HandleControl Scan the folder for new files every time the page reloads and display contents
 func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
-	_, loggedIn, err := p.CheckLogin(w, r)
-	if err != nil {
-		log.Println("error trying to retrieve session on login page:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if !loggedIn {
-		if p.conf.DebugEnabled() {
-			log.Println("User not logged in. Redirecting to login page.")
-		}
-		http.Redirect(w, r, "/login", http.StatusFound)
-		return
-	}
-
-	err = p.playlist.fromFolder(p.conf.MediaDir())
-
-	if err != nil {
+	if err := p.playlist.fromFolder(p.conf.MediaDir()); err != nil {
 		log.Println("HandleControl: Error trying to read files from directory:\n", err)
 		p.renderErrorPage(w, err, "/control")
 		return
@@ -380,7 +364,6 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 			"location": p.conf.LocationName(),
 			"Mount":    p.conf.MountURL(),
 			"playlist": view,
-			"error":    err,
 		},
 	}
 

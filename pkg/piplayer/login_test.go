@@ -188,7 +188,9 @@ func testAPIHandler(t *testing.T, files map[string]string) *APIHandler {
 	if err != nil {
 		t.Fatalf("parsing test templates failed: %v", err)
 	}
-	return &APIHandler{statTemplates: fsys, templates: templates}
+	// statAssets is the same stub filesystem: the asset route needs something
+	// non-nil to serve from.
+	return &APIHandler{statAssets: fsys, statTemplates: fsys, templates: templates}
 }
 
 // TestSessionKeyIsPerDevice checks a cookie minted by one player is refused by

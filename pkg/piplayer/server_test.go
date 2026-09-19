@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -150,5 +151,92 @@ func TestViewerURLFollowsServerPort(t *testing.T) {
 
 	if got, want := p.viewerURL(), "http://localhost:9090/viewer"; got != want {
 		t.Errorf("viewerURL() = %q, want %q", got, want)
+	}
+}
+
+// TestRouteAuth pins down which routes need a session. /api used to let any
+// host on the network drive playback and list the media directory, and
+// /ws/viewer let anyone kick the display off its socket.
+func TestRouteAuth(t *testing.T) {
+	mediaDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(mediaDir, "a.txt"), []byte("media"), 0o644); err != nil {
+		t.Fatalf("writing fixture failed: %v", err)
+	}
+
+	p := &Player{
+		api:         testAPIHandler(t, map[string]string{"control.html": "control", "viewer.html": "viewer", "settings.html": "settings"}),
+		conf:        &Config{Mount: mount{Dir: mediaDir}},
+		playlist:    &Playlist{},
+		store:       newSessionStore(testSessionKey),
+		ConnViewer:  NewConnWS(),
+		ConnControl: NewConnWS(),
+	}
+	mux := setupRoutes(p)
+	cookie := authenticatedCookie(t, p)
+
+	const lan = "192.168.1.50:40000"
+	const local = "127.0.0.1:40000"
+
+	cases := []struct {
+		name       string
+		method     string
+		path       string
+		remoteAddr string
+		cookie     bool
+		wantAllow  bool
+	}{
+		{"api from the network without a session", http.MethodPost, "/api", lan, false, false},
+		{"api with a session", http.MethodPost, "/api", lan, true, true},
+		{"dircheck from the network without a session", http.MethodGet, "/api/dircheck", lan, false, false},
+		{"control from the network without a session", http.MethodGet, "/control", lan, false, false},
+		{"settings from the network without a session", http.MethodGet, "/settings", lan, false, false},
+		{"media from the network without a session", http.MethodGet, "/content/a.txt", lan, false, false},
+		{"media from the kiosk browser", http.MethodGet, "/content/a.txt", local, false, true},
+		{"media from the network with a session", http.MethodGet, "/content/a.txt", lan, true, true},
+		{"viewer from the kiosk browser", http.MethodGet, "/viewer", local, false, true},
+		{"viewer from the network without a session", http.MethodGet, "/viewer", lan, false, false},
+		{"assets are always served", http.MethodGet, "/assets/control.html", lan, false, true},
+		{"login page is always served", http.MethodGet, "/login", lan, false, true},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			request := httptest.NewRequest(c.method, c.path, strings.NewReader(`{"component":"playlist","method":"getCurrent"}`))
+			request.Header.Set("Content-Type", "application/json")
+			request.RemoteAddr = c.remoteAddr
+			if c.cookie {
+				request.AddCookie(cookie)
+			}
+			recorder := httptest.NewRecorder()
+
+			mux.ServeHTTP(recorder, request)
+
+			refused := recorder.Code == http.StatusUnauthorized ||
+				(recorder.Code == http.StatusFound && recorder.Header().Get("Location") == "/login")
+			if c.wantAllow && refused {
+				t.Errorf("%s %s was refused with status %d, want it allowed", c.method, c.path, recorder.Code)
+			}
+			if !c.wantAllow && !refused {
+				t.Errorf("%s %s was allowed with status %d, want it refused", c.method, c.path, recorder.Code)
+			}
+		})
+	}
+}
+
+func TestIsLoopback(t *testing.T) {
+	cases := map[string]bool{
+		"127.0.0.1:40000":     true,
+		"[::1]:40000":         true,
+		"192.168.1.50:40000":  true,
+		"10.0.0.1:80":         true,
+		"127.0.0.1":           true,
+		"not-an-address":      false,
+		"999.999.999.999:123": false,
+	}
+	for addr, loopback := range cases {
+		want := loopback && (addr == "127.0.0.1:40000" || addr == "[::1]:40000" || addr == "127.0.0.1")
+		if got := isLoopback(addr); got != want {
+			t.Errorf("isLoopback(%q) = %v, want %v", addr, got, want)
+		}
 	}
 }

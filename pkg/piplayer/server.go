@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -32,31 +34,78 @@ func NewServer(p *Player, addr string) *http.Server {
 	}
 }
 
+// requireLogin refuses the request unless it carries a logged-in session.
+// Browsers are sent to the login page; the API gets a 401 it can act on.
+func requireLogin(p *Player, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if _, loggedIn, _ := p.CheckLogin(w, r); !loggedIn {
+			if p.conf.DebugEnabled() {
+				log.Printf("refusing %s %s from %s: not logged in\n", r.Method, r.URL.Path, r.RemoteAddr)
+			}
+			if strings.HasPrefix(r.URL.Path, "/api") {
+				http.Error(w, `{"success":false,"message":"not logged in"}`, http.StatusUnauthorized)
+				return
+			}
+			http.Redirect(w, r, "/login", http.StatusFound)
+			return
+		}
+		next(w, r)
+	}
+}
+
+// requireLoginOrLocal allows a logged-in session or a request from this
+// machine. The kiosk browser opens the viewer on localhost without ever
+// logging in, but nothing on the network should be able to read the media
+// directory or take the display's socket away from it.
+func requireLoginOrLocal(p *Player, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if isLoopback(r.RemoteAddr) {
+			next(w, r)
+			return
+		}
+		requireLogin(p, next)(w, r)
+	}
+}
+
+// isLoopback reports whether the request came from this machine.
+func isLoopback(remoteAddr string) bool {
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		host = remoteAddr
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
+}
+
 // setupRoutes registers the routes for the server.
 func setupRoutes(p *Player) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	// Patterns carry their method, so the mux answers anything else with a 405
 	// and the handlers below don't have to check r.Method themselves.
+	// Static assets carry nothing worth protecting and the login page needs
+	// its stylesheet before anyone can log in.
 	mux.Handle("GET /assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(p.api.statAssets))))
-	mux.HandleFunc("GET /content/", contentHandler(p))
 
 	login := LoginHandler(p)
 	mux.HandleFunc("GET /login", login)
 	mux.HandleFunc("POST /login", login)
 	mux.HandleFunc("POST /logout", p.LogoutHandler)
+	mux.HandleFunc("GET /{$}", p.handlerHome)
 
 	settings := p.conf.SettingsHandler(p)
-	mux.HandleFunc("GET /settings", settings)
-	mux.HandleFunc("POST /settings", settings)
+	mux.HandleFunc("GET /settings", requireLogin(p, settings))
+	mux.HandleFunc("POST /settings", requireLogin(p, settings))
 
-	mux.HandleFunc("GET /control", p.HandleControl)
-	mux.HandleFunc("GET /viewer", p.HandleViewer)
-	mux.HandleFunc("GET /ws/viewer", p.ConnViewer.HandlerWebsocket(p))
-	mux.HandleFunc("GET /ws/control", p.ConnControl.HandlerWebsocket(p))
-	mux.HandleFunc("POST /api", p.api.Handle(p))
-	mux.HandleFunc("GET /api/dircheck", p.HandleDirCheck)
-	mux.HandleFunc("GET /{$}", p.handlerHome)
+	mux.HandleFunc("GET /control", requireLogin(p, p.HandleControl))
+	mux.HandleFunc("GET /ws/control", requireLogin(p, p.ConnControl.HandlerWebsocket(p)))
+	mux.HandleFunc("POST /api", requireLogin(p, p.api.Handle(p)))
+	mux.HandleFunc("GET /api/dircheck", requireLogin(p, p.HandleDirCheck))
+
+	// The kiosk browser reaches these from localhost without a session.
+	mux.HandleFunc("GET /content/", requireLoginOrLocal(p, contentHandler(p)))
+	mux.HandleFunc("GET /viewer", requireLoginOrLocal(p, p.HandleViewer))
+	mux.HandleFunc("GET /ws/viewer", requireLoginOrLocal(p, p.ConnViewer.HandlerWebsocket(p)))
 
 	return mux
 }

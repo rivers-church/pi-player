@@ -3,6 +3,8 @@ package piplayer
 import (
 	"log"
 	"net/http"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -27,6 +29,24 @@ const (
 var upgrader = &websocket.Upgrader{
 	ReadBufferSize:  readBufferSize,
 	WriteBufferSize: writeBufferSize,
+	CheckOrigin:     sameOrigin,
+}
+
+// sameOrigin reports whether a websocket request came from a page this server
+// served. gorilla's default allows a request with no Origin header at all,
+// which is every non-browser client.
+func sameOrigin(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		// Not a browser. The kiosk viewer's own tooling runs on this machine.
+		return isLoopback(r.RemoteAddr)
+	}
+
+	u, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+	return strings.EqualFold(u.Host, r.Host)
 }
 
 // ConnectionWS represents a WebSocket connection to one browser page.
