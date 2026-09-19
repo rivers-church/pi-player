@@ -84,7 +84,7 @@ func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 		session, loggedIn, err := p.CheckLogin(w, r)
 		if err != nil {
 			log.Println("error trying to retrieve session on login page:", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "Could not read the session.", http.StatusInternalServerError)
 			return
 		}
 
@@ -126,8 +126,8 @@ func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 			}
 			var err error
 			if creds, err = newLogin(); err != nil {
-				log.Println("error trying to save default username and password")
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				log.Println("error trying to save default username and password:", err)
+				http.Error(w, "Could not create the default login.", http.StatusInternalServerError)
 				return
 			}
 			p.conf.SetCredentials(creds)
@@ -148,7 +148,7 @@ func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 			session.Values = map[any]any{"authenticated": r.RemoteAddr}
 			if err := session.Save(r, w); err != nil {
 				log.Println("error trying to save login session:", err)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				http.Error(w, "Could not start the session.", http.StatusInternalServerError)
 				return
 			}
 			http.Redirect(w, r, "/control", http.StatusFound)

@@ -120,6 +120,7 @@ func NewPlaylist(p *Player, dir string) (*Playlist, error) {
 // Handles requests to the playlist api
 func (p *Playlist) handleAPI(plr *Player, msg reqMessage, w http.ResponseWriter) {
 	var m resMessage
+	status := http.StatusOK
 
 	switch msg.Method {
 	case "getCurrent":
@@ -141,6 +142,7 @@ func (p *Playlist) handleAPI(plr *Player, msg reqMessage, w http.ResponseWriter)
 				Success: false,
 				Event:   "noArgumentSupplied",
 			}
+			status = http.StatusBadRequest
 			break
 		}
 
@@ -154,6 +156,7 @@ func (p *Playlist) handleAPI(plr *Player, msg reqMessage, w http.ResponseWriter)
 				Success: false,
 				Event:   "argumentInvalid",
 			}
+			status = http.StatusBadRequest
 			break
 		}
 
@@ -185,9 +188,15 @@ func (p *Playlist) handleAPI(plr *Player, msg reqMessage, w http.ResponseWriter)
 		}
 	default:
 		log.Printf("API call unsupported. Ignoring:\n%v\n", msg)
+		m = resMessage{
+			Success: false,
+			Event:   "unsupportedMethod",
+			Message: "Unsupported method: " + msg.Method,
+		}
+		status = http.StatusNotFound
 	}
 
-	json.NewEncoder(w).Encode(m)
+	writeAPIResponse(w, status, &m)
 }
 
 // fromFolder rescans dir and replaces the playlist's items with what it finds.

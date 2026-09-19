@@ -49,17 +49,29 @@ func NewAPIHandler(debug bool, test *string, statAssets, statTemplates embed.FS)
 	}, nil
 }
 
+// writeAPIResponse sends an API response with a status code that matches what
+// happened. The body shape stays the same either way, so the frontend's
+// success checks keep working.
+func writeAPIResponse(w http.ResponseWriter, status int, m *resMessage) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	if err := json.NewEncoder(w).Encode(m); err != nil {
+		log.Printf("error writing API response: %v\n", err)
+	}
+}
+
 // Handle handles all calls to the API
 func (a *APIHandler) Handle(p *Player) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
 		// ignore anything that's not a application/json request
 		ct := r.Header.Get("Content-Type")
 		if ct != "application/json" {
-			m := &resMessage{Success: false, Message: "Invalid Content-Type: " + ct}
-			log.Println(m.Message)
-			json.NewEncoder(w).Encode(m)
+			log.Println("Invalid Content-Type:", ct)
+			writeAPIResponse(w, http.StatusUnsupportedMediaType, &resMessage{
+				Success: false,
+				Event:   "invalidContentType",
+				Message: "Invalid Content-Type: " + ct,
+			})
 			return
 		}
 
@@ -67,9 +79,12 @@ func (a *APIHandler) Handle(p *Player) http.HandlerFunc {
 		// keeping the message on it lets concurrent calls overwrite each other.
 		var msg reqMessage
 		if err := json.NewDecoder(r.Body).Decode(&msg); err != nil {
-			m := &resMessage{Success: false, Message: "Error decoding JSON request: " + err.Error()}
-			log.Println(m.Message)
-			json.NewEncoder(w).Encode(m)
+			log.Println("Error decoding JSON request:", err)
+			writeAPIResponse(w, http.StatusBadRequest, &resMessage{
+				Success: false,
+				Event:   "invalidJSON",
+				Message: "Could not decode the JSON request.",
+			})
 			return
 		}
 
@@ -92,12 +107,12 @@ func (a *APIHandler) handleMessage(p *Player, msg reqMessage, w http.ResponseWri
 		return
 	}
 
-	// return a generic success message for debugging
 	m := &resMessage{
-		Success: true,
-		Message: fmt.Sprintf("Message Received:\ncomponent: %s\nmethod: %s\narguments: %v\n", msg.Component, msg.Method, msg.Arguments),
+		Success: false,
+		Event:   "unsupportedComponent",
+		Message: fmt.Sprintf("Unsupported component: %s (method: %s, arguments: %v)", msg.Component, msg.Method, msg.Arguments),
 	}
-	json.NewEncoder(w).Encode(m)
+	writeAPIResponse(w, http.StatusNotFound, m)
 
 	if a.debug {
 		log.Println(m.Message)

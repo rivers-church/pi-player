@@ -303,14 +303,13 @@ func (p *Player) Close() {
 	p.stopBrowser()
 }
 
-func handleAPIError(w http.ResponseWriter, message string) {
-	m := &resMessage{
+func handleAPIError(w http.ResponseWriter, status int, message string) {
+	log.Println("api error:", message)
+	writeAPIResponse(w, status, &resMessage{
 		Success: false,
+		Event:   "error",
 		Message: message,
-	}
-
-	log.Println(m)
-	json.NewEncoder(w).Encode(m)
+	})
 }
 
 // handleAPI handles requests to the player api
@@ -326,7 +325,7 @@ func (p *Player) handleAPI(msg reqMessage, w http.ResponseWriter) {
 	}
 
 	if _, ok := supportedAPIMethods[msg.Method]; !ok {
-		handleAPIError(w, "Method not supported: "+msg.Method)
+		handleAPIError(w, http.StatusNotFound, "Method not supported: "+msg.Method)
 		return
 	}
 
@@ -343,8 +342,11 @@ func (p *Player) handleAPI(msg reqMessage, w http.ResponseWriter) {
 
 	p.ConnViewer.trySend(res)
 
-	m := &resMessage{Success: true, Event: "StartRequestSent", Message: index}
-	json.NewEncoder(w).Encode(m)
+	writeAPIResponse(w, http.StatusOK, &resMessage{
+		Success: true,
+		Event:   "StartRequestSent",
+		Message: index,
+	})
 }
 
 // HandleControl Scan the folder for new files every time the page reloads and display contents
@@ -395,8 +397,8 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 func (p *Player) handlerHome(w http.ResponseWriter, r *http.Request) {
 	_, loggedIn, err := p.CheckLogin(w, r)
 	if err != nil {
-		log.Println("error trying to retrieve session on login page:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Println("error trying to retrieve session on the home page:", err)
+		http.Error(w, "Could not read the session.", http.StatusInternalServerError)
 		return
 	}
 	if loggedIn {
@@ -418,7 +420,9 @@ func (p *Player) HandleDirCheck(w http.ResponseWriter, r *http.Request) {
 			log.Println("HandleDirCheck: error adding watcher:", err)
 		}
 	}
-	json.NewEncoder(w).Encode(map[string]bool{"ok": ok})
+	if err := json.NewEncoder(w).Encode(map[string]bool{"ok": ok}); err != nil {
+		log.Printf("error writing the directory check response: %v\n", err)
+	}
 }
 
 // HandleViewer handles requests to the image viewer page
