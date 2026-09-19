@@ -3,10 +3,15 @@ package piplayer
 import (
 	"embed"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/17xande/configdir"
 )
 
 // emptyAssets stands in for the embedded asset FS. The logo copy is best-effort,
@@ -124,5 +129,69 @@ func TestConfigSaveIsValidJSON(t *testing.T) {
 	var out map[string]any
 	if err := json.Unmarshal(data, &out); err != nil {
 		t.Errorf("written config.json is not valid JSON: %v", err)
+	}
+}
+
+func TestSettingsHandlerSavesNewCredentials(t *testing.T) {
+	// Point configdir at a temp dir so conf.Save() writes there instead of the
+	// real user config, then check the new password survives a reload.
+	configHome := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", configHome)
+	configdir.Refresh()
+	t.Cleanup(configdir.Refresh)
+	configPath := filepath.Join(configHome, "pi-player")
+	if err := os.MkdirAll(configPath, 0755); err != nil {
+		t.Fatalf("creating temp config dir failed: %v", err)
+	}
+
+	login, err := newLogin()
+	if err != nil {
+		t.Fatalf("creating default login failed: %v", err)
+	}
+	mediaDir := t.TempDir()
+	conf := &Config{
+		Location: "PiPlayer",
+		Mount:    mount{URL: sURL{URL: &url.URL{Path: mediaDir}}, Dir: mediaDir},
+		Login:    login,
+	}
+	p := &Player{conf: conf, api: &APIHandler{}}
+
+	form := url.Values{
+		"username": {"alex"},
+		"password": {"a new password"},
+	}.Encode()
+	request := httptest.NewRequest(http.MethodPost, "http://piplayer.local/settings", strings.NewReader(form))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	sessionRecorder := httptest.NewRecorder()
+	session, err := store.Get(request, "piplayer-session")
+	if err != nil {
+		t.Fatalf("creating authenticated session failed: %v", err)
+	}
+	session.Values["authenticated"] = "test"
+	if err := session.Save(request, sessionRecorder); err != nil {
+		t.Fatalf("saving authenticated session failed: %v", err)
+	}
+	request.AddCookie(sessionRecorder.Result().Cookies()[0])
+
+	recorder := httptest.NewRecorder()
+	conf.SettingsHandler(p).ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("settings post returned status %d; want %d", recorder.Code, http.StatusSeeOther)
+	}
+
+	data, err := os.ReadFile(filepath.Join(configPath, "config.json"))
+	if err != nil {
+		t.Fatalf("settings post did not write the config file: %v", err)
+	}
+	var saved Config
+	if err := json.Unmarshal(data, &saved); err != nil {
+		t.Fatalf("saved config is not valid JSON: %v", err)
+	}
+	if saved.Login.Username != "alex" {
+		t.Errorf("saved username is %q; want %q", saved.Login.Username, "alex")
+	}
+	if !checkHash("a new password", saved.Login.Password) {
+		t.Error("the new password was not persisted to the config file")
 	}
 }

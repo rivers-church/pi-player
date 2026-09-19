@@ -14,8 +14,22 @@ type Login struct {
 	Password string
 }
 
-// TODO: use an random env variable instead of hard coding the secret here.
-var store = sessions.NewCookieStore([]byte("ip-player-session-secret"))
+// TODO: use a random environment variable instead of hard coding the secret here.
+var store = newSessionStore()
+
+func newSessionStore() *sessions.CookieStore {
+	store := sessions.NewCookieStore([]byte("ip-player-session-secret"))
+	store.Options = &sessions.Options{
+		Path:     "/",
+		MaxAge:   86400 * 30,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		// PiPlayer is normally administered over its local HTTP server.
+		Secure: false,
+	}
+	store.MaxAge(store.Options.MaxAge)
+	return store
+}
 
 // newLogin creates the default login credentials if none are found
 func newLogin() (Login, error) {
@@ -40,7 +54,16 @@ func checkHash(password, hash string) bool {
 func CheckLogin(w http.ResponseWriter, r *http.Request) (*sessions.Session, bool, error) {
 	session, err := store.Get(r, "piplayer-session")
 	if err != nil {
-		return nil, false, err
+		if session == nil {
+			return nil, false, err
+		}
+		// A cookie that can't be decoded (signed with an older secret, tampered
+		// with, or past the codec's MaxAge) isn't a server error: the store
+		// still hands back a usable, empty session. Treat it as "not logged in"
+		// so the user gets the login page instead of a 500 on every route,
+		// which would lock them out until they cleared their cookies by hand.
+		log.Println("discarding session cookie that could not be decoded:", err)
+		return session, false, nil
 	}
 
 	_, authenticated := session.Values["authenticated"]
@@ -50,6 +73,12 @@ func CheckLogin(w http.ResponseWriter, r *http.Request) (*sessions.Session, bool
 
 // LoginHandler handles login requests
 func LoginHandler(p *Player) http.HandlerFunc {
+	return loginHandler(p, p.conf.Save)
+}
+
+// loginHandler accepts the config save operation separately so first-run login
+// behavior can be tested without writing to the user's real config directory.
+func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		session, loggedIn, err := CheckLogin(w, r)
 		if err != nil {
@@ -104,7 +133,7 @@ func LoginHandler(p *Player) http.HandlerFunc {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			if err := p.conf.Save(); err != nil {
+			if err := saveConfig(); err != nil {
 				log.Println("error trying to save config file:", err)
 			}
 		}
@@ -115,12 +144,12 @@ func LoginHandler(p *Player) http.HandlerFunc {
 				log.Printf("login successful from %s\n", r.RemoteAddr)
 			}
 
-			store.Options = &sessions.Options{
-				Secure: false,
-			}
-
 			session.Values["authenticated"] = r.RemoteAddr
-			session.Save(r, w)
+			if err := session.Save(r, w); err != nil {
+				log.Println("error trying to save login session:", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 			http.Redirect(w, r, "/control", http.StatusFound)
 			return
 		}
@@ -145,9 +174,6 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	session.Options.MaxAge = -1
-	store.Options = &sessions.Options{
-		Secure: false,
-	}
 	if err := session.Save(r, w); err != nil {
 		log.Println("error trying to set MaxAge on session to logout")
 	}

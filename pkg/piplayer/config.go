@@ -186,6 +186,12 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 			} else {
 				conf.Login.Username = username
 				conf.Login.Password = password
+				// Persist the new credentials right away. Without this the
+				// change only lives in memory and the old password comes back
+				// on the next restart.
+				if err := conf.Save(); err != nil {
+					log.Println("error trying to save new login details:", err)
+				}
 			}
 		}
 

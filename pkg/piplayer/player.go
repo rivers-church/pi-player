@@ -193,7 +193,7 @@ func (p *Player) startBrowser() error {
 		"--enable-features=UseOzonePlatform",
 		"--ozone-platform=wayland",
 		"--autoplay-policy=no-user-gesture-required",
-		"--disk-cache-dir=/dev/null", //this sets the cache store location to null 
+		"--disk-cache-dir=/dev/null", //this sets the cache store location to null
 		"--aggressive-cache-discard", //in theory this clears the chrome cache
 		"http://localhost:8080/viewer",
 	}
@@ -337,8 +337,10 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 		Message:   "control page was refreshed. Get new items.",
 	}
 
-	send := p.ConnViewer.getChanSend()
-	send <- msg
+	if p.ConnViewer.isActive() {
+		send := p.ConnViewer.getChanSend()
+		send <- msg
+	}
 	tempControl.ServeHTTP(w, r)
 }
 
