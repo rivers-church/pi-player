@@ -19,7 +19,9 @@ type mount struct {
 
 func (u sURL) MarshalJSON() ([]byte, error) {
 	if u.URL == nil {
-		return make([]byte, 0), nil
+		// An empty byte slice isn't valid JSON: it makes the whole config
+		// fail to marshal with "unexpected end of JSON input".
+		return []byte("null"), nil
 	}
 	un, err := url.PathUnescape(u.URL.String())
 	if err != nil {
@@ -43,15 +45,10 @@ func (u *sURL) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// func (m *mount) loadDir() {
-//
-// 	m.Dir = m.URL.Path
-// }
-
-// exists checks if a directory exists.
+// exists checks if a directory exists. Anything that isn't a plain "not
+// there" - a permission problem, a broken network mount - counts as missing
+// too, because the player can't read it either way.
 func exists(path string) bool {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return false
-	}
-	return true
+	_, err := os.Stat(path)
+	return err == nil
 }

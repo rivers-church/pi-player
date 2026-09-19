@@ -331,3 +331,27 @@ func TestConfigLoadAddsSessionKeyToOlderConfig(t *testing.T) {
 		t.Error("the generated session key was not written back to the config file")
 	}
 }
+
+// TestSaveConfigWithoutMount covers a config that has no media directory set.
+// sURL.MarshalJSON returned an empty byte slice for a nil URL, which is not
+// valid JSON, so saving failed with "unexpected end of JSON input".
+func TestSaveConfigWithoutMount(t *testing.T) {
+	configPath := t.TempDir()
+	conf := &Config{Location: "PiPlayer"}
+
+	if err := conf.saveToPath(configPath); err != nil {
+		t.Fatalf("saving a config with no mount failed: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(configPath, "config.json"))
+	if err != nil {
+		t.Fatalf("reading the saved config failed: %v", err)
+	}
+	var saved Config
+	if err := json.Unmarshal(data, &saved); err != nil {
+		t.Fatalf("saved config is not valid JSON: %v", err)
+	}
+	if saved.Location != "PiPlayer" {
+		t.Errorf("saved location is %q, want %q", saved.Location, "PiPlayer")
+	}
+}
