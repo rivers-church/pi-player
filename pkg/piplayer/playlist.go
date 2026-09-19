@@ -51,10 +51,10 @@ func NewPlaylist(p *Player, dir string) (*Playlist, error) {
 }
 
 // Handles requests to the playlist api
-func (p *Playlist) handleAPI(plr *Player, w http.ResponseWriter, _ *http.Request) {
+func (p *Playlist) handleAPI(plr *Player, msg reqMessage, w http.ResponseWriter) {
 	var m resMessage
 
-	switch plr.api.message.Method {
+	switch msg.Method {
 	case "getCurrent":
 		if p.Current != nil {
 			m = resMessage{
@@ -69,7 +69,7 @@ func (p *Playlist) handleAPI(plr *Player, w http.ResponseWriter, _ *http.Request
 			}
 		}
 	case "setCurrent":
-		if len(plr.api.message.Arguments) == 0 {
+		if len(msg.Arguments) == 0 {
 			m = resMessage{
 				Success: false,
 				Event:   "noArgumentSupplied",
@@ -77,7 +77,7 @@ func (p *Playlist) handleAPI(plr *Player, w http.ResponseWriter, _ *http.Request
 			break
 		}
 
-		index, err := strconv.Atoi(plr.api.message.Arguments["index"])
+		index, err := strconv.Atoi(msg.Arguments["index"])
 		if err != nil {
 			log.Printf("Error converting argument to int: playlist.HandleAPI.setCurrent\n%v", err)
 		}
@@ -123,7 +123,7 @@ func (p *Playlist) handleAPI(plr *Player, w http.ResponseWriter, _ *http.Request
 			Message: p.itemsString(),
 		}
 	default:
-		log.Printf("API call unsupported. Ignoring:\n%v\n", plr.api.message)
+		log.Printf("API call unsupported. Ignoring:\n%v\n", msg)
 	}
 
 	json.NewEncoder(w).Encode(m)

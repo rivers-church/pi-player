@@ -13,7 +13,6 @@ import (
 type APIHandler struct {
 	debug         bool
 	test          string
-	message       reqMessage
 	statAssets    fs.FS
 	statTemplates fs.FS
 }
@@ -67,49 +66,43 @@ func (a *APIHandler) Handle(p *Player) http.HandlerFunc {
 			return
 		}
 
-		// decode message
-		a.message = reqMessage{}
-		decoder := json.NewDecoder(r.Body)
-		err := decoder.Decode(&a.message)
-		if err != nil {
+		// Decode into a local: the APIHandler is shared by every request, so
+		// keeping the message on it lets concurrent calls overwrite each other.
+		var msg reqMessage
+		if err := json.NewDecoder(r.Body).Decode(&msg); err != nil {
 			m := &resMessage{Success: false, Message: "Error decoding JSON request: " + err.Error()}
 			log.Println(m.Message)
 			json.NewEncoder(w).Encode(m)
-			r.Body.Close()
 			return
 		}
 
-		a.handleMessage(p, w, r)
+		a.handleMessage(p, msg, w)
 	}
 }
 
-func (a *APIHandler) handleMessage(p *Player, w http.ResponseWriter, r *http.Request) {
+func (a *APIHandler) handleMessage(p *Player, msg reqMessage, w http.ResponseWriter) {
 	if a.debug {
-		log.Printf("message received: %#v\n", a.message)
+		log.Printf("message received: %#v\n", msg)
 	}
 
 	// dispatch execution based on which component was called
-	// in this case, the Player component
-	if a.message.Component == "player" {
-		p.ServeHTTP(w, r)
+	switch msg.Component {
+	case "player":
+		p.handleAPI(msg, w)
 		return
-	}
-
-	if a.message.Component == "playlist" {
-		p.playlist.handleAPI(p, w, r)
+	case "playlist":
+		p.playlist.handleAPI(p, msg, w)
 		return
 	}
 
 	// return a generic success message for debugging
 	m := &resMessage{
 		Success: true,
-		Message: fmt.Sprintf("Message Received:\ncomponent: %s\nmethod: %s\narguments: %v\n", a.message.Component, a.message.Method, a.message.Arguments),
+		Message: fmt.Sprintf("Message Received:\ncomponent: %s\nmethod: %s\narguments: %v\n", msg.Component, msg.Method, msg.Arguments),
 	}
 	json.NewEncoder(w).Encode(m)
 
-	r.Body.Close()
-
-	if p.api.debug {
+	if a.debug {
 		log.Println(m.Message)
 	}
 }

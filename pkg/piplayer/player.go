@@ -159,29 +159,6 @@ func (p *Player) FirstRun() {
 
 }
 
-// Start the file that will be played in the browser. Sends a message to the
-// ConnViewer channel to be sent over the websocket.
-func (p *Player) Start(w *http.ResponseWriter) {
-	// fileName, ok := p.api.message.Arguments["path"]
-	sIndex, ok := p.api.message.Arguments["index"]
-	if !ok {
-		handleAPIError(w, "No item index provided")
-		return
-	}
-
-	res := wsMessage{
-		Event:   "start",
-		Message: sIndex,
-		Success: true,
-	}
-
-	send := p.ConnViewer.getChanSend()
-	send <- res
-
-	m := &resMessage{Success: true, Event: "StartRequestSent", Message: p.playlist.Current.Name()}
-	json.NewEncoder(*w).Encode(m)
-}
-
 // startBrowser starts Chromium browser, or Google Chrome with the relevant flags.
 func (p *Player) startBrowser() error {
 	if p.browser.running {
@@ -240,18 +217,18 @@ func (p *Player) startBrowser() error {
 	return nil
 }
 
-func handleAPIError(w *http.ResponseWriter, message string) {
+func handleAPIError(w http.ResponseWriter, message string) {
 	m := &resMessage{
 		Success: false,
 		Message: message,
 	}
 
 	log.Println(m)
-	json.NewEncoder(*w).Encode(m)
+	json.NewEncoder(w).Encode(m)
 }
 
-// Handles requets to the player api
-func (p *Player) ServeHTTP(w http.ResponseWriter, h *http.Request) {
+// handleAPI handles requests to the player api
+func (p *Player) handleAPI(msg reqMessage, w http.ResponseWriter) {
 	supportedAPIMethods := map[string]bool{
 		"start":    true,
 		"stop":     true,
@@ -262,18 +239,18 @@ func (p *Player) ServeHTTP(w http.ResponseWriter, h *http.Request) {
 		"previous": true,
 	}
 
-	if _, ok := supportedAPIMethods[p.api.message.Method]; !ok {
-		handleAPIError(&w, "Method not supported: "+p.api.message.Method)
+	if _, ok := supportedAPIMethods[msg.Method]; !ok {
+		handleAPIError(w, "Method not supported: "+msg.Method)
 		return
 	}
 
-	index := p.api.message.Arguments["index"]
+	index := msg.Arguments["index"]
 
 	res := wsMessage{
-		Component: p.api.message.Component,
-		Method:    p.api.message.Method,
-		Arguments: p.api.message.Arguments,
-		Event:     p.api.message.Method,
+		Component: msg.Component,
+		Method:    msg.Method,
+		Arguments: msg.Arguments,
+		Event:     msg.Method,
 		Message:   index,
 		Success:   true,
 	}
