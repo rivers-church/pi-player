@@ -44,7 +44,6 @@ func remoteRead(ctx context.Context, p *Player) {
 // Listen to all the Input Devices supplied.
 // Return an error if there is a problem, or if one of the devices disconnects.
 func Listen(ctx context.Context, devs []string, p *Player) error {
-	send := p.ConnViewer.getChanSend()
 	kl := keylogger.NewKeyLogger(devs)
 	if len(kl.GetDevices()) <= 0 {
 		return fmt.Errorf("device '%s' not found", devs)
@@ -93,7 +92,7 @@ func Listen(ctx context.Context, devs []string, p *Player) error {
 				Event:     "keyDown",
 			}
 
-			send <- msg
+			p.ConnViewer.trySend(msg)
 
 			if p.api.debug {
 				log.Println("Message sent")

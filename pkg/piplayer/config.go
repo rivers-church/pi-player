@@ -236,12 +236,8 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 							Event:     "newItems",
 							Message:   "media directory changed. Get new items.",
 						}
-						if p.ConnViewer.isActive() {
-							p.ConnViewer.getChanSend() <- reload
-						}
-						if p.ConnControl.isActive() {
-							p.ConnControl.getChanSend() <- reload
-						}
+						p.ConnViewer.trySend(reload)
+						p.ConnControl.trySend(reload)
 					}
 				}
 			}

@@ -255,8 +255,7 @@ func (p *Player) handleAPI(msg reqMessage, w http.ResponseWriter) {
 		Success:   true,
 	}
 
-	send := p.ConnViewer.getChanSend()
-	send <- res
+	p.ConnViewer.trySend(res)
 
 	m := &resMessage{Success: true, Event: "StartRequestSent", Message: index}
 	json.NewEncoder(w).Encode(m)
@@ -315,10 +314,8 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 		Message:   "control page was refreshed. Get new items.",
 	}
 
-	if p.ConnViewer.isActive() {
-		send := p.ConnViewer.getChanSend()
-		send <- msg
-	}
+	p.ConnViewer.trySend(msg)
+
 	tempControl.ServeHTTP(w, r)
 }
 

@@ -99,15 +99,11 @@ func (p *Playlist) handleAPI(plr *Player, msg reqMessage, w http.ResponseWriter)
 		}
 
 		// send update to the control page, if open.
-		if plr.ConnControl.isActive() {
-			m := wsMessage{
-				Success: true,
-				Event:   "setCurrent",
-				Message: index,
-			}
-			send := plr.ConnControl.getChanSend()
-			send <- m
-		}
+		plr.ConnControl.trySend(wsMessage{
+			Success: true,
+			Event:   "setCurrent",
+			Message: index,
+		})
 
 		if plr.api.debug {
 			log.Println("set current item index to:", index)
@@ -220,7 +216,6 @@ func (p *Playlist) fromFolder(dir string) error {
 // watch for changes in the supplied directory
 func (p *Playlist) watch(plr *Player) {
 	defer p.watcher.Close()
-	send := plr.ConnControl.getChanSend()
 	for {
 		select {
 		case event, ok := <-p.watcher.Events:
@@ -238,7 +233,7 @@ func (p *Playlist) watch(plr *Player) {
 				Event:     "newItems",
 				Message:   "detected file change. Get new items.",
 			}
-			send <- msg
+			plr.ConnControl.trySend(msg)
 		case err, ok := <-p.watcher.Errors:
 			if !ok {
 				log.Println("issue getting file change error. Stopping watcher.")
