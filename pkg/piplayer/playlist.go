@@ -104,7 +104,7 @@ func NewPlaylist(p *Player, dir string) (*Playlist, error) {
 
 	go pl.watch(p)
 
-	if p.conf.Debug {
+	if p.conf.DebugEnabled() {
 		log.Printf("starting directory watcher for dir: %s\n", dir)
 	}
 	if exists(dir) {
@@ -316,7 +316,7 @@ func (p *Playlist) watch(plr *Player) {
 				log.Println("issue getting file change event. Stopping watcher.")
 				return
 			}
-			if plr.conf.Debug {
+			if plr.conf.DebugEnabled() {
 				log.Println("file change event:", event)
 			}
 			// Send a message to the viewer to get new items.

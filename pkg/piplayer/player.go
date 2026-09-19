@@ -74,7 +74,7 @@ func getLocalIPs() []string {
 func (p *Player) renderErrorPage(w http.ResponseWriter, err error, redirect string) {
 	data := errorPageData{
 		Error:    err.Error(),
-		Dir:      p.conf.Mount.Dir,
+		Dir:      p.conf.MediaDir(),
 		IPs:      getLocalIPs(),
 		Port:     strings.TrimPrefix(p.Server.Addr, ":"),
 		Redirect: redirect,
@@ -120,7 +120,7 @@ func NewPlayer(api *APIHandler, conf *Config, keylogger *keylogger.KeyLogger) *P
 	}
 
 	var err error
-	p.playlist, err = NewPlaylist(&p, conf.Mount.Dir)
+	p.playlist, err = NewPlaylist(&p, conf.MediaDir())
 	if err != nil {
 		log.Printf("error creating playlist: %v\n", err)
 	}
@@ -268,14 +268,14 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !loggedIn {
-		if p.conf.Debug {
+		if p.conf.DebugEnabled() {
 			log.Println("User not logged in. Redirecting to login page.")
 		}
 		http.Redirect(w, r, "/login", http.StatusFound)
 		return
 	}
 
-	err = p.playlist.fromFolder(p.conf.Mount.Dir)
+	err = p.playlist.fromFolder(p.conf.MediaDir())
 
 	if err != nil {
 		log.Println("HandleControl: Error trying to read files from directory:\n", err)
@@ -289,8 +289,8 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 		filename:      "control.html",
 		statTemplates: p.api.statTemplates,
 		data: map[string]any{
-			"location": p.conf.Location,
-			"Mount":    p.conf.Mount.URL,
+			"location": p.conf.LocationName(),
+			"Mount":    p.conf.MountURL(),
 			"playlist": view,
 			"error":    err,
 		},
@@ -325,9 +325,9 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 // HandleDirCheck returns whether the configured media directory currently exists.
 func (p *Player) HandleDirCheck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	ok := exists(p.conf.Mount.Dir)
+	ok := exists(p.conf.MediaDir())
 	if ok {
-		if err := p.playlist.watcher.Add(p.conf.Mount.Dir); err != nil {
+		if err := p.playlist.watcher.Add(p.conf.MediaDir()); err != nil {
 			log.Println("HandleDirCheck: error adding watcher:", err)
 		}
 	}
@@ -337,7 +337,7 @@ func (p *Player) HandleDirCheck(w http.ResponseWriter, r *http.Request) {
 // HandleViewer handles requests to the image viewer page
 // This handler has a dependency on Playlist.
 func (p *Player) HandleViewer(w http.ResponseWriter, r *http.Request) {
-	if err := p.playlist.fromFolder(p.conf.Mount.Dir); err != nil {
+	if err := p.playlist.fromFolder(p.conf.MediaDir()); err != nil {
 		log.Println("HandleViewer: Error trying to read files from directory:\n", err)
 		p.renderErrorPage(w, err, "/viewer")
 		return

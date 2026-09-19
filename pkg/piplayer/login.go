@@ -99,7 +99,7 @@ func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 				filename:      "login.html",
 				statTemplates: p.api.statTemplates,
 				data: map[string]interface{}{
-					"location": p.conf.Location,
+					"location": p.conf.LocationName(),
 				},
 			}
 			tempControl.ServeHTTP(w, r)
@@ -108,7 +108,7 @@ func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 
 		// process POST request
 		xForward := r.Header.Get("x-forwarded-for")
-		if p.conf.Debug {
+		if p.conf.DebugEnabled() {
 			log.Println("attempted login request from:", xForward, r.RemoteAddr)
 		}
 		if err := r.ParseForm(); err != nil {
@@ -118,24 +118,26 @@ func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 		password := r.PostFormValue("password")
 
 		// if there's no login entry in the config file, add the default login details
-		if p.conf.Login.Username == "" {
-			if p.conf.Debug {
+		creds := p.conf.Credentials()
+		if creds.Username == "" {
+			if p.conf.DebugEnabled() {
 				log.Println("no login details found in config file, creating default login details now.")
 			}
 			var err error
-			if p.conf.Login, err = newLogin(); err != nil {
+			if creds, err = newLogin(); err != nil {
 				log.Println("error trying to save default username and password")
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+			p.conf.SetCredentials(creds)
 			if err := saveConfig(); err != nil {
 				log.Println("error trying to save config file:", err)
 			}
 		}
 
-		if username == p.conf.Login.Username && checkHash(password, p.conf.Login.Password) {
+		if username == creds.Username && checkHash(password, creds.Password) {
 			// user successfully logged in
-			if p.conf.Debug {
+			if p.conf.DebugEnabled() {
 				log.Printf("login successful from %s\n", r.RemoteAddr)
 			}
 
@@ -153,7 +155,7 @@ func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 			statTemplates: p.api.statTemplates,
 			filename:      "login.html",
 			data: map[string]interface{}{
-				"location":     p.conf.Location,
+				"location":     p.conf.LocationName(),
 				"flashMessage": "Incorrect username or password",
 			},
 		}

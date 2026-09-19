@@ -46,12 +46,11 @@ func main() {
 	}
 
 	if *debug || conf.Debug {
-		conf.Debug = true
+		conf.SetDebug(true)
 		log.Println("Debug mode enabled")
-		log.Printf("Config file: %v", conf)
 	}
 
-	a := piplayer.NewAPIHandler(conf.Debug, test, statAssets, statTemplates)
+	a := piplayer.NewAPIHandler(conf.DebugEnabled(), test, statAssets, statTemplates)
 	kl := keylogger.NewKeyLogger(conf.Remote.Names)
 	p := piplayer.NewPlayer(&a, conf, kl)
 	p.Server = piplayer.NewServer(p, *addr)

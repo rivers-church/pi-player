@@ -3,12 +3,14 @@ package piplayer
 import (
 	"embed"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/17xande/configdir"
@@ -194,4 +196,82 @@ func TestSettingsHandlerSavesNewCredentials(t *testing.T) {
 	if !checkHash("a new password", saved.Login.Password) {
 		t.Error("the new password was not persisted to the config file")
 	}
+}
+
+// TestSettingsHandlerConcurrentWithReaders changes settings while other
+// handlers read them, which is what happens whenever the operator saves the
+// settings page while the viewer is loading media. Without the mutex the
+// media directory - a struct holding a *url.URL - can be read half-updated.
+func TestSettingsHandlerConcurrentWithReaders(t *testing.T) {
+	configHome := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", configHome)
+	configdir.Refresh()
+	t.Cleanup(configdir.Refresh)
+	if err := os.MkdirAll(filepath.Join(configHome, "pi-player"), 0o755); err != nil {
+		t.Fatalf("creating temp config dir failed: %v", err)
+	}
+
+	mediaDir := t.TempDir()
+	conf := &Config{
+		Location: "PiPlayer",
+		Mount:    mount{URL: sURL{URL: &url.URL{Path: mediaDir}}, Dir: mediaDir},
+	}
+	p := &Player{
+		api:         &APIHandler{},
+		conf:        conf,
+		playlist:    &Playlist{},
+		ConnViewer:  NewConnWS(),
+		ConnControl: NewConnWS(),
+	}
+	settings := conf.SettingsHandler(p)
+	content := http.HandlerFunc(contentHandler(p))
+
+	cookie := authenticatedCookie(t)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := range 20 {
+			form := url.Values{
+				"location": {fmt.Sprintf("Room %d", i)},
+				"mountURL": {filepath.Join(mediaDir, fmt.Sprintf("sub%d", i))},
+				"debug":    {"on"},
+			}.Encode()
+			request := httptest.NewRequest(http.MethodPost, "/settings", strings.NewReader(form))
+			request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			request.AddCookie(cookie)
+			settings.ServeHTTP(httptest.NewRecorder(), request)
+		}
+	}()
+
+	for range 3 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for range 20 {
+				content.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/content/a.txt", nil))
+				_ = conf.LocationName()
+				_ = conf.Credentials()
+				_ = conf.DebugEnabled()
+			}
+		}()
+	}
+	wg.Wait()
+}
+
+// authenticatedCookie returns a cookie for a logged-in session.
+func authenticatedCookie(t *testing.T) *http.Cookie {
+	t.Helper()
+	request := httptest.NewRequest(http.MethodGet, "http://piplayer.local/", nil)
+	session, err := store.Get(request, "piplayer-session")
+	if err != nil {
+		t.Fatalf("creating authenticated session failed: %v", err)
+	}
+	session.Values["authenticated"] = "test"
+	recorder := httptest.NewRecorder()
+	if err := session.Save(request, recorder); err != nil {
+		t.Fatalf("saving authenticated session failed: %v", err)
+	}
+	return recorder.Result().Cookies()[0]
 }

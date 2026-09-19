@@ -122,7 +122,7 @@ func (c *connWS) HandlerWebsocket(p *Player) http.HandlerFunc {
 		// taking over. The previous writer sends the farewell itself; writing
 		// to the socket from here would race it.
 		if c.isActive() {
-			if p.conf.Debug {
+			if p.conf.DebugEnabled() {
 				log.Printf("new websocket connection request while previous request was active. Closing current connection.")
 			}
 

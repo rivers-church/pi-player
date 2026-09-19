@@ -10,17 +10,91 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/17xande/configdir"
 )
 
-// Config holds the configuration of the pi-player
+// Config holds the configuration of the pi-player.
+//
+// The settings page changes these fields while other handlers are reading
+// them - /content/ reads the media directory on every request - so mu guards
+// everything below it. The fields stay exported because the config is
+// marshalled to config.json; use the accessors rather than touching them
+// directly once the server is running.
 type Config struct {
+	mu       sync.RWMutex
 	Location string
 	Mount    mount
 	Debug    bool
 	Login    Login
 	Remote   remote
+}
+
+// MediaDir returns the directory the media files are read from.
+func (conf *Config) MediaDir() string {
+	conf.mu.RLock()
+	defer conf.mu.RUnlock()
+	return conf.Mount.Dir
+}
+
+// MountURL returns the configured media directory URL.
+func (conf *Config) MountURL() sURL {
+	conf.mu.RLock()
+	defer conf.mu.RUnlock()
+	return conf.Mount.URL
+}
+
+// SetMount points the player at a new media directory and returns the
+// directory it was using before.
+func (conf *Config) SetMount(m mount) string {
+	conf.mu.Lock()
+	defer conf.mu.Unlock()
+	old := conf.Mount.Dir
+	conf.Mount = m
+	return old
+}
+
+// LocationName returns the name this player is known by.
+func (conf *Config) LocationName() string {
+	conf.mu.RLock()
+	defer conf.mu.RUnlock()
+	return conf.Location
+}
+
+// SetLocation renames the player.
+func (conf *Config) SetLocation(location string) {
+	conf.mu.Lock()
+	defer conf.mu.Unlock()
+	conf.Location = location
+}
+
+// DebugEnabled reports whether extra logging is turned on.
+func (conf *Config) DebugEnabled() bool {
+	conf.mu.RLock()
+	defer conf.mu.RUnlock()
+	return conf.Debug
+}
+
+// SetDebug turns extra logging on or off.
+func (conf *Config) SetDebug(debug bool) {
+	conf.mu.Lock()
+	defer conf.mu.Unlock()
+	conf.Debug = debug
+}
+
+// Credentials returns the login details of the single user in the system.
+func (conf *Config) Credentials() Login {
+	conf.mu.RLock()
+	defer conf.mu.RUnlock()
+	return conf.Login
+}
+
+// SetCredentials replaces the login details.
+func (conf *Config) SetCredentials(l Login) {
+	conf.mu.Lock()
+	defer conf.mu.Unlock()
+	conf.Login = l
 }
 
 // ConfigLoad reads the config file and unmarshalls it to the config struct.
@@ -111,6 +185,9 @@ func (conf *Config) Save() error {
 
 // saveToPath writes the marshalled config to config.json under configPath.
 func (conf *Config) saveToPath(configPath string) error {
+	conf.mu.RLock()
+	defer conf.mu.RUnlock()
+
 	configFile := filepath.Join(configPath, "config.json")
 	jconf, err := json.MarshalIndent(conf, "", "  ")
 	if err != nil {
@@ -135,18 +212,19 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 		}
 
 		if r.Method == http.MethodGet {
-			mu, err := url.PathUnescape(conf.Mount.URL.String())
+			mountURL := conf.MountURL()
+			mu, err := url.PathUnescape(mountURL.String())
 			if err != nil {
-				log.Printf("SettingsHandler: Error unescaping URL '%s'\n", conf.Mount.URL)
+				log.Printf("SettingsHandler: Error unescaping URL '%s'\n", mountURL)
+				mu = mountURL.String()
 			}
 			tempControl := TemplateHandler{
 				filename:      "settings.html",
 				statTemplates: p.api.statTemplates,
 				data: map[string]any{
-					"location": conf.Location,
-					"debug":    conf.Debug,
-					"username": conf.Login.Username,
-					"mount":    conf.Mount,
+					"location": conf.LocationName(),
+					"debug":    conf.DebugEnabled(),
+					"username": conf.Credentials().Username,
 					"mountURL": mu,
 				},
 			}
@@ -157,88 +235,82 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 		// process POST request
 		if err := r.ParseForm(); err != nil {
 			log.Println("Error trying to parse form in settings page.\n", err)
+			http.Error(w, "Could not read the submitted form.", http.StatusBadRequest)
+			return
 		}
 		location := r.PostFormValue("location")
 		mountURL := r.PostFormValue("mountURL")
-		mountUsername := r.PostFormValue("mountUsername")
-		mountPassword := r.PostFormValue("mountPassword")
 		username := r.PostFormValue("username")
 		password := r.PostFormValue("password")
 		debug := r.PostFormValue("debug")
 
-		conf.Debug = debug == "on"
+		conf.SetDebug(debug == "on")
 
-		if conf.Debug {
+		if conf.DebugEnabled() {
 			log.Printf("Received settings post: location: %s\nmountURL: %s\n", location, mountURL)
 		}
 
 		if location != "" {
-			conf.Location = location
+			conf.SetLocation(location)
 		}
 
 		if username != "" && password != "" {
-			var err error
-			if password, err = hash(password); err != nil {
+			hashed, err := hash(password)
+			if err != nil {
 				log.Println("error trying to encrypt password for saving", err)
-			} else {
-				conf.Login.Username = username
-				conf.Login.Password = password
-				// Persist the new credentials right away. Without this the
-				// change only lives in memory and the old password comes back
-				// on the next restart.
-				if err := conf.Save(); err != nil {
-					log.Println("error trying to save new login details:", err)
-				}
+				http.Error(w, "Could not save the new password.", http.StatusInternalServerError)
+				return
 			}
+
+			conf.SetCredentials(Login{Username: username, Password: hashed})
 		}
 
-		if mountURL != "" || mountPassword != "" && mountUsername != "" {
-			var su sURL
+		// Persist the settings that don't need the media directory to change.
+		if err := conf.Save(); err != nil {
+			log.Println("error trying to save config file:", err)
+		}
+
+		if mountURL != "" {
 			u, err := url.Parse(mountURL)
 			if err != nil {
 				log.Printf("Error parsing URL (%s)\n%v\n", mountURL, err)
-			} else {
-				su.URL = u
-				newMount := mount{
-					URL: su,
-					Dir: su.URL.String(),
-				}
+			} else if u.Scheme == "smb" {
+				log.Printf("SMB mounting no longer supported")
+			} else if u.Scheme == "" {
+				// Dir comes from Path, not String(), so a directory with a
+				// space in it doesn't get stored percent-escaped.
+				newMount := mount{URL: sURL{URL: u}, Dir: u.Path}
 
-				if newMount.URL != conf.Mount.URL {
-					if su.Scheme == "smb" {
-						if conf.Debug {
-							log.Printf("SMB mounting no longer supported")
-						}
+				// Compare the paths: sURL wraps a *url.URL, so comparing the
+				// structs compares pointers and is never equal.
+				if newMount.Dir != conf.MediaDir() {
+					oldDir := conf.SetMount(newMount)
+					if err := conf.Save(); err != nil {
+						log.Println("error trying to save config:", err)
 					}
 
-					if su.Scheme == "" {
-						oldDir := conf.Mount.Dir
-						conf.Mount = newMount
-						if err := conf.Save(); err != nil {
-							log.Println("error trying to save config:", err)
-						}
-
-						// Point the directory watcher at the new media dir.
-						if oldDir != "" && oldDir != conf.Mount.Dir {
+					// Point the directory watcher at the new media dir.
+					if p.playlist != nil && p.playlist.watcher != nil {
+						if oldDir != "" {
 							p.playlist.watcher.Remove(oldDir)
 						}
-						if exists(conf.Mount.Dir) {
-							if err := p.playlist.watcher.Add(conf.Mount.Dir); err != nil {
+						if exists(newMount.Dir) {
+							if err := p.playlist.watcher.Add(newMount.Dir); err != nil {
 								log.Println("error watching new media dir:", err)
 							}
 						}
-
-						// Tell the viewer and control page to reload the playlist
-						// from the new directory instead of restarting the server.
-						// (The control page also reloads via the redirect below.)
-						reload := wsMessage{
-							Component: "playlist",
-							Event:     "newItems",
-							Message:   "media directory changed. Get new items.",
-						}
-						p.ConnViewer.trySend(reload)
-						p.ConnControl.trySend(reload)
 					}
+
+					// Tell the viewer and control page to reload the playlist
+					// from the new directory instead of restarting the server.
+					// (The control page also reloads via the redirect below.)
+					reload := wsMessage{
+						Component: "playlist",
+						Event:     "newItems",
+						Message:   "media directory changed. Get new items.",
+					}
+					p.ConnViewer.trySend(reload)
+					p.ConnControl.trySend(reload)
 				}
 			}
 		}
