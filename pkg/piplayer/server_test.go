@@ -276,14 +276,20 @@ func TestSecurityHeaders(t *testing.T) {
 	NewServer(p, ":8080").Handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/login", nil))
 
 	want := map[string]string{
-		"X-Content-Type-Options": "nosniff",
-		"X-Frame-Options":        "DENY",
-		"Referrer-Policy":        "same-origin",
+		"X-Content-Type-Options":  "nosniff",
+		"X-Frame-Options":         "DENY",
+		"Referrer-Policy":         "same-origin",
+		"Content-Security-Policy": contentSecurityPolicy,
 	}
 	for header, value := range want {
 		if got := recorder.Header().Get(header); got != value {
 			t.Errorf("%s = %q, want %q", header, got, value)
 		}
+	}
+
+	// The policy is only worth having if it keeps scripts to this origin.
+	if !strings.Contains(contentSecurityPolicy, "script-src 'self';") {
+		t.Errorf("the content security policy does not restrict scripts to this origin: %q", contentSecurityPolicy)
 	}
 }
 

@@ -6,26 +6,9 @@
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>PiPlayer — Error</title>
   <link rel="stylesheet" href="/assets/css/milligram.css">
-  <style>
-    body { background: #111; color: #ddd; }
-    h1 { color: #e84040; margin-top: 4rem; }
-    .error-msg {
-      background: #1a0000;
-      border-left: 4px solid #e84040;
-      padding: 1rem 1.5rem;
-      margin: 1.5rem 0;
-      font-family: monospace;
-      font-size: 1.3rem;
-      word-break: break-all;
-    }
-    table { width: 100%; border-collapse: collapse; margin: 2rem 0; }
-    td { padding: 0.8rem 1rem; border-bottom: 1px solid #2a2a2a; }
-    td:first-child { color: #888; width: 130px; white-space: nowrap; }
-    code { background: #222; padding: 0.2rem 0.5rem; border-radius: 3px; }
-    a { color: #9b59b6; }
-  </style>
+  <link rel="stylesheet" href="/assets/css/error.css">
 </head>
-<body>
+<body data-redirect="{{.Redirect}}">
   <div class="container">
     <h1>Configuration Error</h1>
     <p>The media directory could not be found. Please update the path in Settings.</p>
@@ -37,20 +20,6 @@
     </table>
     <a href="/settings">Go to Settings</a>
   </div>
-  <script>
-    const redirect = "{{.Redirect}}";
-    async function check() {
-      try {
-        const res = await fetch("/api/dircheck");
-        const data = await res.json();
-        if (data.ok) {
-          window.location.href = redirect;
-          return;
-        }
-      } catch (_) {}
-      setTimeout(check, 3000);
-    }
-    setTimeout(check, 3000);
-  </script>
+  <script type="module" src="/assets/js/error.js"></script>
 </body>
 </html>

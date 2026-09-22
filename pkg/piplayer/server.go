@@ -34,11 +34,27 @@ func NewServer(p *Player, addr string) *http.Server {
 	}
 }
 
-// securityHeaders sets the headers every response should carry. There is no
-// Content-Security-Policy yet: error.html still carries inline script and
-// style that would need a nonce first.
+// contentSecurityPolicy keeps the pages to their own origin. Everything the
+// player serves is local, so there is nothing to allow from anywhere else.
+//
+// style-src needs 'unsafe-inline' because the bundled Font Awesome builds a
+// <style> element at runtime to draw its icons. Dropping it would need the
+// CSS-only Font Awesome build; script-src, which is the one that matters for
+// injected markup, stays strict.
+const contentSecurityPolicy = "default-src 'self'; " +
+	"script-src 'self'; " +
+	"style-src 'self' 'unsafe-inline'; " +
+	"img-src 'self' data:; " +
+	"media-src 'self'; " +
+	"connect-src 'self'; " +
+	"frame-ancestors 'none'; " +
+	"base-uri 'none'; " +
+	"form-action 'self'"
+
+// securityHeaders sets the headers every response should carry.
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Security-Policy", contentSecurityPolicy)
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Referrer-Policy", "same-origin")
