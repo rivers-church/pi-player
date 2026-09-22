@@ -3,6 +3,7 @@ package piplayer
 import (
 	"context"
 	"encoding/json"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -27,7 +28,7 @@ func TestContentServedFromCurrentDir(t *testing.T) {
 		t.Fatalf("failed to write fixture in dirB: %v", err)
 	}
 
-	p := &Player{conf: &Config{Mount: mount{Dir: dirA}}}
+	p := newTestPlayer(t, withMediaDir(dirA))
 	handler := http.HandlerFunc(contentHandler(p))
 
 	get := func(path string) *httptest.ResponseRecorder {
@@ -60,13 +61,7 @@ func TestContentServedFromCurrentDir(t *testing.T) {
 // handlers don't have to. Logout in particular must not be reachable with a
 // GET, or any page can log the operator out with an <img> tag.
 func TestRouteMethods(t *testing.T) {
-	p := &Player{
-		api:         &APIHandler{},
-		conf:        &Config{Mount: mount{Dir: t.TempDir()}},
-		playlist:    &Playlist{},
-		ConnViewer:  NewConnWS(),
-		ConnControl: NewConnWS(),
-	}
+	p := newTestPlayer(t, withMediaDir(t.TempDir()))
 	mux := setupRoutes(p)
 
 	cases := []struct {
@@ -95,21 +90,23 @@ func TestRouteMethods(t *testing.T) {
 // instead of being killed mid-request. Start used to call log.Fatalf from
 // library code and treat the clean-shutdown sentinel as a fatal error.
 func TestRunShutsDownOnContextCancel(t *testing.T) {
-	p := &Player{
-		api:         &APIHandler{},
-		conf:        &Config{Mount: mount{Dir: t.TempDir()}},
-		playlist:    &Playlist{},
-		ConnViewer:  NewConnWS(),
-		ConnControl: NewConnWS(),
-	}
-	p.Server = NewServer(p, "127.0.0.1:0")
+	p := newTestPlayer(t, withMediaDir(t.TempDir()))
+	p.Server = NewServer(p, freePort(t))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() { done <- Run(ctx, p) }()
 
-	// Give the listener a moment to come up, then ask it to stop.
-	time.Sleep(50 * time.Millisecond)
+	// Wait for the listener to actually accept before asking it to stop, so a
+	// slow start doesn't turn into a shutdown of something not yet serving.
+	eventually(t, 2*time.Second, "the server to start listening", func() bool {
+		conn, err := net.Dial("tcp", p.Server.Addr)
+		if err != nil {
+			return false
+		}
+		conn.Close()
+		return true
+	})
 	cancel()
 
 	select {
@@ -125,13 +122,7 @@ func TestRunShutsDownOnContextCancel(t *testing.T) {
 // TestServerHasTimeouts guards the read timeouts against being dropped again:
 // without them one stalled connection ties up a goroutine indefinitely.
 func TestServerHasTimeouts(t *testing.T) {
-	p := &Player{
-		api:         &APIHandler{},
-		conf:        &Config{},
-		playlist:    &Playlist{},
-		ConnViewer:  NewConnWS(),
-		ConnControl: NewConnWS(),
-	}
+	p := newTestPlayer(t)
 	server := NewServer(p, ":8080")
 
 	if server.ReadHeaderTimeout == 0 {
@@ -148,7 +139,7 @@ func TestServerHasTimeouts(t *testing.T) {
 // TestViewerURLFollowsServerPort: the kiosk browser used to be pointed at a
 // hardcoded :8080 regardless of the -addr the server was given.
 func TestViewerURLFollowsServerPort(t *testing.T) {
-	p := &Player{conf: &Config{}}
+	p := newTestPlayer(t)
 	p.Server = &http.Server{Addr: ":9090"}
 
 	if got, want := p.viewerURL(), "http://localhost:9090/viewer"; got != want {
@@ -165,14 +156,9 @@ func TestRouteAuth(t *testing.T) {
 		t.Fatalf("writing fixture failed: %v", err)
 	}
 
-	p := &Player{
-		api:         testAPIHandler(t, map[string]string{"control.html": "control", "viewer.html": "viewer", "settings.html": "settings"}),
-		conf:        &Config{Mount: mount{Dir: mediaDir}},
-		playlist:    &Playlist{},
-		store:       newSessionStore(testSessionKey),
-		ConnViewer:  NewConnWS(),
-		ConnControl: NewConnWS(),
-	}
+	p := newTestPlayer(t,
+		withTemplates(map[string]string{"control.html": "control", "viewer.html": "viewer", "settings.html": "settings"}),
+		withMediaDir(mediaDir))
 	mux := setupRoutes(p)
 	cookie := authenticatedCookie(t, p)
 
@@ -246,14 +232,9 @@ func TestIsLoopback(t *testing.T) {
 // TestCrossOriginPostRefused covers the case SameSite=Lax is meant to stop
 // anyway: a form on another site posting to the settings or login page.
 func TestCrossOriginPostRefused(t *testing.T) {
-	p := &Player{
-		api:         testAPIHandler(t, map[string]string{"control.html": "control"}),
-		conf:        &Config{Mount: mount{Dir: t.TempDir()}},
-		playlist:    &Playlist{},
-		store:       newSessionStore(testSessionKey),
-		ConnViewer:  NewConnWS(),
-		ConnControl: NewConnWS(),
-	}
+	p := newTestPlayer(t,
+		withTemplates(map[string]string{"control.html": "control"}),
+		withMediaDir(t.TempDir()))
 	handler := NewServer(p, ":8080").Handler
 	cookie := authenticatedCookie(t, p)
 
@@ -288,14 +269,7 @@ func TestCrossOriginPostRefused(t *testing.T) {
 }
 
 func TestSecurityHeaders(t *testing.T) {
-	p := &Player{
-		api:         testAPIHandler(t, map[string]string{"login.html": "login"}),
-		conf:        &Config{},
-		playlist:    &Playlist{},
-		store:       newSessionStore(testSessionKey),
-		ConnViewer:  NewConnWS(),
-		ConnControl: NewConnWS(),
-	}
+	p := newTestPlayer(t, withTemplates(map[string]string{"login.html": "login"}))
 	recorder := httptest.NewRecorder()
 
 	NewServer(p, ":8080").Handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/login", nil))
@@ -322,14 +296,9 @@ func TestKioskPathWorksWithoutSession(t *testing.T) {
 		t.Fatalf("writing fixture failed: %v", err)
 	}
 
-	p := &Player{
-		api:         testAPIHandler(t, map[string]string{"viewer.html": "viewer", "control.html": "control"}),
-		conf:        &Config{Mount: mount{Dir: mediaDir}},
-		playlist:    &Playlist{},
-		store:       newSessionStore(testSessionKey),
-		ConnViewer:  NewConnWS(),
-		ConnControl: NewConnWS(),
-	}
+	p := newTestPlayer(t,
+		withTemplates(map[string]string{"viewer.html": "viewer", "control.html": "control"}),
+		withMediaDir(mediaDir))
 	mux := setupRoutes(p)
 
 	kiosk := func(method, path, body string) *httptest.ResponseRecorder {
@@ -392,4 +361,21 @@ func TestKioskPathWorksWithoutSession(t *testing.T) {
 	if rec := lan(http.MethodGet, "/viewer", ""); rec.Code != http.StatusFound {
 		t.Errorf("/viewer from the network returned %d, want a redirect to the login page", rec.Code)
 	}
+}
+
+// freePort returns a loopback address that nothing is listening on, so a test
+// can wait for the server to come up by dialing it. Asking the server for
+// ":0" would leave the test with no port to dial.
+func freePort(t *testing.T) string {
+	t.Helper()
+
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("finding a free port failed: %v", err)
+	}
+	addr := listener.Addr().String()
+	if err := listener.Close(); err != nil {
+		t.Fatalf("releasing the port failed: %v", err)
+	}
+	return addr
 }

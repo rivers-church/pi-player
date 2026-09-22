@@ -9,16 +9,6 @@ import (
 	"testing"
 )
 
-// writeFiles creates each named file (empty unless content given) in dir.
-func writeFiles(t *testing.T, dir string, names ...string) {
-	t.Helper()
-	for _, name := range names {
-		if err := os.WriteFile(filepath.Join(dir, name), []byte{}, 0o644); err != nil {
-			t.Fatalf("failed to write fixture %q: %v", name, err)
-		}
-	}
-}
-
 // byVisual indexes a playlist's items by their visual filename (with extension).
 func byVisual(p *Playlist) map[string]Item {
 	m := make(map[string]Item, len(p.Items))
@@ -302,13 +292,7 @@ func TestGetItemsFollowsConfiguredDir(t *testing.T) {
 	writeFiles(t, oldDir, "old.mp4")
 	writeFiles(t, newDir, "new.mp4")
 
-	p := &Player{
-		api:         &APIHandler{},
-		conf:        &Config{Mount: mount{Dir: oldDir}},
-		playlist:    &Playlist{},
-		ConnViewer:  NewConnWS(),
-		ConnControl: NewConnWS(),
-	}
+	p := newTestPlayer(t, withMediaDir(oldDir))
 	if err := p.playlist.fromFolder(oldDir); err != nil {
 		t.Fatalf("initial scan failed: %v", err)
 	}

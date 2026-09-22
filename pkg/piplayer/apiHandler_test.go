@@ -15,15 +15,8 @@ import (
 // handler itself, because every caller writes to the same struct - and one
 // caller can answer with another's arguments.
 func TestAPIHandlerConcurrentRequests(t *testing.T) {
-	api := &APIHandler{}
-	p := &Player{
-		api:         api,
-		conf:        &Config{},
-		playlist:    &Playlist{},
-		ConnViewer:  NewConnWS(),
-		ConnControl: NewConnWS(),
-	}
-	handler := api.Handle(p)
+	p := newTestPlayer(t)
+	handler := p.api.Handle(p)
 
 	const callers = 50
 	var wg sync.WaitGroup
@@ -56,14 +49,13 @@ func TestAPIHandlerConcurrentRequests(t *testing.T) {
 }
 
 func TestAPIHandlerRejectsNonJSON(t *testing.T) {
-	api := &APIHandler{}
-	p := &Player{api: api, conf: &Config{}, playlist: &Playlist{}, ConnViewer: NewConnWS(), ConnControl: NewConnWS()}
+	p := newTestPlayer(t)
 
 	request := httptest.NewRequest(http.MethodPost, "/api", strings.NewReader("hello"))
 	request.Header.Set("Content-Type", "text/plain")
 	recorder := httptest.NewRecorder()
 
-	api.Handle(p).ServeHTTP(recorder, request)
+	p.api.Handle(p).ServeHTTP(recorder, request)
 
 	var res resMessage
 	if err := json.NewDecoder(recorder.Body).Decode(&res); err != nil {
@@ -78,9 +70,8 @@ func TestAPIHandlerRejectsNonJSON(t *testing.T) {
 }
 
 func TestAPIHandlerStatusCodes(t *testing.T) {
-	api := &APIHandler{}
-	p := &Player{api: api, conf: &Config{}, playlist: &Playlist{}, ConnViewer: NewConnWS(), ConnControl: NewConnWS()}
-	handler := api.Handle(p)
+	p := newTestPlayer(t)
+	handler := p.api.Handle(p)
 
 	cases := []struct {
 		name       string

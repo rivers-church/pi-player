@@ -157,7 +157,8 @@ func TestSettingsHandlerSavesNewCredentials(t *testing.T) {
 		Mount:    mount{URL: sURL{URL: &url.URL{Path: mediaDir}}, Dir: mediaDir},
 		Login:    login,
 	}
-	p := &Player{conf: conf, api: &APIHandler{}, store: newSessionStore(testSessionKey)}
+	p := newTestPlayer(t)
+	p.conf = conf
 
 	form := url.Values{
 		"username": {"alex"},
@@ -217,14 +218,8 @@ func TestSettingsHandlerConcurrentWithReaders(t *testing.T) {
 		Location: "PiPlayer",
 		Mount:    mount{URL: sURL{URL: &url.URL{Path: mediaDir}}, Dir: mediaDir},
 	}
-	p := &Player{
-		api:         &APIHandler{},
-		conf:        conf,
-		store:       newSessionStore(testSessionKey),
-		playlist:    &Playlist{},
-		ConnViewer:  NewConnWS(),
-		ConnControl: NewConnWS(),
-	}
+	p := newTestPlayer(t)
+	p.conf = conf
 	settings := conf.SettingsHandler(p)
 	content := http.HandlerFunc(contentHandler(p))
 
@@ -260,22 +255,6 @@ func TestSettingsHandlerConcurrentWithReaders(t *testing.T) {
 		}()
 	}
 	wg.Wait()
-}
-
-// authenticatedCookie returns a cookie for a logged-in session.
-func authenticatedCookie(t *testing.T, p *Player) *http.Cookie {
-	t.Helper()
-	request := httptest.NewRequest(http.MethodGet, "http://piplayer.local/", nil)
-	session, err := p.store.Get(request, "piplayer-session")
-	if err != nil {
-		t.Fatalf("creating authenticated session failed: %v", err)
-	}
-	session.Values["authenticated"] = "test"
-	recorder := httptest.NewRecorder()
-	if err := session.Save(request, recorder); err != nil {
-		t.Fatalf("saving authenticated session failed: %v", err)
-	}
-	return recorder.Result().Cookies()[0]
 }
 
 // TestConfigLoadGeneratesSessionKey checks a config written before session

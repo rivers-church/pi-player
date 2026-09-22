@@ -13,7 +13,7 @@ import (
 // wsTestServer starts a server whose only route is the websocket handler for c.
 func wsTestServer(t *testing.T, c ConnectionWS) (*httptest.Server, string) {
 	t.Helper()
-	p := &Player{conf: &Config{}}
+	p := newTestPlayer(t)
 	server := httptest.NewServer(c.HandlerWebsocket(p))
 	t.Cleanup(server.Close)
 	return server, "ws" + strings.TrimPrefix(server.URL, "http")
@@ -138,7 +138,7 @@ func TestRepeatedTakeoversAreRaceFree(t *testing.T) {
 
 func TestHandlerRejectsNonWebsocketRequest(t *testing.T) {
 	c := NewConnWS()
-	p := &Player{conf: &Config{}}
+	p := newTestPlayer(t)
 	recorder := httptest.NewRecorder()
 
 	c.HandlerWebsocket(p).ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/ws/viewer", nil))
@@ -155,12 +155,13 @@ func TestHandlerRejectsNonWebsocketRequest(t *testing.T) {
 // the server's ReadTimeout must not close an idle viewer socket.
 func TestWebsocketOutlivesReadTimeout(t *testing.T) {
 	c := NewConnWS()
-	p := &Player{conf: &Config{}}
+	p := newTestPlayer(t)
 
 	server := httptest.NewUnstartedServer(c.HandlerWebsocket(p))
 	// Deliberately tiny, so the test doesn't have to wait 30 seconds.
-	server.Config.ReadTimeout = 300 * time.Millisecond
-	server.Config.ReadHeaderTimeout = 300 * time.Millisecond
+	const readTimeout = 100 * time.Millisecond
+	server.Config.ReadTimeout = readTimeout
+	server.Config.ReadHeaderTimeout = readTimeout
 	server.Start()
 	defer server.Close()
 
@@ -170,10 +171,11 @@ func TestWebsocketOutlivesReadTimeout(t *testing.T) {
 	}
 	defer conn.Close()
 
-	// Sit idle for well past the read timeout, then check the socket still works.
-	time.Sleep(time.Second)
-
 	waitActive(t, c)
+
+	// Sit idle well past the read timeout, then check the socket still works.
+	time.Sleep(5 * readTimeout)
+
 	if !c.trySend(wsMessage{Component: "playlist", Event: "newItems"}) {
 		t.Fatal("the connection was dropped while idle")
 	}
