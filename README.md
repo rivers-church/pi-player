@@ -59,6 +59,11 @@ the display's websocket.
 Traffic is plain HTTP, so treat the player's network as trusted: the password
 and session cookie cross it in the clear.
 
+The media directory is stored as a plain path in the same file. A config
+written by a version that stored it as a URL falls back to the default
+(`~/Documents/pi-player`) on first start; re-enter a custom one on the settings
+page.
+
 ### Testing the installer in a VM
 
 [`scripts/test-vm.sh`](scripts/test-vm.sh) wraps QEMU with UEFI firmware, a blank virtio disk, the Arch ISO, and SSH forwarding (`localhost:2222 → :22`):

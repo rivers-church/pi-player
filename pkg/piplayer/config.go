@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"net/url"
 	"os"
 	"path/filepath"
 	"sync"
@@ -24,7 +23,8 @@ import (
 type Config struct {
 	mu       sync.RWMutex
 	Location string
-	Mount    mount
+	// MediaDir is where the player reads its media from.
+	MediaDir string
 	Debug    bool
 	Login    Login
 	Remote   remote
@@ -52,27 +52,20 @@ func newSessionKey() ([]byte, error) {
 	return key, nil
 }
 
-// MediaDir returns the directory the media files are read from.
-func (conf *Config) MediaDir() string {
+// mediaDir returns the directory the media files are read from.
+func (conf *Config) mediaDir() string {
 	conf.mu.RLock()
 	defer conf.mu.RUnlock()
-	return conf.Mount.Dir
+	return conf.MediaDir
 }
 
-// MountURL returns the configured media directory URL.
-func (conf *Config) MountURL() sURL {
-	conf.mu.RLock()
-	defer conf.mu.RUnlock()
-	return conf.Mount.URL
-}
-
-// SetMount points the player at a new media directory and returns the
+// setMediaDir points the player at a new media directory and returns the
 // directory it was using before.
-func (conf *Config) SetMount(m mount) string {
+func (conf *Config) setMediaDir(dir string) string {
 	conf.mu.Lock()
 	defer conf.mu.Unlock()
-	old := conf.Mount.Dir
-	conf.Mount = m
+	old := conf.MediaDir
+	conf.MediaDir = dir
 	return old
 }
 
@@ -174,12 +167,8 @@ func configLoadFromPath(configPath, mediaDir string, assets fs.FS) (*Config, err
 
 		// Set some default values for config.
 		conf = &Config{
-			Location: "PiPlayer",
-			Mount: mount{
-				URL: sURL{URL: &url.URL{Path: mediaDir}},
-				Dir: mediaDir,
-			},
-
+			Location:   "PiPlayer",
+			MediaDir:   mediaDir,
 			Debug:      true,
 			Login:      login,
 			Remote:     remote{Names: []string{"keyboard"}},
@@ -203,7 +192,14 @@ func configLoadFromPath(configPath, mediaDir string, assets fs.FS) (*Config, err
 		return nil, err
 	}
 
-	conf.Mount.Dir = conf.Mount.URL.Path
+	// A config written before the media directory was a plain string has
+	// nothing here. Fall back to the default location, which is where a
+	// standard install keeps its media anyway; anything custom gets re-entered
+	// on the settings page.
+	if conf.MediaDir == "" {
+		logger.Warn("no media directory in the config, falling back to the default", "dir", mediaDir)
+		conf.MediaDir = mediaDir
+	}
 
 	// Configs written before session keys were stored won't have one; give
 	// this device its own. Sessions signed with the old hardcoded key stop

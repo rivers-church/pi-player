@@ -168,7 +168,7 @@ func setupRoutes(p *Player) *http.ServeMux {
 // needing to re-register routes or restart the server.
 func contentHandler(p *Player) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		fs := http.StripPrefix("/content/", http.FileServer(http.Dir(p.conf.MediaDir())))
+		fs := http.StripPrefix("/content/", http.FileServer(http.Dir(p.conf.mediaDir())))
 
 		fs.ServeHTTP(w, r)
 	}

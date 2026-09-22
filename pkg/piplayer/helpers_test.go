@@ -48,7 +48,7 @@ func withTemplates(files map[string]string) playerOpt {
 func withMediaDir(dir string) playerOpt {
 	return func(t *testing.T, p *Player) {
 		t.Helper()
-		p.conf.SetMount(mount{Dir: dir})
+		p.conf.setMediaDir(dir)
 	}
 }
 

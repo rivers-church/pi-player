@@ -76,7 +76,7 @@ func (p *Player) renderErrorPage(w http.ResponseWriter, err error, redirect stri
 	}
 	data := errorPageData{
 		Error:    err.Error(),
-		Dir:      p.conf.MediaDir(),
+		Dir:      p.conf.mediaDir(),
 		IPs:      getLocalIPs(),
 		Port:     port,
 		Redirect: redirect,
@@ -114,7 +114,7 @@ func NewPlayer(ctx context.Context, api *APIHandler, conf *Config) *Player {
 	}
 
 	var err error
-	p.playlist, err = NewPlaylist(conf.MediaDir(), p.ConnControl)
+	p.playlist, err = NewPlaylist(conf.mediaDir(), p.ConnControl)
 	if err != nil {
 		logger.Error("could not create the playlist", "error", err)
 	}
@@ -311,7 +311,7 @@ func (p *Player) handleAPI(msg reqMessage, w http.ResponseWriter) {
 
 // HandleControl Scan the folder for new files every time the page reloads and display contents
 func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
-	if err := p.playlist.fromFolder(p.conf.MediaDir()); err != nil {
+	if err := p.playlist.fromFolder(p.conf.mediaDir()); err != nil {
 		logger.Error("could not read the media directory for the control page", "error", err)
 		p.renderErrorPage(w, err, "/control")
 		return
@@ -324,7 +324,6 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 		templates: p.api.templates,
 		data: map[string]any{
 			"location": p.conf.LocationName(),
-			"Mount":    p.conf.MountURL(),
 			"playlist": view,
 		},
 	}
@@ -367,7 +366,7 @@ func (p *Player) handlerHome(w http.ResponseWriter, r *http.Request) {
 // HandleDirCheck returns whether the configured media directory currently exists.
 func (p *Player) HandleDirCheck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	dir := p.conf.MediaDir()
+	dir := p.conf.mediaDir()
 	ok := exists(dir)
 	if ok && p.playlist.watcher != nil {
 		if err := p.playlist.watcher.Add(dir); err != nil {
@@ -382,7 +381,7 @@ func (p *Player) HandleDirCheck(w http.ResponseWriter, r *http.Request) {
 // HandleViewer handles requests to the image viewer page
 // This handler has a dependency on Playlist.
 func (p *Player) HandleViewer(w http.ResponseWriter, r *http.Request) {
-	if err := p.playlist.fromFolder(p.conf.MediaDir()); err != nil {
+	if err := p.playlist.fromFolder(p.conf.mediaDir()); err != nil {
 		logger.Error("could not read the media directory for the viewer page", "error", err)
 		p.renderErrorPage(w, err, "/viewer")
 		return

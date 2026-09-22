@@ -301,10 +301,10 @@ func TestGetItemsFollowsConfiguredDir(t *testing.T) {
 
 	// Change the media directory the way the settings page does, with no page
 	// load in between.
-	p.conf.SetMount(mount{Dir: newDir})
+	p.conf.setMediaDir(newDir)
 
 	recorder := httptest.NewRecorder()
-	p.playlist.handleAPI(reqMessage{Component: "playlist", Method: "getItems"}, recorder, p.conf.MediaDir(), p.ConnControl)
+	p.playlist.handleAPI(reqMessage{Component: "playlist", Method: "getItems"}, recorder, p.conf.mediaDir(), p.ConnControl)
 
 	var res resMessage
 	if err := json.NewDecoder(recorder.Body).Decode(&res); err != nil {

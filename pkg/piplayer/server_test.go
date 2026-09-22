@@ -45,7 +45,7 @@ func TestContentServedFromCurrentDir(t *testing.T) {
 	}
 
 	// Change the configured media dir, as SettingsHandler would.
-	p.conf.Mount.Dir = dirB
+	p.conf.setMediaDir(dirB)
 
 	// The same handler instance now serves from dirB without being rebuilt.
 	if rec := get("/content/b.txt"); rec.Code != http.StatusOK || rec.Body.String() != "from B" {

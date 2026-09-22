@@ -2,7 +2,6 @@ package piplayer
 
 import (
 	"net/http"
-	"net/url"
 )
 
 // handleSettings renders the settings page and applies what it submits.
@@ -11,12 +10,6 @@ func (p *Player) handleSettings() http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
-			mountURL := conf.MountURL()
-			mu, err := url.PathUnescape(mountURL.String())
-			if err != nil {
-				logger.Warn("could not unescape the media directory URL", "url", mountURL.String(), "error", err)
-				mu = mountURL.String()
-			}
 			tempControl := TemplateHandler{
 				filename:  "settings.html",
 				templates: p.api.templates,
@@ -24,7 +17,7 @@ func (p *Player) handleSettings() http.HandlerFunc {
 					"location": conf.LocationName(),
 					"debug":    conf.DebugEnabled(),
 					"username": conf.Credentials().Username,
-					"mountURL": mu,
+					"mountURL": conf.mediaDir(),
 				},
 			}
 			tempControl.ServeHTTP(w, r)
@@ -78,49 +71,34 @@ func (p *Player) handleSettings() http.HandlerFunc {
 			logger.Error("could not save the config file", "error", err)
 		}
 
-		if mountURL != "" {
-			u, err := url.Parse(mountURL)
-			if err != nil {
-				logger.Warn("could not parse the submitted media directory", "value", mountURL, "error", err)
-			} else if u.Scheme == "smb" {
-				logger.Warn("SMB mounting is no longer supported, ignoring", "value", mountURL)
-			} else if u.Scheme == "" {
-				// Dir comes from Path, not String(), so a directory with a
-				// space in it doesn't get stored percent-escaped.
-				newMount := mount{URL: sURL{URL: u}, Dir: u.Path}
+		if mountURL != "" && mountURL != conf.mediaDir() {
+			oldDir := conf.setMediaDir(mountURL)
+			if err := conf.Save(); err != nil {
+				logger.Error("could not save the config file", "error", err)
+			}
 
-				// Compare the paths: sURL wraps a *url.URL, so comparing the
-				// structs compares pointers and is never equal.
-				if newMount.Dir != conf.MediaDir() {
-					oldDir := conf.SetMount(newMount)
-					if err := conf.Save(); err != nil {
-						logger.Error("could not save the config file", "error", err)
+			// Point the directory watcher at the new media dir.
+			if p.playlist != nil && p.playlist.watcher != nil {
+				if oldDir != "" {
+					p.playlist.watcher.Remove(oldDir)
+				}
+				if exists(mountURL) {
+					if err := p.playlist.watcher.Add(mountURL); err != nil {
+						logger.Error("could not watch the new media directory", "dir", mountURL, "error", err)
 					}
-
-					// Point the directory watcher at the new media dir.
-					if p.playlist != nil && p.playlist.watcher != nil {
-						if oldDir != "" {
-							p.playlist.watcher.Remove(oldDir)
-						}
-						if exists(newMount.Dir) {
-							if err := p.playlist.watcher.Add(newMount.Dir); err != nil {
-								logger.Error("could not watch the new media directory", "dir", newMount.Dir, "error", err)
-							}
-						}
-					}
-
-					// Tell the viewer and control page to reload the playlist
-					// from the new directory instead of restarting the server.
-					// (The control page also reloads via the redirect below.)
-					reload := wsMessage{
-						Component: "playlist",
-						Event:     "newItems",
-						Message:   "media directory changed. Get new items.",
-					}
-					p.ConnViewer.trySend(reload)
-					p.ConnControl.trySend(reload)
 				}
 			}
+
+			// Tell the viewer and control page to reload the playlist from the
+			// new directory instead of restarting the server. (The control page
+			// also reloads via the redirect below.)
+			reload := wsMessage{
+				Component: "playlist",
+				Event:     "newItems",
+				Message:   "media directory changed. Get new items.",
+			}
+			p.ConnViewer.trySend(reload)
+			p.ConnControl.trySend(reload)
 		}
 
 		http.Redirect(w, r, "/control", http.StatusSeeOther)

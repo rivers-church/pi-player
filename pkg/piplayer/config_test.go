@@ -36,8 +36,8 @@ func TestConfigLoadFirstRun(t *testing.T) {
 	if conf.Login.Username != "admin" {
 		t.Errorf("Login.Username = %q, want admin", conf.Login.Username)
 	}
-	if conf.Mount.Dir != mediaDir {
-		t.Errorf("Mount.Dir = %q, want %q", conf.Mount.Dir, mediaDir)
+	if conf.MediaDir != mediaDir {
+		t.Errorf("MediaDir = %q, want %q", conf.MediaDir, mediaDir)
 	}
 
 	// The media directory should have been created.
@@ -59,7 +59,7 @@ func TestConfigLoadExisting(t *testing.T) {
 		"Location": "Lobby",
 		"Debug": false,
 		"Login": {"Username": "operator", "Password": "hashed"},
-		"Mount": {"URL": "/srv/media"}
+		"MediaDir": "/srv/media"
 	}`
 	if err := os.WriteFile(filepath.Join(configPath, "config.json"), []byte(existing), 0o600); err != nil {
 		t.Fatalf("failed to write existing config: %v", err)
@@ -89,7 +89,7 @@ func TestConfigSaveRoundTrip(t *testing.T) {
 		Location: "Auditorium",
 		Debug:    true,
 		Login:    Login{Username: "alex", Password: "secret-hash"},
-		Mount:    mount{URL: sURL{URL: &url.URL{Path: "/srv/media"}}, Dir: "/srv/media"},
+		MediaDir: "/srv/media",
 	}
 
 	if err := conf.saveToPath(configPath); err != nil {
@@ -118,7 +118,7 @@ func TestConfigSaveIsValidJSON(t *testing.T) {
 
 	conf := &Config{
 		Location: "Test",
-		Mount:    mount{URL: sURL{URL: &url.URL{Path: "/srv/media"}}, Dir: "/srv/media"},
+		MediaDir: "/srv/media",
 	}
 	if err := conf.saveToPath(configPath); err != nil {
 		t.Fatalf("saveToPath() returned error: %v", err)
@@ -154,7 +154,7 @@ func TestSettingsHandlerSavesNewCredentials(t *testing.T) {
 	mediaDir := t.TempDir()
 	conf := &Config{
 		Location: "PiPlayer",
-		Mount:    mount{URL: sURL{URL: &url.URL{Path: mediaDir}}, Dir: mediaDir},
+		MediaDir: mediaDir,
 		Login:    login,
 	}
 	p := newTestPlayer(t)
@@ -216,7 +216,7 @@ func TestSettingsHandlerConcurrentWithReaders(t *testing.T) {
 	mediaDir := t.TempDir()
 	conf := &Config{
 		Location: "PiPlayer",
-		Mount:    mount{URL: sURL{URL: &url.URL{Path: mediaDir}}, Dir: mediaDir},
+		MediaDir: mediaDir,
 	}
 	p := newTestPlayer(t)
 	p.conf = conf
@@ -285,7 +285,7 @@ func TestConfigLoadAddsSessionKeyToOlderConfig(t *testing.T) {
 	mediaDir := filepath.Join(t.TempDir(), "media")
 
 	// A config from before session keys were stored.
-	older := `{"Location":"PiPlayer","Mount":{"URL":"/tmp/media"},"Debug":false,"Login":{"Username":"admin","Password":"x"}}`
+	older := `{"Location":"PiPlayer","MediaDir":"/tmp/media","Debug":false,"Login":{"Username":"admin","Password":"x"}}`
 	if err := os.WriteFile(filepath.Join(configPath, "config.json"), []byte(older), 0o600); err != nil {
 		t.Fatalf("writing the old config failed: %v", err)
 	}
@@ -311,10 +311,10 @@ func TestConfigLoadAddsSessionKeyToOlderConfig(t *testing.T) {
 	}
 }
 
-// TestSaveConfigWithoutMount covers a config that has no media directory set.
-// sURL.MarshalJSON returned an empty byte slice for a nil URL, which is not
-// valid JSON, so saving failed with "unexpected end of JSON input".
-func TestSaveConfigWithoutMount(t *testing.T) {
+// TestSaveConfigWithoutMediaDir covers a config that has no media directory
+// set. The media directory used to be a URL with custom marshalling that
+// produced invalid JSON when it was empty, so saving failed outright.
+func TestSaveConfigWithoutMediaDir(t *testing.T) {
 	configPath := t.TempDir()
 	conf := &Config{Location: "PiPlayer"}
 
@@ -373,5 +373,29 @@ func TestSettingsChangesPasswordOnly(t *testing.T) {
 	}
 	if !checkHash("only the password", creds.Password) {
 		t.Error("the new password was not applied")
+	}
+}
+
+// TestConfigLoadFallsBackForOldMediaDir covers upgrading from a config that
+// stored the media directory as a URL. Rather than starting with nowhere to
+// read media from, the player falls back to the standard location.
+func TestConfigLoadFallsBackForOldMediaDir(t *testing.T) {
+	configPath := t.TempDir()
+	mediaDir := filepath.Join(t.TempDir(), "media")
+
+	old := `{"Location":"PiPlayer","Mount":{"URL":"/srv/old-media"},"Debug":false,"Login":{"Username":"admin","Password":"x"}}`
+	if err := os.WriteFile(filepath.Join(configPath, "config.json"), []byte(old), 0o600); err != nil {
+		t.Fatalf("writing the old config failed: %v", err)
+	}
+
+	conf, err := configLoadFromPath(configPath, mediaDir, emptyAssets)
+	if err != nil {
+		t.Fatalf("loading the old config failed: %v", err)
+	}
+	if conf.MediaDir != mediaDir {
+		t.Errorf("MediaDir = %q, want the default %q", conf.MediaDir, mediaDir)
+	}
+	if conf.Location != "PiPlayer" {
+		t.Errorf("Location = %q, want the value from the old config", conf.Location)
 	}
 }
