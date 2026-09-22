@@ -23,8 +23,27 @@ jobs:
     - name: Build
       run: go build -ldflags "-X main.version=${{ github.ref_name }}" -o pi-player
 
+    - name: Check formatting
+      run: |
+        unformatted=$(gofmt -l .)
+        if [ -n "$unformatted" ]; then
+          echo "These files need gofmt:"
+          echo "$unformatted"
+          exit 1
+        fi
+
+    - name: Vet
+      run: go vet ./...
+
     - name: Test
       run: go test -v ./...
+
+    # Most of this project's concurrency - the websocket, the directory
+    # watcher, overlapping API calls - is only checked under the race
+    # detector. It costs a couple of seconds since the test bcrypt cost came
+    # down, so there is no reason not to run it.
+    - name: Test with the race detector
+      run: go test -race -count=2 ./...
 
     - name: Release
       uses: softprops/action-gh-release@v3
