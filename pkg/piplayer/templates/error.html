@@ -1,25 +1,35 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="wa-theme-default wa-palette-default wa-dark">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>PiPlayer — Error</title>
-  <link rel="stylesheet" href="/assets/css/milligram.css">
-  <link rel="stylesheet" href="/assets/css/error.css">
+  <link rel="stylesheet" href="/assets/dist/ui.css">
+  <link rel="stylesheet" href="/assets/dist/css/pages.css">
 </head>
+
 <body data-redirect="{{.Redirect}}">
-  <div class="container">
+  <main class="page">
     <h1>Configuration Error</h1>
-    <p>The media directory could not be found. Please update the path in Settings.</p>
-    <div class="error-msg">{{.Error}}</div>
-    <table>
+
+    <wa-callout variant="danger">
+      <wa-icon slot="icon" name="bell-slash"></wa-icon>
+      <strong>The media directory could not be found.</strong><br>
+      {{.Error}}
+    </wa-callout>
+
+    <table class="detail">
       <tr><td>Directory</td><td><code>{{.Dir}}</code></td></tr>
       {{range .IPs}}<tr><td>IP Address</td><td><code>{{.}}</code></td></tr>{{end}}
       <tr><td>Port</td><td><code>{{.Port}}</code></td></tr>
     </table>
-    <a href="/settings">Go to Settings</a>
-  </div>
+
+    <wa-button href="/settings" variant="brand">Go to Settings</wa-button>
+  </main>
+
   <script type="module" src="/assets/dist/ui.js"></script>
 </body>
+
 </html>

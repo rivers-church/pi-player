@@ -1,0 +1,35 @@
+/* What the chrome pages need on top of Web Awesome's theme: a page frame, and
+   the handful of things the theme has no opinion about. Everything else comes
+   from the theme's own tokens, so there are no colour literals here. */
+
+body {
+  margin: 0;
+  background-color: var(--wa-color-surface-default);
+  color: var(--wa-color-text-normal);
+  font-family: var(--wa-font-family-body);
+}
+
+.page {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: var(--wa-space-xl) var(--wa-space-l);
+  display: flex;
+  flex-direction: column;
+  gap: var(--wa-space-l);
+}
+
+.detail {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.detail td {
+  padding: var(--wa-space-s) var(--wa-space-m);
+  border-bottom: var(--wa-border-width-s) solid var(--wa-color-surface-border);
+}
+
+.detail td:first-child {
+  color: var(--wa-color-text-quiet);
+  white-space: nowrap;
+  width: 12rem;
+}

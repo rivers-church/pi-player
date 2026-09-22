@@ -29,6 +29,8 @@
     "test": "deno test --no-check frontend/scripts/*_test.ts"
   },
   "imports": {
+    "@awesome.me/webawesome": "npm:@awesome.me/webawesome@^3.13.0",
+    "@fortawesome/fontawesome-free": "npm:@fortawesome/fontawesome-free@^7.3.1",
     // Declared here rather than as a bare jsr: specifier in each test file,
     // which no-import-prefix and no-unversioned-import both complain about.
     "@std/assert": "jsr:@std/assert@^1.0.19",
