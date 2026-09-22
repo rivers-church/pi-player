@@ -1,79 +1,94 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="wa-theme-default wa-palette-default wa-dark">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>{{.location}} Controller</title>
-  <link rel="stylesheet" href="/assets/css/milligram.css">
-  <link rel="stylesheet" href="/assets/css/control.css">
-  <script defer src="/assets/js/fontawesome-all.min.js"></script>
+  <link rel="stylesheet" href="/assets/dist/ui.css">
+  <link rel="stylesheet" href="/assets/dist/css/pages.css">
 </head>
+
 <body>
-  <div class="container">
-    <div id="divStatus">
-      <h1>{{.location}} Controls</h1>
-      <p>Currently playing: <span id="spCurrent">{{if .playlist.Current}}{{.playlist.Current.Name}}{{else}}Nothing{{end}}</span></p>
-    </div>
-    <div id="divControls">
-      <div>
-        <button id="btnStart"><i class="fas fa-play-circle"></i></button>
-      </div>
-      <div id="divControlsPlayer">
-        <button data-component="player" data-method="play" title="Play"><i class="fas fa-play"></i></button>
-        <button data-component="player" data-method="pause" title="Pause"><i class="fas fa-pause"></i></button>
-        <button data-component="player" data-method="stop" title="Stop"><i class="fas fa-stop"></i></button>
-        <button data-component="player" data-method="seek" data-arguments="{&quot;value&quot;: &quot;-30&quot;}" title="Rewind"><i class="fas fa-fast-backward"></i></button>
-        <button data-component="player" data-method="seek" data-arguments="{&quot;value&quot;:  &quot;30&quot;}" title="Fast Forward"><i class="fas fa-fast-forward"></i></button>
-        <button data-component="player" data-method="previous" title="Previous"><i class="fas fa-step-backward"></i></button>
-        <button data-component="player" data-method="next" title="Next"><i class="fas fa-step-forward"></i></button>
-      </div>
-    </div>
-    <div>
-      <a href="/settings">Settings</a>
-      <form action="/logout" method="POST" class="logout-form">
-        <button type="submit" class="link-button">Log out</button>
-      </form>
-    </div>
+  <main class="page" id="divStatus">
+    <h1>{{.location}} Controls</h1>
+    <p>Currently playing: <span id="spCurrent">{{if .playlist.Current}}{{.playlist.Current.Name}}{{else}}Nothing{{end}}</span></p>
+
     <div>
       <h2>Playlist</h2>
-      <table id="tblPlaylist">
+      <table id="tblPlaylist" class="playlist">
         {{- range $i, $e := .playlist.Items}}
-          <tr data-index="{{$i}}">
-            <td class="icon"><i class="fas fa-{{.Type}}"></i></td>
-            <td class="icon">
-              {{- if .Audio}}
-              <i class="fas fa-music"></i>
-              {{- end}}
-              {{- if eq (index .Cues "clear") "audio"}}
-              <i class="fas fa-bell-slash"></i>
-              {{- end}}
-            </td>
-            <td class="item-name">{{.Name}}</td>
-          </tr>
+        <tr data-index="{{$i}}">
+          <td class="icon"><wa-icon name="{{if eq .Type "browser"}}window-maximize{{else}}{{.Type}}{{end}}"></wa-icon></td>
+          <td class="icon">
+            {{- if .Audio}}
+            <wa-icon name="music" label="has audio"></wa-icon>
+            {{- end}}
+            {{- if eq (index .Cues "clear") "audio"}}
+            <wa-icon name="bell-slash" label="audio cleared"></wa-icon>
+            {{- end}}
+          </td>
+          <td class="item-name">{{.Name}}</td>
+        </tr>
         {{- end}}
       </table>
     </div>
-  </div>
-  <template id="tmpItemRow">
-    <tr data-index="">
-      <td class="icon"><i class="fas"></i></td>
-      <td class="icon"><i class="fas"></i></td>
-      <td class="item-name"></td>
-    </tr>
-  </template>
-  <div id="divOverlay">
-    <div id="divReconnect" class="warning">
-      <h1 id="h1OverlayMsg">Connection Lost</h1>
-      <h2>Reconnecting...</h2>
-    </div>
-    <div id="divDisconnect" class="warning">
-      <h1 id="h1OverlayMsg">You've been disconnected by another user.</h1>
-      <form action="/logout" method="POST" class="logout-form">
-        <button type="submit" class="link-button"><h2>Login again here to take back control.</h2></button>
-      </form>
-    </div>
-  </div>
-  <script type="module" src="/assets/js/control.js"></script>
+
+    <nav class="actions">
+      <a href="/settings">Settings</a>
+      <form action="/logout" method="POST"><button type="submit" class="wa-plain">Log out</button></form>
+    </nav>
+  </main>
+
+  <footer id="divControls">
+    <wa-button id="btnStart" variant="brand" size="l" title="Start the selected item">
+      <wa-icon slot="start" name="play-circle"></wa-icon>
+      Start
+    </wa-button>
+
+    <wa-button-group id="divControlsPlayer" label="Transport">
+      <wa-button data-component="player" data-method="play" title="Play">
+        <wa-icon name="play" label="Play"></wa-icon>
+      </wa-button>
+      <wa-button data-component="player" data-method="pause" title="Pause">
+        <wa-icon name="pause" label="Pause"></wa-icon>
+      </wa-button>
+      <wa-button data-component="player" data-method="stop" title="Stop">
+        <wa-icon name="stop" label="Stop"></wa-icon>
+      </wa-button>
+      <wa-button data-component="player" data-method="seek" data-arguments="{&quot;value&quot;: &quot;-30&quot;}" title="Back 30 seconds">
+        <wa-icon name="fast-backward" label="Back 30 seconds"></wa-icon>
+      </wa-button>
+      <wa-button data-component="player" data-method="seek" data-arguments="{&quot;value&quot;: &quot;30&quot;}" title="Forward 30 seconds">
+        <wa-icon name="fast-forward" label="Forward 30 seconds"></wa-icon>
+      </wa-button>
+      <wa-button data-component="player" data-method="previous" title="Previous">
+        <wa-icon name="step-backward" label="Previous"></wa-icon>
+      </wa-button>
+      <wa-button data-component="player" data-method="next" title="Next">
+        <wa-icon name="step-forward" label="Next"></wa-icon>
+      </wa-button>
+    </wa-button-group>
+  </footer>
+
+  <!-- The socket dropped and is being retried. Not dismissible: the page is
+       not usable until it is back. -->
+  <wa-dialog id="dlgReconnect" label="Connection lost" without-header>
+    <h2>Connection lost</h2>
+    <p>Reconnecting…</p>
+  </wa-dialog>
+
+  <!-- Another device took the connection over. This one stops reconnecting,
+       so the only way out is to log in again. -->
+  <wa-dialog id="dlgDisconnect" label="Disconnected" without-header>
+    <h2>You have been disconnected by another user.</h2>
+    <form action="/logout" method="POST">
+      <button type="submit" class="wa-brand">Log in again to take back control</button>
+    </form>
+  </wa-dialog>
+
+  <script type="module" src="/assets/dist/ui.js"></script>
 </body>
+
 </html>

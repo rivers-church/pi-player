@@ -1,3 +1,15 @@
+/* The kiosk display's own stylesheet. It deliberately does not load the
+   component library: this page is a fullscreen media surface with no chrome,
+   and the display should not be able to break because a component library
+   changed.
+
+   The 62.5% root came from milligram, which this page no longer loads. Every
+   rem below is calibrated to a 10px root, so it stays until they are rewritten
+   - without it the playlist type grows by 1.6x on the wall. */
+html {
+  font-size: 62.5%;
+}
+
 html, body {
   background-color: black;
   margin: 0;

@@ -33,3 +33,91 @@ body {
   white-space: nowrap;
   width: 12rem;
 }
+
+.page--narrow {
+  max-width: 34rem;
+}
+
+/* Forms on the login and settings pages are native elements; Web Awesome's
+   native.css styles them, this only lays them out. */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wa-space-xs);
+}
+
+.stack label {
+  margin-block-start: var(--wa-space-s);
+}
+
+.stack label.inline {
+  display: flex;
+  align-items: center;
+  gap: var(--wa-space-s);
+}
+
+.stack label.inline input {
+  width: auto;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--wa-space-m);
+  margin-block-start: var(--wa-space-m);
+}
+
+.flash {
+  color: var(--wa-color-danger-on-quiet);
+  background-color: var(--wa-color-danger-fill-quiet);
+  border-radius: var(--wa-border-radius-m);
+  padding: var(--wa-space-s) var(--wa-space-m);
+}
+
+/* Playlist */
+.playlist {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.playlist tr {
+  cursor: pointer;
+}
+
+.playlist tr:hover {
+  background-color: var(--wa-color-neutral-fill-quiet);
+}
+
+.playlist tr.selected {
+  background-color: var(--wa-color-brand-fill-quiet);
+}
+
+.playlist td {
+  padding: var(--wa-space-s) var(--wa-space-m);
+  border-bottom: var(--wa-border-width-s) solid var(--wa-color-surface-border);
+}
+
+.playlist td.icon {
+  width: 2rem;
+  color: var(--wa-color-text-quiet);
+}
+
+/* The transport bar is pinned to the bottom so it stays put while the playlist
+   scrolls - an operator standing at the back should not have to hunt for it. */
+#divControls {
+  position: fixed;
+  inset-block-end: 0;
+  inset-inline: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--wa-space-m);
+  padding: var(--wa-space-m);
+  background-color: var(--wa-color-surface-raised);
+  border-block-start: var(--wa-border-width-s) solid var(--wa-color-surface-border);
+}
+
+/* Room for the bar, so the last playlist row is not hidden behind it. */
+#divStatus {
+  padding-block-end: 6rem;
+}

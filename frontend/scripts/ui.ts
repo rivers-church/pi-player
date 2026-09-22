@@ -16,6 +16,7 @@ import WaSwitch from "@awesome.me/webawesome/dist/components/switch/switch.js";
 import "@awesome.me/webawesome/dist/styles/themes/default.css";
 import "@awesome.me/webawesome/dist/styles/webawesome.css";
 
+import { Control } from "./control.ts";
 import { watchForMediaDirectory } from "./errorPage.ts";
 
 // Importing a component is what registers its custom element, so the bundler
@@ -30,9 +31,15 @@ registerIconLibrary("default", {
 });
 
 function start(): void {
+  // One bundle serves four pages, so each page's setup runs only when its
+  // markup is on the page.
   const redirect = document.body.dataset.redirect;
   if (redirect) {
     watchForMediaDirectory(redirect);
+  }
+
+  if (document.querySelector("#divControlsPlayer")) {
+    new Control(document).start();
   }
 }
 

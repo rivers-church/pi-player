@@ -167,8 +167,12 @@ func TestNewAPIHandlerParsesEmbedded(t *testing.T) {
 			t.Errorf("template %q is missing from the parsed set", name)
 		}
 	}
-	if _, err := api.statAssets.Open("js/control.js"); err != nil {
-		t.Errorf("the assets filesystem does not serve js/control.js: %v", err)
+	// The bundled entry points and the viewer's own script, which is still
+	// hand-written JavaScript.
+	for _, asset := range []string{"dist/ui.js", "dist/ui.css", "js/viewer.js"} {
+		if _, err := api.statAssets.Open(asset); err != nil {
+			t.Errorf("the assets filesystem does not serve %s: %v", asset, err)
+		}
 	}
 }
 

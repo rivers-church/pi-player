@@ -1,30 +1,37 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="wa-theme-default wa-palette-default wa-dark">
 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>Login - {{.location}}</title>
-  <link rel="stylesheet" href="/assets/css/milligram.css">
+  <link rel="stylesheet" href="/assets/dist/ui.css">
+  <link rel="stylesheet" href="/assets/dist/css/pages.css">
 </head>
 
+<!-- Native form controls, deliberately: Web Awesome styles them through
+     native.css, and this page has to work even if the script bundle doesn't
+     load. A custom element that never upgrades is a login nobody can use. -->
+
 <body>
-  <div class="container">
-    <div id="flashMessage">
-      <span>{{.flashMessage}}</span>
-    </div>
-    <div id="divLogin">
-      <h1>{{.location}} Login</h1>
-      <form action="/login" method="POST" id="frmLogin">
-        <label for="txtUsername">Username</label>
-        <input type="text" id="txtUsername" name="username" autofocus>
-        <label for="txtPassword">Password</label>
-        <input type="password" id="txtPassword" name="password">
-        <button type="submit">Login</button>
-      </form>
-    </div>
-  </div>
+  <main class="page page--narrow">
+    <h1>{{.location}} Login</h1>
+
+    {{if .flashMessage}}
+    <p class="flash" role="alert">{{.flashMessage}}</p>
+    {{end}}
+
+    <form action="/login" method="POST" id="frmLogin" class="stack">
+      <label for="txtUsername">Username</label>
+      <input type="text" id="txtUsername" name="username" autocomplete="username" autofocus>
+
+      <label for="txtPassword">Password</label>
+      <input type="password" id="txtPassword" name="password" autocomplete="current-password">
+
+      <button type="submit" class="wa-brand">Login</button>
+    </form>
+  </main>
 </body>
 
 </html>

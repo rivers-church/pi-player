@@ -1,35 +1,47 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="wa-theme-default wa-palette-default wa-dark">
 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>{{.location}} Settings</title>
-  <link rel="stylesheet" href="/assets/css/milligram.css">
-  <link rel="stylesheet" href="/assets/css/control.css">
+  <link rel="stylesheet" href="/assets/dist/ui.css">
+  <link rel="stylesheet" href="/assets/dist/css/pages.css">
 </head>
 
+<!-- Native form controls for the same reason as the login page: this is how an
+     operator fixes a broken media directory, so it cannot depend on a script. -->
+
 <body>
-  <div class="container">
-    <div id="divSettings">
-      <h1>{{.location}} Settings</h1>
-      <form action="/settings" method="POST" id="frmSettings">
-        <label for="txtLocation">Location</label>
-        <input type="text" id="txtLocation" name="location" value="{{.location}}">
-        <label for="txtMountURL">Media directory</label>
-        <input type="text" id="txtMountURL" name="mountURL" value="{{.mountURL}}">
-        <label for="txtUsername">Username</label>
-        <input type="text" id="txtUsername" name="username" value="{{.username}}">
-        <label for="txtPassword">Password</label>
-        <input type="password" id="txtPassword" name="password">
-        <label for="cbxDebug">Debug</label>
+  <main class="page page--narrow">
+    <h1>{{.location}} Settings</h1>
+
+    <form action="/settings" method="POST" id="frmSettings" class="stack">
+      <label for="txtLocation">Location</label>
+      <input type="text" id="txtLocation" name="location" value="{{.location}}">
+
+      <label for="txtMountURL">Media directory</label>
+      <input type="text" id="txtMountURL" name="mountURL" value="{{.mountURL}}">
+
+      <label for="txtUsername">Username</label>
+      <input type="text" id="txtUsername" name="username" value="{{.username}}" autocomplete="username">
+
+      <label for="txtPassword">Password</label>
+      <input type="password" id="txtPassword" name="password" autocomplete="new-password"
+             placeholder="leave blank to keep the current one">
+
+      <label class="inline">
         <input type="checkbox" id="cbxDebug" name="debug" {{if .debug}}checked{{end}}>
-        <button type="submit">Save</button>
-        <a href="/control">Controls</a>
-      </form>
-    </div>
-  </div>
+        Debug logging
+      </label>
+
+      <div class="actions">
+        <button type="submit" class="wa-brand">Save</button>
+        <a href="/control">Back to controls</a>
+      </div>
+    </form>
+  </main>
 </body>
 
 </html>
