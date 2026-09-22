@@ -87,6 +87,29 @@ playlist is scanned, so it is kept to 1 MiB, 1000 entries and 256 characters per
 pattern — a real cue file is a few kilobytes, and anything past a limit is
 logged and ignored rather than failing the page.
 
+### Thumbnails
+
+The control page and the viewer's playlist overlay show a thumbnail per item,
+generated with **ffmpeg** — one frame, scaled to 320px wide, for videos and
+images alike. They are made lazily on the first request for each file, at most
+two at a time, and cached under `~/.cache/pi-player/thumbs`. Never in the media
+directory: that is a share other people write to, and a JPEG dropped there
+would come back as a playable item.
+
+A cache entry is keyed by the file's name, size and modification time, so
+replacing a file under the same name produces a new thumbnail rather than
+yesterday's frame. Entries no longer matching anything in the media directory
+are swept after a rescan, at most once every ten minutes.
+
+Without ffmpeg on the device — or with `PIPLAYER_NO_THUMBS=1` set in the
+systemd unit, which turns the feature off for a device too slow to enjoy it —
+the pages fall back to the type icons, which is what they showed before. A file
+ffmpeg cannot read does the same, and is not retried for an hour.
+
+The viewer does not fetch thumbnails until the playlist overlay is opened. The
+display is the one machine that should never be doing unnecessary work while it
+is playing.
+
 ### Logging in
 
 The first login is `admin` / `admin`; change it on the settings page. Session
@@ -94,11 +117,12 @@ cookies are signed with a key generated on first run and kept in
 `~/.config/pi-player/config.json`, so a cookie from one player is worthless on
 another, and replacing that file logs everyone out.
 
-Every route needs a session except the login page and static assets. The three
-the kiosk browser needs — `/viewer`, `/ws/viewer` and `/content/` — also accept
-a request from localhost without one, which is how the local Chromium reaches
-the viewer. Nothing else on the network can read the media directory or take
-the display's websocket.
+Every route needs a session except the login page and static assets. The ones
+the kiosk browser needs — `/viewer`, `/ws/viewer`, `/content/`, `/thumb/`,
+`/api` and `/api/dircheck` — also accept a request from localhost without one,
+which is how the local Chromium reaches the viewer, fetches its playlist and
+waits for the media directory to come back. Nothing else on the network can
+read the media directory or take the display's websocket.
 
 After five failed attempts a client is refused for a minute, and each further
 attempt extends that. This is mostly about cost rather than guessing: checking
