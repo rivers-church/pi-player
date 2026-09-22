@@ -130,13 +130,18 @@ func requireLoginOrLocal(p *Player, next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// isLoopback reports whether the request came from this machine.
-func isLoopback(remoteAddr string) bool {
+// clientIP returns the address part of a request's RemoteAddr.
+func clientIP(remoteAddr string) string {
 	host, _, err := net.SplitHostPort(remoteAddr)
 	if err != nil {
-		host = remoteAddr
+		return remoteAddr
 	}
-	ip := net.ParseIP(host)
+	return host
+}
+
+// isLoopback reports whether the request came from this machine.
+func isLoopback(remoteAddr string) bool {
+	ip := net.ParseIP(clientIP(remoteAddr))
 	return ip != nil && ip.IsLoopback()
 }
 

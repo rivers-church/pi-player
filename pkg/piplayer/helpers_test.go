@@ -27,6 +27,7 @@ func newTestPlayer(t *testing.T, opts ...playerOpt) *Player {
 		conf:        &Config{},
 		playlist:    &Playlist{},
 		store:       newSessionStore(testSessionKey),
+		loginLimit:  newLoginLimiter(),
 		ConnViewer:  newConnWS(),
 		ConnControl: newConnWS(),
 	}

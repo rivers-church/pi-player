@@ -75,6 +75,11 @@ a request from localhost without one, which is how the local Chromium reaches
 the viewer. Nothing else on the network can read the media directory or take
 the display's websocket.
 
+After five failed attempts a client is refused for a minute, and each further
+attempt extends that. This is mostly about cost rather than guessing: checking
+a password takes about a second of CPU on a slow device, so unlimited attempts
+are a cheap way to keep it busy.
+
 Traffic is plain HTTP, so treat the player's network as trusted: the password
 and session cookie cross it in the clear.
 

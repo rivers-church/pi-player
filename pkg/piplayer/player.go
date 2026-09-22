@@ -25,6 +25,7 @@ type Player struct {
 	playlist    *Playlist
 	conf        *Config
 	store       *sessions.CookieStore
+	loginLimit  *loginLimiter
 	browser     browser
 }
 
@@ -109,6 +110,7 @@ func NewPlayer(ctx context.Context, api *APIHandler, conf *Config) *Player {
 		api:         api,
 		conf:        conf,
 		store:       newSessionStore(conf.sessionKey()),
+		loginLimit:  newLoginLimiter(),
 		ConnViewer:  newConnWS(),
 		ConnControl: newConnWS(),
 	}

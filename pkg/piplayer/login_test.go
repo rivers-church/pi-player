@@ -2,6 +2,7 @@ package piplayer
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -247,5 +248,134 @@ func TestLoginClearsPreviousSessionValues(t *testing.T) {
 	}
 	if _, ok := session.Values["leftover"]; ok {
 		t.Error("a value from the previous session survived the login")
+	}
+}
+
+// TestLoginLimiterLocksOutAfterFailures covers the counting itself, on a
+// stopped clock so the test doesn't have to wait out a real window.
+func TestLoginLimiterLocksOutAfterFailures(t *testing.T) {
+	now := time.Now()
+	l := newLoginLimiter()
+	l.now = func() time.Time { return now }
+
+	for i := range loginMaxFailures {
+		if ok, _ := l.allow("10.0.0.1"); !ok {
+			t.Fatalf("refused attempt %d of %d", i+1, loginMaxFailures)
+		}
+		l.failed("10.0.0.1")
+	}
+
+	ok, retryAfter := l.allow("10.0.0.1")
+	if ok {
+		t.Error("the client was allowed to keep trying past the limit")
+	}
+	if retryAfter <= 0 || retryAfter > loginFailureWindow {
+		t.Errorf("retryAfter is %s, want it inside the window", retryAfter)
+	}
+
+	// Another client is unaffected.
+	if ok, _ := l.allow("10.0.0.2"); !ok {
+		t.Error("a different client was locked out too")
+	}
+
+	// The window passes.
+	now = now.Add(loginFailureWindow + time.Second)
+	if ok, _ := l.allow("10.0.0.1"); !ok {
+		t.Error("the client is still locked out after the window passed")
+	}
+}
+
+func TestLoginLimiterResetsOnSuccess(t *testing.T) {
+	l := newLoginLimiter()
+	for range loginMaxFailures {
+		l.failed("10.0.0.1")
+	}
+	if ok, _ := l.allow("10.0.0.1"); ok {
+		t.Fatal("the client should be locked out at this point")
+	}
+
+	l.succeeded("10.0.0.1")
+
+	if ok, _ := l.allow("10.0.0.1"); !ok {
+		t.Error("a successful login did not clear the failures")
+	}
+}
+
+// TestLoginLimiterForgetsOldClients checks the map doesn't grow without bound
+// as clients come and go.
+func TestLoginLimiterForgetsOldClients(t *testing.T) {
+	now := time.Now()
+	l := newLoginLimiter()
+	l.now = func() time.Time { return now }
+
+	for i := range 100 {
+		l.failed(fmt.Sprintf("10.0.0.%d", i))
+	}
+	if len(l.failures) != 100 {
+		t.Fatalf("tracking %d clients, want 100", len(l.failures))
+	}
+
+	now = now.Add(loginFailureWindow + time.Second)
+	l.failed("10.0.1.1")
+
+	if len(l.failures) != 1 {
+		t.Errorf("tracking %d clients after the window passed, want only the recent one", len(l.failures))
+	}
+}
+
+// TestLoginRefusesAfterRepeatedFailures drives the handler itself, and checks
+// the refusal happens without hashing a password - the point is to stop a
+// client from spending the device's CPU, not just to stop guessing.
+func TestLoginRefusesAfterRepeatedFailures(t *testing.T) {
+	p := newTestPlayer(t, withTemplates(map[string]string{"login.html": "login page"}))
+	creds, err := newLogin()
+	if err != nil {
+		t.Fatalf("creating the default login failed: %v", err)
+	}
+	p.conf.setCredentials(creds)
+
+	hashes := 0
+	countingHandler := loginHandler(p, func() error { return nil })
+	attempt := func(password string) *httptest.ResponseRecorder {
+		t.Helper()
+		form := url.Values{"username": {"admin"}, "password": {password}}.Encode()
+		request := httptest.NewRequest(http.MethodPost, "http://piplayer.local/login", strings.NewReader(form))
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		request.RemoteAddr = "192.168.1.50:41000"
+		recorder := httptest.NewRecorder()
+		countingHandler.ServeHTTP(recorder, request)
+		return recorder
+	}
+
+	for i := range loginMaxFailures {
+		if got := attempt("wrong").Code; got != http.StatusOK {
+			t.Fatalf("attempt %d returned %d, want the login page back", i+1, got)
+		}
+		hashes++
+	}
+
+	locked := attempt("wrong")
+	if locked.Code != http.StatusTooManyRequests {
+		t.Fatalf("attempt %d returned %d, want %d", hashes+1, locked.Code, http.StatusTooManyRequests)
+	}
+	if locked.Header().Get("Retry-After") == "" {
+		t.Error("the refusal has no Retry-After header")
+	}
+
+	// Even the right password is refused while the client is locked out.
+	if got := attempt("admin").Code; got != http.StatusTooManyRequests {
+		t.Errorf("the correct password returned %d while locked out, want %d", got, http.StatusTooManyRequests)
+	}
+
+	// A different client is unaffected.
+	form := url.Values{"username": {"admin"}, "password": {"admin"}}.Encode()
+	request := httptest.NewRequest(http.MethodPost, "http://piplayer.local/login", strings.NewReader(form))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.RemoteAddr = "192.168.1.51:41000"
+	recorder := httptest.NewRecorder()
+	countingHandler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusFound {
+		t.Errorf("another client got %d, want a successful login", recorder.Code)
 	}
 }

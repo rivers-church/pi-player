@@ -2,6 +2,9 @@ package piplayer
 
 import (
 	"net/http"
+	"strconv"
+	"sync"
+	"time"
 
 	"github.com/gorilla/sessions"
 	"golang.org/x/crypto/bcrypt"
@@ -114,6 +117,17 @@ func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 		// process POST request
 		xForward := r.Header.Get("x-forwarded-for")
 		logger.Debug("login attempt", "remoteAddr", r.RemoteAddr, "xForwardedFor", xForward)
+
+		// Turn away a client that keeps failing before doing any bcrypt work,
+		// which is the expensive part and the reason this is worth having.
+		client := clientIP(r.RemoteAddr)
+		if ok, retryAfter := p.loginLimit.allow(client); !ok {
+			logger.Warn("too many failed logins, refusing for now",
+				"remoteAddr", r.RemoteAddr, "retryAfter", retryAfter.Round(time.Second))
+			w.Header().Set("Retry-After", strconv.Itoa(int(retryAfter.Seconds())+1))
+			http.Error(w, "Too many failed login attempts. Try again shortly.", http.StatusTooManyRequests)
+			return
+		}
 		if err := r.ParseForm(); err != nil {
 			logger.Warn("could not parse the login form", "error", err)
 		}
@@ -137,6 +151,7 @@ func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 		}
 
 		if username == creds.Username && checkHash(password, creds.Password) {
+			p.loginLimit.succeeded(client)
 			// user successfully logged in
 			logger.Info("login successful", "remoteAddr", r.RemoteAddr)
 
@@ -152,6 +167,9 @@ func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 			http.Redirect(w, r, "/control", http.StatusFound)
 			return
 		}
+
+		p.loginLimit.failed(client)
+		logger.Warn("failed login", "remoteAddr", r.RemoteAddr)
 
 		tempControl := templateHandler{
 			templates: p.api.templates,
@@ -189,4 +207,85 @@ func (p *Player) handleLogout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "/login", http.StatusFound)
+}
+
+// Failed logins are limited per client. Someone mistyping their password a few
+// times is normal; a client making a hundred attempts a minute is either
+// guessing or keeping the device busy, and at the production work factor each
+// attempt costs about a second of CPU on a slow machine.
+const (
+	loginMaxFailures   = 5
+	loginFailureWindow = time.Minute
+)
+
+// loginLimiter refuses logins from a client that keeps getting them wrong.
+type loginLimiter struct {
+	mu       sync.Mutex
+	failures map[string]*loginFailures
+	// now is swappable so tests don't have to sleep through the window.
+	now func() time.Time
+}
+
+type loginFailures struct {
+	count int
+	until time.Time
+}
+
+func newLoginLimiter() *loginLimiter {
+	return &loginLimiter{
+		failures: make(map[string]*loginFailures),
+		now:      time.Now,
+	}
+}
+
+// allow reports whether client may try a login now, and how long it has to
+// wait if not. It is called before the password is checked, so a locked-out
+// client costs nothing to turn away.
+func (l *loginLimiter) allow(client string) (bool, time.Duration) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	now := l.now()
+	l.prune(now)
+
+	f := l.failures[client]
+	if f == nil || f.count < loginMaxFailures {
+		return true, 0
+	}
+	return false, f.until.Sub(now)
+}
+
+// failed records a failed attempt.
+func (l *loginLimiter) failed(client string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	now := l.now()
+	l.prune(now)
+
+	f := l.failures[client]
+	if f == nil {
+		f = &loginFailures{}
+		l.failures[client] = f
+	}
+	f.count++
+	// Each failure pushes the window out, so a client that keeps trying stays
+	// locked out rather than getting a free attempt every window.
+	f.until = now.Add(loginFailureWindow)
+}
+
+// succeeded clears a client's failures.
+func (l *loginLimiter) succeeded(client string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	delete(l.failures, client)
+}
+
+// prune drops clients whose window has passed. Callers hold the mutex.
+func (l *loginLimiter) prune(now time.Time) {
+	for client, f := range l.failures {
+		if now.After(f.until) {
+			delete(l.failures, client)
+		}
+	}
 }
