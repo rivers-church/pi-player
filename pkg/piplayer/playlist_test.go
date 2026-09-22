@@ -1,6 +1,8 @@
 package piplayer
 
 import (
+	"encoding/json"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"sync"
@@ -287,5 +289,50 @@ func TestSetCurrentRejectsOutOfRange(t *testing.T) {
 		if p.setCurrent(index) {
 			t.Errorf("setCurrent(%d) was accepted on an empty playlist", index)
 		}
+	}
+}
+
+// TestGetItemsFollowsConfiguredDir checks the API rescans the directory the
+// config points at. It used to rescan whichever directory the playlist was
+// last read from, so after a media-directory change the viewer could be handed
+// items from the old one until some page load happened to resync them.
+func TestGetItemsFollowsConfiguredDir(t *testing.T) {
+	oldDir := t.TempDir()
+	newDir := t.TempDir()
+	writeFiles(t, oldDir, "old.mp4")
+	writeFiles(t, newDir, "new.mp4")
+
+	p := &Player{
+		api:         &APIHandler{},
+		conf:        &Config{Mount: mount{Dir: oldDir}},
+		playlist:    &Playlist{},
+		ConnViewer:  NewConnWS(),
+		ConnControl: NewConnWS(),
+	}
+	if err := p.playlist.fromFolder(oldDir); err != nil {
+		t.Fatalf("initial scan failed: %v", err)
+	}
+
+	// Change the media directory the way the settings page does, with no page
+	// load in between.
+	p.conf.SetMount(mount{Dir: newDir})
+
+	recorder := httptest.NewRecorder()
+	p.playlist.handleAPI(p, reqMessage{Component: "playlist", Method: "getItems"}, recorder)
+
+	var res resMessage
+	if err := json.NewDecoder(recorder.Body).Decode(&res); err != nil {
+		t.Fatalf("decoding the response failed: %v", err)
+	}
+	items, ok := res.Message.([]any)
+	if !ok || len(items) != 1 {
+		t.Fatalf("got %v, want one item", res.Message)
+	}
+	item, ok := items[0].(map[string]any)
+	if !ok {
+		t.Fatalf("unexpected item shape: %v", items[0])
+	}
+	if item["Visual"] != "new.mp4" {
+		t.Errorf("getItems returned %v, want the item from the newly configured directory", item["Visual"])
 	}
 }

@@ -80,13 +80,6 @@ func (p *Playlist) setCurrent(index int) bool {
 	return true
 }
 
-// dir returns the directory the playlist was last read from.
-func (p *Playlist) dir() string {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return p.Name
-}
-
 // Presentation is used to read the presentation.json file for added cues.
 type Presentation struct {
 	Items []ItemString
@@ -177,8 +170,12 @@ func (p *Playlist) handleAPI(plr *Player, msg reqMessage, w http.ResponseWriter)
 			log.Println("set current item index to:", index)
 		}
 	case "getItems":
-		if err := p.fromFolder(p.dir()); err != nil {
-			log.Printf("Api call failed. Can't get items from folder %s\n%v", p.dir(), err)
+		// Rescan the configured directory, not the one this playlist happens
+		// to hold: after a settings change they differ until some page load
+		// resyncs them, and the viewer would be handed the old directory.
+		dir := plr.conf.MediaDir()
+		if err := p.fromFolder(dir); err != nil {
+			log.Printf("Api call failed. Can't get items from folder %s\n%v", dir, err)
 		}
 
 		m = resMessage{
