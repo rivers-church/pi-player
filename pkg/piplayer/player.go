@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -84,12 +84,12 @@ func (p *Player) renderErrorPage(w http.ResponseWriter, err error, redirect stri
 
 	var page bytes.Buffer
 	if p.api.templates == nil {
-		log.Println("no templates available to render the error page")
+		logger.Error("no templates available to render the error page")
 		http.Error(w, "Something went wrong.", http.StatusInternalServerError)
 		return
 	}
 	if tmplErr := p.api.templates.ExecuteTemplate(&page, "error.html", data); tmplErr != nil {
-		log.Println("Error rendering error page:", tmplErr)
+		logger.Error("rendering the error page failed", "error", tmplErr)
 		http.Error(w, "Something went wrong.", http.StatusInternalServerError)
 		return
 	}
@@ -97,7 +97,7 @@ func (p *Player) renderErrorPage(w http.ResponseWriter, err error, redirect stri
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusInternalServerError)
 	if _, wErr := page.WriteTo(w); wErr != nil {
-		log.Println("Error writing error page:", wErr)
+		logger.Error("writing the error page failed", "error", wErr)
 	}
 }
 
@@ -116,12 +116,10 @@ func NewPlayer(ctx context.Context, api *APIHandler, conf *Config) *Player {
 	var err error
 	p.playlist, err = NewPlaylist(&p, conf.MediaDir())
 	if err != nil {
-		log.Printf("error creating playlist: %v\n", err)
+		logger.Error("could not create the playlist", "error", err)
 	}
 
-	if api.debug {
-		log.Println("initializing remote")
-	}
+	logger.Debug("initializing the remote control")
 	go remoteRead(ctx, &p)
 
 	return &p
@@ -133,16 +131,14 @@ func (p *Player) FirstRun() {
 		return
 	}
 
-	if p.api.debug {
-		log.Println("Starting browser on first run...")
-	}
+	logger.Debug("starting the browser on first run")
 
 	if err := p.startBrowser(); err != nil {
-		log.Println("Error trying to start the browser:\n", err)
+		logger.Error("could not start the browser", "error", err)
 	}
 
 	if len(p.playlist.snapshot().Items) == 0 {
-		log.Println("No items in current directory.")
+		logger.Info("no items in the media directory")
 	}
 }
 
@@ -185,7 +181,7 @@ func (p *Player) startBrowser() error {
 	}
 
 	command := exec.Command(browser, flags...)
-	if p.api.debug {
+	if logger.Enabled(context.Background(), slog.LevelDebug) {
 		command.Stdout = os.Stdout
 	}
 	command.Stderr = os.Stderr
@@ -210,10 +206,10 @@ func (p *Player) startBrowser() error {
 		p.browser.mu.Unlock()
 
 		if err != nil {
-			log.Printf("browser exited: %v\n", err)
+			logger.Error("browser exited", "error", err)
 			return
 		}
-		log.Println("browser exited")
+		logger.Info("browser exited")
 	}()
 
 	return nil
@@ -242,7 +238,7 @@ func (p *Player) stopBrowser() {
 		return
 	}
 	if err := command.Process.Signal(os.Interrupt); err != nil {
-		log.Printf("error asking the browser to quit: %v\n", err)
+		logger.Error("could not ask the browser to quit", "error", err)
 	}
 }
 
@@ -260,7 +256,7 @@ func (p *Player) Close() {
 
 	if p.playlist != nil && p.playlist.watcher != nil {
 		if err := p.playlist.watcher.Close(); err != nil {
-			log.Printf("error closing the directory watcher: %v\n", err)
+			logger.Error("could not close the directory watcher", "error", err)
 		}
 	}
 
@@ -268,7 +264,7 @@ func (p *Player) Close() {
 }
 
 func handleAPIError(w http.ResponseWriter, status int, message string) {
-	log.Println("api error:", message)
+	logger.Warn("api error", "message", message)
 	writeAPIResponse(w, status, &resMessage{
 		Success: false,
 		Event:   "error",
@@ -316,7 +312,7 @@ func (p *Player) handleAPI(msg reqMessage, w http.ResponseWriter) {
 // HandleControl Scan the folder for new files every time the page reloads and display contents
 func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 	if err := p.playlist.fromFolder(p.conf.MediaDir()); err != nil {
-		log.Println("HandleControl: Error trying to read files from directory:\n", err)
+		logger.Error("could not read the media directory for the control page", "error", err)
 		p.renderErrorPage(w, err, "/control")
 		return
 	}
@@ -333,14 +329,8 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	if p.api.debug {
-		log.Println("files in playlist:")
-		for _, item := range view.Items {
-			log.Printf("visual: %s", item.Name())
-			if item.Audio != nil {
-				log.Printf("\taudio: %s", item.Audio.Name())
-			}
-		}
+	for _, item := range view.Items {
+		logger.Debug("playlist item", "visual", item.Name(), "audio", item.Audio)
 	}
 
 	// On every control page reload, send a message to the viewer
@@ -361,7 +351,7 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 func (p *Player) handlerHome(w http.ResponseWriter, r *http.Request) {
 	_, loggedIn, err := p.CheckLogin(w, r)
 	if err != nil {
-		log.Println("error trying to retrieve session on the home page:", err)
+		logger.Error("could not read the session on the home page", "error", err)
 		http.Error(w, "Could not read the session.", http.StatusInternalServerError)
 		return
 	}
@@ -381,11 +371,11 @@ func (p *Player) HandleDirCheck(w http.ResponseWriter, r *http.Request) {
 	ok := exists(dir)
 	if ok && p.playlist.watcher != nil {
 		if err := p.playlist.watcher.Add(dir); err != nil {
-			log.Println("HandleDirCheck: error adding watcher:", err)
+			logger.Error("could not watch the media directory", "dir", dir, "error", err)
 		}
 	}
 	if err := json.NewEncoder(w).Encode(map[string]bool{"ok": ok}); err != nil {
-		log.Printf("error writing the directory check response: %v\n", err)
+		logger.Error("writing the directory check response failed", "error", err)
 	}
 }
 
@@ -393,7 +383,7 @@ func (p *Player) HandleDirCheck(w http.ResponseWriter, r *http.Request) {
 // This handler has a dependency on Playlist.
 func (p *Player) HandleViewer(w http.ResponseWriter, r *http.Request) {
 	if err := p.playlist.fromFolder(p.conf.MediaDir()); err != nil {
-		log.Println("HandleViewer: Error trying to read files from directory:\n", err)
+		logger.Error("could not read the media directory for the viewer page", "error", err)
 		p.renderErrorPage(w, err, "/viewer")
 		return
 	}

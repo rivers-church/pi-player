@@ -1,7 +1,6 @@
 package piplayer
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/gorilla/sessions"
@@ -72,7 +71,7 @@ func (p *Player) CheckLogin(w http.ResponseWriter, r *http.Request) (*sessions.S
 		// still hands back a usable, empty session. Treat it as "not logged in"
 		// so the user gets the login page instead of a 500 on every route,
 		// which would lock them out until they cleared their cookies by hand.
-		log.Println("discarding session cookie that could not be decoded:", err)
+		logger.Info("discarding a session cookie that could not be decoded", "error", err)
 		return session, false, nil
 	}
 
@@ -92,7 +91,7 @@ func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		session, loggedIn, err := p.CheckLogin(w, r)
 		if err != nil {
-			log.Println("error trying to retrieve session on login page:", err)
+			logger.Error("could not read the session on the login page", "error", err)
 			http.Error(w, "Could not read the session.", http.StatusInternalServerError)
 			return
 		}
@@ -118,11 +117,9 @@ func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 
 		// process POST request
 		xForward := r.Header.Get("x-forwarded-for")
-		if p.conf.DebugEnabled() {
-			log.Println("attempted login request from:", xForward, r.RemoteAddr)
-		}
+		logger.Debug("login attempt", "remoteAddr", r.RemoteAddr, "xForwardedFor", xForward)
 		if err := r.ParseForm(); err != nil {
-			log.Println("Error trying to parse form in login page.\n", err)
+			logger.Warn("could not parse the login form", "error", err)
 		}
 		username := r.PostFormValue("username")
 		password := r.PostFormValue("password")
@@ -130,33 +127,29 @@ func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 		// if there's no login entry in the config file, add the default login details
 		creds := p.conf.Credentials()
 		if creds.Username == "" {
-			if p.conf.DebugEnabled() {
-				log.Println("no login details found in config file, creating default login details now.")
-			}
+			logger.Info("no login details in the config file, creating the default ones")
 			var err error
 			if creds, err = newLogin(); err != nil {
-				log.Println("error trying to save default username and password:", err)
+				logger.Error("could not create the default login", "error", err)
 				http.Error(w, "Could not create the default login.", http.StatusInternalServerError)
 				return
 			}
 			p.conf.SetCredentials(creds)
 			if err := saveConfig(); err != nil {
-				log.Println("error trying to save config file:", err)
+				logger.Error("could not save the config file", "error", err)
 			}
 		}
 
 		if username == creds.Username && checkHash(password, creds.Password) {
 			// user successfully logged in
-			if p.conf.DebugEnabled() {
-				log.Printf("login successful from %s\n", r.RemoteAddr)
-			}
+			logger.Info("login successful", "remoteAddr", r.RemoteAddr)
 
 			// Start from a clean set of values rather than keeping whatever
 			// the incoming cookie carried. The session lives entirely in the
 			// signed cookie, so this is the whole of it.
 			session.Values = map[any]any{"authenticated": r.RemoteAddr}
 			if err := session.Save(r, w); err != nil {
-				log.Println("error trying to save login session:", err)
+				logger.Error("could not save the login session", "error", err)
 				http.Error(w, "Could not start the session.", http.StatusInternalServerError)
 				return
 			}
@@ -182,7 +175,7 @@ func (p *Player) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	// expiring it is exactly what logging out wants to do anyway.
 	session, err := p.store.Get(r, "piplayer-session")
 	if err != nil {
-		log.Println("error trying to get session in logout page:", err)
+		logger.Warn("could not read the session on logout", "error", err)
 	}
 	if session == nil {
 		http.Redirect(w, r, "/login", http.StatusFound)
@@ -191,7 +184,7 @@ func (p *Player) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 
 	session.Options.MaxAge = -1
 	if err := session.Save(r, w); err != nil {
-		log.Println("error trying to set MaxAge on session to logout:", err)
+		logger.Error("could not expire the session on logout", "error", err)
 	}
 
 	http.Redirect(w, r, "/login", http.StatusFound)

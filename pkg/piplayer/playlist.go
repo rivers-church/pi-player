@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"maps"
 	"net/http"
 	"os"
@@ -101,9 +100,7 @@ func NewPlaylist(p *Player, dir string) (*Playlist, error) {
 
 	go pl.watch(p)
 
-	if p.conf.DebugEnabled() {
-		log.Printf("starting directory watcher for dir: %s\n", dir)
-	}
+	logger.Debug("starting directory watcher", "dir", dir)
 	if exists(dir) {
 		err = pl.watcher.Add(dir)
 	}
@@ -141,7 +138,7 @@ func (p *Playlist) handleAPI(plr *Player, msg reqMessage, w http.ResponseWriter)
 
 		index, err := strconv.Atoi(msg.Arguments["index"])
 		if err != nil {
-			log.Printf("Error converting argument to int: playlist.HandleAPI.setCurrent\n%v", err)
+			logger.Warn("setCurrent got an index that isn't a number", "index", msg.Arguments["index"], "error", err)
 		}
 
 		if err != nil || !p.setCurrent(index) {
@@ -166,16 +163,14 @@ func (p *Playlist) handleAPI(plr *Player, msg reqMessage, w http.ResponseWriter)
 			Message: index,
 		})
 
-		if plr.api.debug {
-			log.Println("set current item index to:", index)
-		}
+		logger.Debug("set current item", "index", index)
 	case "getItems":
 		// Rescan the configured directory, not the one this playlist happens
 		// to hold: after a settings change they differ until some page load
 		// resyncs them, and the viewer would be handed the old directory.
 		dir := plr.conf.MediaDir()
 		if err := p.fromFolder(dir); err != nil {
-			log.Printf("Api call failed. Can't get items from folder %s\n%v", dir, err)
+			logger.Error("could not read items from the media directory", "dir", dir, "error", err)
 		}
 
 		m = resMessage{
@@ -184,7 +179,7 @@ func (p *Playlist) handleAPI(plr *Player, msg reqMessage, w http.ResponseWriter)
 			Message: p.itemsString(),
 		}
 	default:
-		log.Printf("API call unsupported. Ignoring:\n%v\n", msg)
+		logger.Warn("unsupported playlist API call", "method", msg.Method)
 		m = resMessage{
 			Success: false,
 			Event:   "unsupportedMethod",
@@ -282,14 +277,14 @@ func scanFolder(dir string) ([]Item, error) {
 	if _, err := os.Stat(file); !os.IsNotExist(err) {
 		data, err := os.ReadFile(file)
 		if err != nil {
-			log.Printf("Error trying to read presentation file '%s': %v", file, err)
+			logger.Error("could not read the presentation file", "file", file, "error", err)
 			return items, nil
 		}
 
 		var presentation Presentation
 
 		if err := json.Unmarshal(data, &presentation); err != nil {
-			log.Printf("Error trying to parse presentation file '%s', ignoring its cues: %v", file, err)
+			logger.Error("could not parse the presentation file, ignoring its cues", "file", file, "error", err)
 			return items, nil
 		}
 
@@ -298,7 +293,7 @@ func scanFolder(dir string) ([]Item, error) {
 			// Create regex to match on file names.
 			r, err := regexp.Compile(presItem.Visual)
 			if err != nil {
-				log.Printf("Could not compile regex with text '%s', comparing using visual name only.", presItem.Visual)
+				logger.Warn("presentation pattern is not a valid regex, matching on the file name instead", "pattern", presItem.Visual)
 			}
 			for _, playItem := range items {
 				// If the regex can't compile, use the file name, otherwise use the regex.
@@ -326,12 +321,10 @@ func (p *Playlist) watch(plr *Player) {
 		case event, ok := <-p.watcher.Events:
 			// This means a file changed in the folder.
 			if !ok {
-				log.Println("issue getting file change event. Stopping watcher.")
+				logger.Info("file change channel closed, stopping the directory watcher")
 				return
 			}
-			if plr.conf.DebugEnabled() {
-				log.Println("file change event:", event)
-			}
+			logger.Debug("file change", "event", event.String())
 			// Send a message to the viewer to get new items.
 			msg := wsMessage{
 				Component: "playlist",
@@ -341,10 +334,10 @@ func (p *Playlist) watch(plr *Player) {
 			plr.ConnControl.trySend(msg)
 		case err, ok := <-p.watcher.Errors:
 			if !ok {
-				log.Println("issue getting file change error. Stopping watcher.")
+				logger.Info("watcher error channel closed, stopping the directory watcher")
 				return
 			}
-			log.Println("error:", err)
+			logger.Error("directory watcher error", "error", err)
 		}
 	}
 }

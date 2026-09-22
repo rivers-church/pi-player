@@ -3,7 +3,6 @@ package piplayer
 import (
 	"context"
 	"errors"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -71,7 +70,7 @@ func sameOriginPost(next http.Handler) http.Handler {
 
 		u, err := url.Parse(source)
 		if err != nil || !strings.EqualFold(u.Host, r.Host) {
-			log.Printf("refusing cross-origin POST to %s from %q\n", r.URL.Path, source)
+			logger.Warn("refusing a cross-origin POST", "path", r.URL.Path, "origin", source)
 			http.Error(w, "Cross-origin request refused.", http.StatusForbidden)
 			return
 		}
@@ -85,9 +84,7 @@ func sameOriginPost(next http.Handler) http.Handler {
 func requireLogin(p *Player, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, loggedIn, _ := p.CheckLogin(w, r); !loggedIn {
-			if p.conf.DebugEnabled() {
-				log.Printf("refusing %s %s from %s: not logged in\n", r.Method, r.URL.Path, r.RemoteAddr)
-			}
+			logger.Debug("refusing a request from a client that is not logged in", "method", r.Method, "path", r.URL.Path, "remoteAddr", r.RemoteAddr)
 			if strings.HasPrefix(r.URL.Path, "/api") {
 				writeAPIResponse(w, http.StatusUnauthorized, &resMessage{
 					Success: false,
@@ -180,7 +177,7 @@ func contentHandler(p *Player) func(http.ResponseWriter, *http.Request) {
 // Run serves until ctx is cancelled or the listener fails, then shuts the
 // server down gracefully. It returns nil on a clean shutdown.
 func Run(ctx context.Context, plr *Player) error {
-	log.Printf("Listening on port %s\n", plr.Server.Addr)
+	logger.Info("listening", "addr", plr.Server.Addr)
 
 	serveErr := make(chan error, 1)
 	go func() {
@@ -196,7 +193,7 @@ func Run(ctx context.Context, plr *Player) error {
 	case <-ctx.Done():
 	}
 
-	log.Println("Shutting down...")
+	logger.Info("shutting down")
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 

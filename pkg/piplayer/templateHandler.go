@@ -3,7 +3,6 @@ package piplayer
 import (
 	"bytes"
 	"html/template"
-	"log"
 	"net/http"
 )
 
@@ -17,7 +16,7 @@ type TemplateHandler struct {
 // ServeHTTP handles HTTP requests for the templates
 func (t *TemplateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if t.templates == nil {
-		log.Println("no templates available to render: ", t.filename)
+		logger.Error("no templates available to render", "page", t.filename)
 		http.Error(w, "Could not render the page.", http.StatusInternalServerError)
 		return
 	}
@@ -28,13 +27,13 @@ func (t *TemplateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// error only in the log.
 	var page bytes.Buffer
 	if err := t.templates.ExecuteTemplate(&page, t.filename, t.data); err != nil {
-		log.Println("Error trying to render page: ", t.filename, err)
+		logger.Error("rendering the page failed", "page", t.filename, "error", err)
 		http.Error(w, "Could not render the page.", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if _, err := page.WriteTo(w); err != nil {
-		log.Println("Error trying to write page: ", t.filename, err)
+		logger.Error("writing the page failed", "page", t.filename, "error", err)
 	}
 }

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -148,9 +147,9 @@ func configLoadFromPath(configPath, mediaDir string, assets fs.FS) (*Config, err
 		// Copy the logo file to the media directory (best effort — a missing
 		// embedded asset shouldn't prevent the player from starting).
 		if logoFile, err := fs.ReadFile(assets, "pkg/piplayer/assets/img/PiPlayer Logo.png"); err != nil {
-			log.Printf("could not read embedded logo file, skipping copy: %v", err)
+			logger.Warn("could not read the embedded logo, skipping the copy", "error", err)
 		} else if err := os.WriteFile(filepath.Join(mediaDir, "PiPlayer Logo.png"), logoFile, 0644); err != nil {
-			log.Printf("could not write logo file to media dir: %v", err)
+			logger.Warn("could not write the logo to the media directory", "error", err)
 		}
 	}
 
@@ -249,7 +248,7 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 			mountURL := conf.MountURL()
 			mu, err := url.PathUnescape(mountURL.String())
 			if err != nil {
-				log.Printf("SettingsHandler: Error unescaping URL '%s'\n", mountURL)
+				logger.Warn("could not unescape the media directory URL", "url", mountURL.String(), "error", err)
 				mu = mountURL.String()
 			}
 			tempControl := TemplateHandler{
@@ -268,7 +267,7 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 
 		// process POST request
 		if err := r.ParseForm(); err != nil {
-			log.Println("Error trying to parse form in settings page.\n", err)
+			logger.Warn("could not parse the settings form", "error", err)
 			http.Error(w, "Could not read the submitted form.", http.StatusBadRequest)
 			return
 		}
@@ -279,10 +278,9 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 		debug := r.PostFormValue("debug")
 
 		conf.SetDebug(debug == "on")
+		SetDebugLogging(conf.DebugEnabled())
 
-		if conf.DebugEnabled() {
-			log.Printf("Received settings post: location: %s\nmountURL: %s\n", location, mountURL)
-		}
+		logger.Debug("settings submitted", "location", location, "mountURL", mountURL)
 
 		if location != "" {
 			conf.SetLocation(location)
@@ -291,7 +289,7 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 		if username != "" && password != "" {
 			hashed, err := hash(password)
 			if err != nil {
-				log.Println("error trying to encrypt password for saving", err)
+				logger.Error("could not hash the new password", "error", err)
 				http.Error(w, "Could not save the new password.", http.StatusInternalServerError)
 				return
 			}
@@ -301,15 +299,15 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 
 		// Persist the settings that don't need the media directory to change.
 		if err := conf.Save(); err != nil {
-			log.Println("error trying to save config file:", err)
+			logger.Error("could not save the config file", "error", err)
 		}
 
 		if mountURL != "" {
 			u, err := url.Parse(mountURL)
 			if err != nil {
-				log.Printf("Error parsing URL (%s)\n%v\n", mountURL, err)
+				logger.Warn("could not parse the submitted media directory", "value", mountURL, "error", err)
 			} else if u.Scheme == "smb" {
-				log.Printf("SMB mounting no longer supported")
+				logger.Warn("SMB mounting is no longer supported, ignoring", "value", mountURL)
 			} else if u.Scheme == "" {
 				// Dir comes from Path, not String(), so a directory with a
 				// space in it doesn't get stored percent-escaped.
@@ -320,7 +318,7 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 				if newMount.Dir != conf.MediaDir() {
 					oldDir := conf.SetMount(newMount)
 					if err := conf.Save(); err != nil {
-						log.Println("error trying to save config:", err)
+						logger.Error("could not save the config file", "error", err)
 					}
 
 					// Point the directory watcher at the new media dir.
@@ -330,7 +328,7 @@ func (conf *Config) SettingsHandler(p *Player) http.HandlerFunc {
 						}
 						if exists(newMount.Dir) {
 							if err := p.playlist.watcher.Add(newMount.Dir); err != nil {
-								log.Println("error watching new media dir:", err)
+								logger.Error("could not watch the new media directory", "dir", newMount.Dir, "error", err)
 							}
 						}
 					}

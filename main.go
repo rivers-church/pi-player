@@ -48,10 +48,10 @@ func main() {
 
 	if *debug || conf.Debug {
 		conf.SetDebug(true)
-		log.Println("Debug mode enabled")
 	}
+	piplayer.SetDebugLogging(conf.DebugEnabled())
 
-	a, err := piplayer.NewAPIHandler(conf.DebugEnabled(), test, statAssets, statTemplates)
+	a, err := piplayer.NewAPIHandler(test, statAssets, statTemplates)
 	if err != nil {
 		log.Fatalf("Error setting up the web interface.\n%v", err)
 	}

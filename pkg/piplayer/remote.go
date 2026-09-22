@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/17xande/keylogger"
@@ -26,11 +25,9 @@ const remoteRetryDelay = 3 * time.Second
 // whenever the device goes away.
 func remoteRead(ctx context.Context, p *Player) {
 	for {
-		if p.api.debug {
-			log.Println("starting remote read for this device")
-		}
+		logger.Debug("starting remote read for this device")
 		if err := Listen(ctx, p.conf.Remote.Names, p); err != nil {
-			log.Printf("error listening to remote, retrying in %s: %v\n", remoteRetryDelay, err)
+			logger.Error("listening to remote failed, retrying", "retryIn", remoteRetryDelay, "error", err)
 		}
 
 		select {
@@ -50,9 +47,7 @@ func Listen(ctx context.Context, devs []string, p *Player) error {
 	}
 
 	for _, d := range kl.GetDevices() {
-		if p.api.debug {
-			log.Printf("Listening to device %s\n", d.Name)
-		}
+		logger.Debug("listening to device", "device", d.Name)
 	}
 
 	cie := make(chan keylogger.InputEvent)
@@ -81,10 +76,7 @@ func Listen(ctx context.Context, devs []string, p *Player) error {
 			}
 			key := e.KeyString()
 
-			if p.api.debug {
-				log.Printf("Key: %s\tValue: %s\tType: %d\n", key, directions[e.Value], e.Type)
-				log.Println("Sending keypress to page and nothing else.")
-			}
+			logger.Debug("remote keypress", "key", key, "value", directions[e.Value], "type", e.Type)
 
 			msg := wsMessage{
 				Component: "remote",
@@ -93,10 +85,6 @@ func Listen(ctx context.Context, devs []string, p *Player) error {
 			}
 
 			p.ConnViewer.trySend(msg)
-
-			if p.api.debug {
-				log.Println("Message sent")
-			}
 
 		case err, open := <-cer:
 			if !open {

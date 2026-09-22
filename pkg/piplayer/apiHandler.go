@@ -6,13 +6,11 @@ import (
 	"fmt"
 	"html/template"
 	"io/fs"
-	"log"
 	"net/http"
 )
 
 // APIHandler handles requests to the API
 type APIHandler struct {
-	debug         bool
 	test          string
 	statAssets    fs.FS
 	statTemplates fs.FS
@@ -22,7 +20,7 @@ type APIHandler struct {
 // NewAPIHandler creates a new APIHandler. An error here means the embedded
 // assets or templates are missing, which every page would then fail on, so it
 // is reported rather than logged and worked around.
-func NewAPIHandler(debug bool, test *string, statAssets, statTemplates embed.FS) (APIHandler, error) {
+func NewAPIHandler(test *string, statAssets, statTemplates embed.FS) (APIHandler, error) {
 	subAssets, err := fs.Sub(statAssets, "pkg/piplayer/assets")
 	if err != nil {
 		return APIHandler{}, fmt.Errorf("error loading embedded assets: %w", err)
@@ -41,7 +39,6 @@ func NewAPIHandler(debug bool, test *string, statAssets, statTemplates embed.FS)
 	}
 
 	return APIHandler{
-		debug:         debug,
 		test:          *test,
 		statAssets:    subAssets,
 		statTemplates: subTemplates,
@@ -56,7 +53,7 @@ func writeAPIResponse(w http.ResponseWriter, status int, m *resMessage) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(m); err != nil {
-		log.Printf("error writing API response: %v\n", err)
+		logger.Error("writing the API response failed", "error", err)
 	}
 }
 
@@ -66,7 +63,7 @@ func (a *APIHandler) Handle(p *Player) http.HandlerFunc {
 		// ignore anything that's not a application/json request
 		ct := r.Header.Get("Content-Type")
 		if ct != "application/json" {
-			log.Println("Invalid Content-Type:", ct)
+			logger.Warn("API request with an unsupported Content-Type", "contentType", ct)
 			writeAPIResponse(w, http.StatusUnsupportedMediaType, &resMessage{
 				Success: false,
 				Event:   "invalidContentType",
@@ -79,7 +76,7 @@ func (a *APIHandler) Handle(p *Player) http.HandlerFunc {
 		// keeping the message on it lets concurrent calls overwrite each other.
 		var msg reqMessage
 		if err := json.NewDecoder(r.Body).Decode(&msg); err != nil {
-			log.Println("Error decoding JSON request:", err)
+			logger.Warn("could not decode the API request", "error", err)
 			writeAPIResponse(w, http.StatusBadRequest, &resMessage{
 				Success: false,
 				Event:   "invalidJSON",
@@ -93,9 +90,7 @@ func (a *APIHandler) Handle(p *Player) http.HandlerFunc {
 }
 
 func (a *APIHandler) handleMessage(p *Player, msg reqMessage, w http.ResponseWriter) {
-	if a.debug {
-		log.Printf("message received: %#v\n", msg)
-	}
+	logger.Debug("API message received", "component", msg.Component, "method", msg.Method, "arguments", msg.Arguments)
 
 	// dispatch execution based on which component was called
 	switch msg.Component {
@@ -113,8 +108,4 @@ func (a *APIHandler) handleMessage(p *Player, msg reqMessage, w http.ResponseWri
 		Message: fmt.Sprintf("Unsupported component: %s (method: %s, arguments: %v)", msg.Component, msg.Method, msg.Arguments),
 	}
 	writeAPIResponse(w, http.StatusNotFound, m)
-
-	if a.debug {
-		log.Println(m.Message)
-	}
 }

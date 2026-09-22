@@ -3,6 +3,7 @@ package piplayer
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -378,4 +379,22 @@ func freePort(t *testing.T) string {
 		t.Fatalf("releasing the port failed: %v", err)
 	}
 	return addr
+}
+
+// TestDebugLoggingFollowsSettings checks the settings page moves the log level
+// at runtime. The debug flag used to be stored twice - in the config, which the
+// settings page changed, and on the API handler, which snapshotted it at
+// startup - so half the log sites ignored the toggle.
+func TestDebugLoggingFollowsSettings(t *testing.T) {
+	t.Cleanup(func() { SetDebugLogging(false) })
+
+	SetDebugLogging(false)
+	if logger.Enabled(context.Background(), slog.LevelDebug) {
+		t.Error("debug logging is on with the setting off")
+	}
+
+	SetDebugLogging(true)
+	if !logger.Enabled(context.Background(), slog.LevelDebug) {
+		t.Error("debug logging is off with the setting on")
+	}
 }

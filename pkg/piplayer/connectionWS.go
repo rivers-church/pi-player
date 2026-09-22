@@ -1,7 +1,6 @@
 package piplayer
 
 import (
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -104,7 +103,7 @@ func (c *connWS) trySend(msg wsMessage) bool {
 	case c.send <- msg:
 		return true
 	default:
-		log.Printf("websocket send buffer is full, dropping message: %s/%s\n", msg.Component, msg.Event)
+		logger.Warn("websocket send buffer is full, dropping message", "component", msg.Component, "event", msg.Event)
 		return false
 	}
 }
@@ -129,7 +128,7 @@ func (c *connWS) closeCurrent(farewell wsMessage) {
 	select {
 	case <-w.finished:
 	case <-time.After(closeWait):
-		log.Println("timed out waiting for the previous websocket writer to finish")
+		logger.Warn("timed out waiting for the previous websocket writer to finish")
 	}
 }
 
@@ -140,9 +139,7 @@ func (c *connWS) HandlerWebsocket(p *Player) http.HandlerFunc {
 		// taking over. The previous writer sends the farewell itself; writing
 		// to the socket from here would race it.
 		if c.isActive() {
-			if p.conf.DebugEnabled() {
-				log.Printf("new websocket connection request while previous request was active. Closing current connection.")
-			}
+			logger.Debug("new websocket connection while one was active, closing the old one", "path", r.URL.Path)
 
 			c.closeCurrent(wsMessage{
 				Component: "connection",
@@ -154,11 +151,11 @@ func (c *connWS) HandlerWebsocket(p *Player) http.HandlerFunc {
 
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			log.Println("Error trying to upgrade to websocket connection:", err)
+			logger.Error("upgrading to a websocket connection failed", "error", err)
 			return
 		}
 
-		log.Println("Websocket connection being handled for ", r.URL.Path)
+		logger.Info("websocket connected", "path", r.URL.Path)
 
 		// Messages queued for the connection that just went away are stale.
 		c.drain()
@@ -202,7 +199,7 @@ func (c *connWS) retire(w *wsWriter) {
 // write sends data to the websocket. It owns w.conn for the life of the
 // goroutine and is the only writer to it.
 func (c *connWS) write(w *wsWriter) {
-	log.Printf("Starting write() goroutine\n")
+	logger.Debug("starting websocket writer")
 
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
@@ -219,26 +216,26 @@ func (c *connWS) write(w *wsWriter) {
 		case msg := <-c.send:
 			w.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := w.conn.WriteJSON(msg); err != nil {
-				log.Printf("error trying to write JSON to the socket: %v\n", err)
+				logger.Error("writing to the websocket failed", "error", err)
 				// this probably means that the connection is broken,
 				return
 			}
 		case <-ticker.C:
 			w.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := w.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				log.Printf("error trying to send ping message. Exiting goroutine: %v\n", err)
+				logger.Error("pinging the websocket failed, closing it", "error", err)
 				return
 			}
 		case farewell, ok := <-w.stop:
 			if ok {
 				w.conn.SetWriteDeadline(time.Now().Add(writeWait))
 				if err := w.conn.WriteJSON(farewell); err != nil {
-					log.Printf("error writing disconnect message: ConnectionWS.write: %v\n", err)
+					logger.Error("writing the disconnect message failed", "error", err)
 				}
 			}
 			w.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := w.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
-				log.Printf("error writing close message: ConnectionWS.write: %v\n", err)
+				logger.Error("writing the close message failed", "error", err)
 			}
 			return
 		}

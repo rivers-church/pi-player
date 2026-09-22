@@ -12,6 +12,9 @@ import (
 // off the hot path of any future parallel test.
 func TestMain(m *testing.M) {
 	hashCost = bcrypt.MinCost
+	// Otherwise a websocket test's "send buffer full" chatter buries whatever
+	// actually failed.
+	discardLogs()
 	m.Run()
 }
 
