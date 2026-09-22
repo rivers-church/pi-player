@@ -1,0 +1,103 @@
+/* The kiosk display.
+ *
+ * It loads Web Awesome's stylesheet for the theme's tokens, but none of its
+ * component JavaScript: this page is a fullscreen media surface with no
+ * chrome, and the display should not be able to break because a component
+ * library changed.
+ *
+ * The only text here is the playlist overlay, which the remote's menu key
+ * brings up over whatever is playing. */
+
+html,
+body {
+  background-color: black;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+#container {
+  width: 100%;
+  height: 100%;
+  background-size: 100% 100%;
+  /* A crossfade rather than a cut, so a change of slide isn't a flash of
+     black on a wall. */
+  transition: background-image 1s ease-in-out;
+}
+
+#vidMedia {
+  width: 100%;
+  height: 100%;
+}
+
+/* The playlist overlay */
+#containerPlaylist {
+  position: fixed;
+  top: 0;
+  height: 100%;
+  overflow-y: auto;
+  /* Nearly opaque: the list has to stay readable over a bright slide. */
+  background-color: rgb(0 0 0 / 73%);
+  visibility: hidden;
+}
+
+table {
+  font-size: var(--wa-font-size-l);
+  font-weight: var(--wa-font-weight-semibold);
+  letter-spacing: 0.05em;
+}
+
+td {
+  padding: var(--wa-space-xs) var(--wa-space-2xs);
+  border: none;
+}
+
+.item {
+  /* The overlay is always over a dark scrim, so this wants the light text of
+     the dark theme rather than a token that flips with the surface. */
+  color: var(--wa-color-text-normal);
+  /* The list sits over the media, which can be any colour. */
+  text-shadow: 0 0 13px black;
+}
+
+.item:focus {
+  background-color: var(--wa-color-brand-fill-loud);
+  outline: none;
+}
+
+/* Playlist icons. The display loads no component library, and an <img> of a
+   currentColor SVG renders black - invisible here - so the file is used as a
+   mask and painted with the row's own colour. Sized against the row's text so
+   the two stay in proportion. */
+.icon-img {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: middle;
+  background-color: currentColor;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+}
+
+.icon-img[data-icon="video"] { mask-image: url("/assets/dist/icons/video.svg"); }
+.icon-img[data-icon="image"] { mask-image: url("/assets/dist/icons/image.svg"); }
+.icon-img[data-icon="window-maximize"] { mask-image: url("/assets/dist/icons/window-maximize.svg"); }
+.icon-img[data-icon="music"] { mask-image: url("/assets/dist/icons/music.svg"); }
+.icon-img[data-icon="bell-slash"] { mask-image: url("/assets/dist/icons/bell-slash.svg"); }
+
+/* The overlay is the only thing that scrolls. */
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+::-webkit-scrollbar-track {
+  box-shadow: inset 0 0 6px rgb(0 0 0 / 30%);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--wa-color-neutral-fill-loud);
+  box-shadow: inset 0 0 6px rgb(0 0 0 / 50%);
+}
