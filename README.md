@@ -43,6 +43,31 @@ journalctl -u pi-player-setup.service -f
 
 After the reboot the web interface is available at `http://<device-ip>:8080/control`.
 
+### Working on the frontend
+
+The pages are TypeScript, bundled by Deno into `pkg/piplayer/assets/dist/` and
+baked into the binary by `go:embed`. Source lives in `frontend/`; `dist/` is
+generated and not committed.
+
+```bash
+deno task build    # bundle - must run before `go build`
+deno task dev      # rebundle on change
+deno task check    # types
+deno task lint
+deno task test     # the DOM-free half of the frontend
+```
+
+`make build` and `make dev` run the bundle for you, and CI does it before the
+Go build. **`go:embed` resolves at compile time**, so a `go build` run on its
+own produces a binary whose pages load nothing — the server logs an error at
+startup when that has happened.
+
+The control, settings, login and error pages use [Web
+Awesome](https://webawesome.com); its icons are copied into the bundle at build
+time rather than fetched from a CDN, since the players have no route to one.
+The viewer deliberately uses no component library — it is a fullscreen media
+surface, and the display should not be able to break because a library changed.
+
 ### Media cues
 
 Dropping a `presentation.json` in the media directory attaches cues to items:
