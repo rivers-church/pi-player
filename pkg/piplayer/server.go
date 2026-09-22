@@ -150,10 +150,14 @@ func setupRoutes(p *Player) *http.ServeMux {
 
 	mux.HandleFunc("GET /control", requireLogin(p, p.HandleControl))
 	mux.HandleFunc("GET /ws/control", requireLogin(p, p.ConnControl.HandlerWebsocket(p)))
-	mux.HandleFunc("POST /api", requireLogin(p, p.api.Handle(p)))
-	mux.HandleFunc("GET /api/dircheck", requireLogin(p, p.HandleDirCheck))
 
-	// The kiosk browser reaches these from localhost without a session.
+	// The kiosk browser reaches these from localhost without a session. That
+	// includes the API: the viewer page fetches its items over /api, and the
+	// error page polls /api/dircheck to find out when the media directory is
+	// back. Anything already running on the device could drive the display
+	// directly anyway.
+	mux.HandleFunc("POST /api", requireLoginOrLocal(p, p.api.Handle(p)))
+	mux.HandleFunc("GET /api/dircheck", requireLoginOrLocal(p, p.HandleDirCheck))
 	mux.HandleFunc("GET /content/", requireLoginOrLocal(p, contentHandler(p)))
 	mux.HandleFunc("GET /viewer", requireLoginOrLocal(p, p.HandleViewer))
 	mux.HandleFunc("GET /ws/viewer", requireLoginOrLocal(p, p.ConnViewer.HandlerWebsocket(p)))

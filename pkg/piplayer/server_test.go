@@ -2,6 +2,7 @@ package piplayer
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -308,5 +309,87 @@ func TestSecurityHeaders(t *testing.T) {
 		if got := recorder.Header().Get(header); got != value {
 			t.Errorf("%s = %q, want %q", header, got, value)
 		}
+	}
+}
+
+// TestKioskPathWorksWithoutSession walks the requests the kiosk Chromium makes
+// on startup, from localhost with no cookie. The viewer page fetches its items
+// over /api and the error page polls /api/dircheck, so guarding those with a
+// session-only check leaves the display up but empty.
+func TestKioskPathWorksWithoutSession(t *testing.T) {
+	mediaDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(mediaDir, "clip.mp4"), []byte("x"), 0o644); err != nil {
+		t.Fatalf("writing fixture failed: %v", err)
+	}
+
+	p := &Player{
+		api:         testAPIHandler(t, map[string]string{"viewer.html": "viewer", "control.html": "control"}),
+		conf:        &Config{Mount: mount{Dir: mediaDir}},
+		playlist:    &Playlist{},
+		store:       newSessionStore(testSessionKey),
+		ConnViewer:  NewConnWS(),
+		ConnControl: NewConnWS(),
+	}
+	mux := setupRoutes(p)
+
+	kiosk := func(method, path, body string) *httptest.ResponseRecorder {
+		t.Helper()
+		request := httptest.NewRequest(method, path, strings.NewReader(body))
+		if body != "" {
+			request.Header.Set("Content-Type", "application/json")
+			request.Header.Set("Origin", "http://"+request.Host)
+		}
+		request.RemoteAddr = "127.0.0.1:41000"
+		recorder := httptest.NewRecorder()
+		mux.ServeHTTP(recorder, request)
+		return recorder
+	}
+
+	if rec := kiosk(http.MethodGet, "/viewer", ""); rec.Code != http.StatusOK {
+		t.Errorf("the kiosk could not load /viewer: status %d", rec.Code)
+	}
+
+	rec := kiosk(http.MethodPost, "/api", `{"component":"playlist","method":"getItems"}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("the kiosk could not fetch its playlist: status %d, body %q", rec.Code, rec.Body.String())
+	}
+	var res resMessage
+	if err := json.NewDecoder(rec.Body).Decode(&res); err != nil {
+		t.Fatalf("decoding the playlist response failed: %v", err)
+	}
+	if !res.Success {
+		t.Errorf("getItems reported failure: %+v", res)
+	}
+	items, ok := res.Message.([]any)
+	if !ok || len(items) != 1 {
+		t.Errorf("the kiosk got %v, want the one item in the media directory", res.Message)
+	}
+
+	if rec := kiosk(http.MethodGet, "/api/dircheck", ""); rec.Code != http.StatusOK {
+		t.Errorf("the error page could not poll /api/dircheck: status %d", rec.Code)
+	}
+
+	// The same requests from elsewhere on the network must still be refused.
+	lan := func(method, path, body string) *httptest.ResponseRecorder {
+		t.Helper()
+		request := httptest.NewRequest(method, path, strings.NewReader(body))
+		if body != "" {
+			request.Header.Set("Content-Type", "application/json")
+			request.Header.Set("Origin", "http://"+request.Host)
+		}
+		request.RemoteAddr = "192.168.1.50:41000"
+		recorder := httptest.NewRecorder()
+		mux.ServeHTTP(recorder, request)
+		return recorder
+	}
+
+	if rec := lan(http.MethodPost, "/api", `{"component":"playlist","method":"getItems"}`); rec.Code != http.StatusUnauthorized {
+		t.Errorf("/api from the network returned %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+	if rec := lan(http.MethodGet, "/api/dircheck", ""); rec.Code != http.StatusUnauthorized {
+		t.Errorf("/api/dircheck from the network returned %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+	if rec := lan(http.MethodGet, "/viewer", ""); rec.Code != http.StatusFound {
+		t.Errorf("/viewer from the network returned %d, want a redirect to the login page", rec.Code)
 	}
 }
