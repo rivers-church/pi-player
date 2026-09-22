@@ -65,16 +65,16 @@ class Viewer {
 
     switch (msg.component) {
       case 'remote':
-        this.remoteMessage(e, msg);
+        this.remoteMessage(msg);
         break;
       case 'player':
-        this.playerMessage(e, msg);
+        this.playerMessage(msg);
         break;
       case 'playlist':
-        this.playlistMessage(e, msg);
+        this.playlistMessage(msg);
         break;
       case 'connection':
-        this.connectionMessage(e, msg);
+        this.connectionMessage(msg);
         break;
       default:
         console.error(`unsupported component: ${msg.component};\nmessage: ${msg}`);
@@ -82,7 +82,7 @@ class Viewer {
     }
   }
 
-  connectionMessage(e, msg) {
+  connectionMessage(msg) {
     switch (msg.event) {
       case "disconnect":
         console.warn(`server requested websocket disconnection. Connection should be closed any second now.`);
@@ -92,7 +92,7 @@ class Viewer {
     }
   }
 
-  playlistMessage(e, msg) {
+  playlistMessage(msg) {
     switch (msg.event) {
       case "newItems":
         this.getItems();
@@ -102,52 +102,52 @@ class Viewer {
     }
   }
 
-  remoteMessage(e, msg) {
+  remoteMessage(msg) {
     switch (msg.arguments.keyString) {
       case 'KEY_UP':
       case 'KEY_DOWN':
-        this.remoteArrowPress(e, msg);
+        this.remoteArrowPress(msg);
         break;
       case 'KEY_LEFT':
       case 'KEY_PAGEUP':
-        this.previous(e);
+        this.previous();
         break;
       case 'KEY_RIGHT':
       case 'KEY_PAGEDOWN':
-        this.next(e);
+        this.next();
         break;
       case 'KEY_ENTER':
       case 'KEY_SELECT':
-        this.remoteEnterPress(e);
+        this.remoteEnterPress();
         break;
       case 'KEY_CONTEXT_MENU':
       case 'KEY_DOT':
       case 'KEY_COMPOSE':
-        this.remoteContextMenuPress(e);
+        this.remoteContextMenuPress();
         break;
       case 'KEY_PLAYPAUSE':
-        this.playPause(e);
+        this.playPause();
         break;
       case 'KEY_STOP':
         break;
       case 'KEY_FASTFORWARD':
       case 'KEY_NEXTSONG':
-        this.seek(e, 15);
+        this.seek(15);
         break;
       case 'KEY_REWIND':
       case 'KEY_PREVIOUSSONG':
-        this.seek(e, -15);
+        this.seek(-15);
         break;
       case 'KEY_BACK':
         this.getItems();
         break;
       default:
-        console.log("Unsupported message received: ", e.data);
+        console.log("unsupported remote key: ", msg.arguments.keyString);
         break;
     }
   }
 
-  playerMessage(e, msg) {
+  playerMessage(msg) {
     switch (msg.method) {
       case 'start':
         this.startItem(msg.message);
@@ -157,16 +157,16 @@ class Viewer {
         break;
       case 'play':
       case 'pause':
-        this.playPause(e);
+        this.playPause();
         break;
       case 'seek':
-        this.seek(e, msg.arguments.value);
+        this.seek(msg.arguments.value);
         break;
       case 'previous':
-        this.previous(e);
+        this.previous();
         break;
       case 'next':
-        this.next(e);
+        this.next();
         break;
       default:
         console.error(`unsupported method: ${msg.method}\nmessage: ${msg}`);
@@ -219,7 +219,7 @@ class Viewer {
     return filename.substring(0, period);
   }
 
-  remoteArrowPress(e, msg) {
+  remoteArrowPress(msg) {
     let selectedItem = document.querySelector(this.menuItemSelector + ':focus');
     if (selectedItem == null) {
       // No item is selected, focus on first item.
@@ -246,7 +246,7 @@ class Viewer {
     this.arrItems[i + diff].focus();
   }
 
-  previous(e) {
+  previous() {
     if (this.playlist.current == 0) {
       this.startItem(this.playlist.items.length - 1);
       return
@@ -255,7 +255,7 @@ class Viewer {
     this.startItem(parseInt(this.playlist.current) - 1);
   }
 
-  next(e) {
+  next() {
     if (this.playlist.current >= this.playlist.items.length - 1) {
       this.startItem(0);
       return;
@@ -264,7 +264,7 @@ class Viewer {
     this.startItem(parseInt(this.playlist.current, 10) + 1);
   }
 
-  remoteEnterPress(e) {
+  remoteEnterPress() {
     let selectedItem = document.querySelector(this.menuItemSelector + ':focus');
 
     if (selectedItem == null) {
@@ -277,7 +277,7 @@ class Viewer {
     this.startItem(i);
   }
 
-  remoteContextMenuPress(e) {
+  remoteContextMenuPress() {
     // If the menu is hidden, show it.
     if (this.divContainerPlaylist.style.visibility !== 'visible') {
       this.divContainerPlaylist.style.visibility = 'visible';
@@ -291,7 +291,7 @@ class Viewer {
     }
   }
 
-  playPause(e) {
+  playPause() {
     let item = this.playlist.items[this.playlist.current];
 
     if (item.Audio != "") {
@@ -311,7 +311,7 @@ class Viewer {
     }
   }
 
-  stop(e) {
+  stop() {
     let item = this.playlist.items[this.playlist.current];
 
     if (item.Type == "video") {
@@ -329,7 +329,7 @@ class Viewer {
     this.divContainer.style.backgroundImage = null;
   }
 
-  seek(e, value) {
+  seek(value) {
     value = parseInt(value, 10);
     this.vidMedia.currentTime += value;
   }
