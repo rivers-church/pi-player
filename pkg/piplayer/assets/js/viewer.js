@@ -1,3 +1,6 @@
+import {getItems, setCurrent} from './api.js';
+import {ReconnectingSocket} from './socket.js';
+
 class Viewer {
 
   constructor() {
@@ -38,29 +41,11 @@ class Viewer {
       e.preventDefault();
     });
 
-    // navigator.mediaSession.setActionHandler('previoustrack', e => {
-    //   console.log('previoustrack', e);
-    // });
 
-    // navigator.mediaSession.setActionHandler('nexttrack', e => {
-    //   console.log('nexttrack', e);
-    // });
 
-    // navigator.mediaSession.setActionHandler('seekbackward', e => {
-    //   console.log('seekbackward', e);
-    // });
 
-    // navigator.mediaSession.setActionHandler('seekforward', e => {
-    //   console.log('seekforward', e);
-    // });
 
-    // navigator.mediaSession.setActionHandler('play', e => {
-    //   console.log('play', e);
-    // });
 
-    // navigator.mediaSession.setActionHandler('pause', e => {
-    //   console.log('pause', e);
-    // });
 
     this.getItems().then(res => {
       this.startItem(0);
@@ -69,48 +54,14 @@ class Viewer {
   }
 
   wsConnect() {
-    let u = `ws://${document.location.host + this.wsPath}`;
-    this.conn = new WebSocket(u);
-
-    this.conn.addEventListener('open', e => {
-      console.log("Connection Opened.");
+    this.conn = new ReconnectingSocket({
+      path: this.wsPath,
+      onMessage: this.socketMessage.bind(this),
     });
-
-    this.conn.addEventListener('error', e => {
-      console.log("Error in the websocket connection:\n", e);
-    });
-
-    this.conn.addEventListener('close', e => {
-      console.log("Connection closed.\nTrying to reconnect...");
-
-      let to = setTimeout(() => this.wsConnect(), 5 * 1000);
-    });
-
-    this.conn.addEventListener('message', this.socketMessage.bind(this));
+    this.conn.connect();
   }
 
-  callApi(reqBody) {
-    let myHeaders = new Headers();
-    myHeaders.append('Content-Type', 'application/json');
-
-    let myInit = {
-      method: "POST",
-      headers: myHeaders,
-      body: JSON.stringify(reqBody)
-    }
-
-    return fetch(`${window.location.origin}/api`, myInit)
-      .then(res => res.json())
-      .then(json => {
-        console.log(json);
-        return json;
-      })
-      .catch(err => console.error(err));
-  }
-
-  socketMessage(e) {
-    let msg = JSON.parse(e.data);
-    console.log(msg);
+  socketMessage(msg) {
 
     switch (msg.component) {
       case 'remote':
@@ -224,21 +175,15 @@ class Viewer {
 
   // getItems retrieves an array of items from the API.
   getItems() {
-    let reqBody = {
-      component: 'playlist',
-      method: 'getItems'
-    }
-
-    return this.callApi(reqBody)
-      .then(res => {
-        if (!res || !res.success) {
-          console.error(res);
-          return;
-        }
-        this.playlist.items = res.message;
-        this.genItems();
+    return getItems().then(res => {
+      if (!res.success) {
+        console.error('could not load the playlist:', res);
         return res;
-      });
+      }
+      this.playlist.items = res.message;
+      this.genItems();
+      return res;
+    });
   }
 
   // genItems re-generates the html for the playlist items.
@@ -414,15 +359,9 @@ class Viewer {
     }
 
     // Notify the server that a new item has started.
-    let reqBody = {
-      component: "playlist",
-      method: "setCurrent",
-      arguments: { index: index.toString() }
-    };
-
-    this.callApi(reqBody).then(res => {
-      if (!res || !res.success) {
-        console.error("Cound't set the current item through the API.");
+    setCurrent(index).then(res => {
+      if (!res.success) {
+        console.error('could not set the current item:', res);
       }
     });
   }

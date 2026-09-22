@@ -1,3 +1,6 @@
+import {callApi, getItems} from './api.js';
+import {ReconnectingSocket} from './socket.js';
+
 class Control {
   constructor() {
     // make these constants in a module
@@ -36,16 +39,10 @@ class Control {
   }
 
   getItems() {
-    let reqBody = {
-      component: 'playlist',
-      method: 'getItems'
-    }
-
-    return this.callApi(reqBody)
-    .then(res => {
-      if (!res || !res.success) {
-        console.error(res);
-        return;
+    return getItems().then(res => {
+      if (!res.success) {
+        console.error('could not load the playlist:', res);
+        return res;
       }
       this.playlist.items = res.message;
       return res;
@@ -53,35 +50,25 @@ class Control {
   }
 
   wsConnect() {
-    let u = 'ws://' + document.location.host + this.wsPath;
-    this.conn = new WebSocket(u);
-
-    this.conn.addEventListener('open', e => {
-      console.log("Connection Opened.");
-      this.disconnect = false;
-
-      this.warningHide();
+    this.conn = new ReconnectingSocket({
+      path: this.wsPath,
+      onOpen: () => {
+        this.disconnect = false;
+        this.warningHide();
+      },
+      onClose: () => {
+        if (this.disconnect) {
+          // Another device took the connection; reconnecting would just take
+          // it back off them.
+          this.conn.stop();
+          this.warningShow(this.divDisconnect);
+          return;
+        }
+        this.warningShow(this.divReconnect);
+      },
+      onMessage: this.socketMessage.bind(this),
     });
-    
-    this.conn.addEventListener('error', e => {
-      console.log("Error in the websocket connection:\n", e);
-    });
-  
-    this.conn.addEventListener('close', e => {
-      if (this.disconnect) {
-        console.log("Disconnected from server. Login again to take back control.");
-        this.warningShow(this.divDisconnect)
-        return;
-      }
-
-      console.log("Connection closed.\nTrying to reconnect...");
-
-      this.warningShow(this.divReconnect);
-  
-      let to = setTimeout(() => this.wsConnect(), 2000);
-    });
-
-    this.conn.addEventListener('message', this.socketMessage.bind(this));
+    this.conn.connect();
   }
 
   warningShow(warning) {
@@ -95,10 +82,7 @@ class Control {
     warnings.forEach(e => e.style.display = '');
   }
 
-  socketMessage(e) {
-    let msg = JSON.parse(e.data);
-    console.log(msg);
-
+  socketMessage(msg) {
     switch (msg.event) {
       case "setCurrent":
         this.setCurrent(parseInt(msg.message))
@@ -108,7 +92,7 @@ class Control {
       console.warn(`server requested websocket disconnection. Connection should be closed any second now.`)
         break;
       default:
-      console.log(`Unsupported message received: ${e.data}`);
+      console.log('unsupported message received:', msg);
     }
   }
 
@@ -141,8 +125,7 @@ class Control {
       arguments: args,
     };
   
-    this.callApi(reqBody)
-      .then(this.videoCallback.bind(this));
+    callApi(reqBody).then(this.videoCallback.bind(this));
   }
   
   startItem(e) {
@@ -157,33 +140,20 @@ class Control {
       }
     };
   
-    this.callApi(reqBody).then(this.videoCallback.bind(this));
+    callApi(reqBody).then(this.videoCallback.bind(this));
   }
   
   videoCallback(json) {
     if (json.success) {
-      console.log("instruction sent successfully. awaiting confirmation in socket.");
+      console.log('instruction sent, awaiting confirmation on the socket');
+      return;
     }
+    // Without this the operator presses a button, the player refuses, and the
+    // page carries on looking like nothing happened.
+    console.error('the player refused the instruction:', json);
+    window.alert(`The player refused that: ${json.message ?? 'unknown error'}`);
   }
   
-  callApi(reqBody) {
-    let myHeaders = new Headers();
-    myHeaders.append('Content-Type', 'application/json');
-  
-    let myInit = {
-      method: "POST",
-      headers: myHeaders,
-      body: JSON.stringify(reqBody)
-    }
-  
-    return fetch(`${window.location.origin}/api`, myInit)
-      .then(res => res.json())
-      .then(json => {
-        console.log(json);
-        return json;
-      })
-      .catch(err => console.error(err));
-  }
 }
 
 let control = new Control();
