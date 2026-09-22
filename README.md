@@ -43,6 +43,25 @@ journalctl -u pi-player-setup.service -f
 
 After the reboot the web interface is available at `http://<device-ip>:8080/control`.
 
+### Media cues
+
+Dropping a `presentation.json` in the media directory attaches cues to items:
+
+```json
+{
+  "Items": [
+    {"Visual": "opening-.*", "Cues": {"timeout": "10"}},
+    {"Visual": "announcement.jpg", "Cues": {"clear": "audio"}}
+  ]
+}
+```
+
+`Visual` is matched as a regular expression against file names, falling back to
+an exact name match when it isn't a valid one. The file is re-read whenever the
+playlist is scanned, so it is kept to 1 MiB, 1000 entries and 256 characters per
+pattern — a real cue file is a few kilobytes, and anything past a limit is
+logged and ignored rather than failing the page.
+
 ### Logging in
 
 The first login is `admin` / `admin`; change it on the settings page. Session

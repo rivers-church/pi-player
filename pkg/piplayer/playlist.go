@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"maps"
 	"net/http"
 	"os"
@@ -81,6 +82,71 @@ func (p *Playlist) setCurrent(index int) bool {
 // presentation is used to read the presentation.json file for added cues.
 type presentation struct {
 	Items []itemString
+}
+
+// Limits on the presentation file. It lives in the media directory, so anyone
+// who can drop a video on the share can write it, and it is re-read on every
+// page load - a mistyped export or a huge file would otherwise be read into
+// memory and matched against every item each time somebody opens the
+// controls. A real cue file is a few kilobytes.
+//
+// Note these are not about catastrophic backtracking: Go's regexp is RE2, so
+// a pattern like (a+)+$ matches in linear time. What is worth bounding is how
+// much work one file can ask for.
+const (
+	maxPresentationSize    = 1 << 20 // 1 MiB, thousands of entries
+	maxPresentationItems   = 1000
+	maxPresentationPattern = 256
+)
+
+// readPresentation reads the cue file from dir, if it has one. It returns the
+// entries it is willing to act on and never fails the scan: a media directory
+// with an unreadable cue file should still play its media.
+func readPresentation(dir string) []itemString {
+	file := path.Join(dir, "presentation.json")
+
+	info, err := os.Stat(file)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		logger.Error("could not read the presentation file", "file", file, "error", err)
+		return nil
+	}
+	if info.Size() > maxPresentationSize {
+		logger.Error("presentation file is too big, ignoring its cues",
+			"file", file, "size", info.Size(), "limit", maxPresentationSize)
+		return nil
+	}
+
+	data, err := os.ReadFile(file)
+	if err != nil {
+		logger.Error("could not read the presentation file", "file", file, "error", err)
+		return nil
+	}
+
+	var pres presentation
+	if err := json.Unmarshal(data, &pres); err != nil {
+		logger.Error("could not parse the presentation file, ignoring its cues", "file", file, "error", err)
+		return nil
+	}
+
+	if len(pres.Items) > maxPresentationItems {
+		logger.Warn("presentation file has more entries than the player will use",
+			"file", file, "entries", len(pres.Items), "limit", maxPresentationItems)
+		pres.Items = pres.Items[:maxPresentationItems]
+	}
+
+	items := make([]itemString, 0, len(pres.Items))
+	for _, item := range pres.Items {
+		if len(item.Visual) > maxPresentationPattern {
+			logger.Warn("presentation pattern is too long, skipping it",
+				"file", file, "length", len(item.Visual), "limit", maxPresentationPattern)
+			continue
+		}
+		items = append(items, item)
+	}
+	return items
 }
 
 // newPlaylist creates a new playlist with media in the designated folder.
@@ -270,41 +336,25 @@ func scanFolder(dir string) ([]Item, error) {
 		}
 	}
 
-	// look for presentation file for added cues.
-	file := path.Join(dir, "presentation.json")
-	if _, err := os.Stat(file); !os.IsNotExist(err) {
-		data, err := os.ReadFile(file)
+	// Attach any cues from the presentation file.
+	for _, presItem := range readPresentation(dir) {
+		// The pattern matches on file names. A pattern that isn't a valid
+		// regex is treated as a literal name, which is what most of them are.
+		r, err := regexp.Compile(presItem.Visual)
 		if err != nil {
-			logger.Error("could not read the presentation file", "file", file, "error", err)
-			return items, nil
+			logger.Warn("presentation pattern is not a valid regex, matching on the file name instead", "pattern", presItem.Visual)
 		}
 
-		var presentation presentation
-
-		if err := json.Unmarshal(data, &presentation); err != nil {
-			logger.Error("could not parse the presentation file, ignoring its cues", "file", file, "error", err)
-			return items, nil
-		}
-
-		// Loop through presentation data and attach cues to items.
-		for _, presItem := range presentation.Items {
-			// Create regex to match on file names.
-			r, err := regexp.Compile(presItem.Visual)
-			if err != nil {
-				logger.Warn("presentation pattern is not a valid regex, matching on the file name instead", "pattern", presItem.Visual)
-			}
-			for _, playItem := range items {
-				// If the regex can't compile, use the file name, otherwise use the regex.
-				if err != nil && presItem.Visual == playItem.Visual.Name() {
-					maps.Copy(playItem.Cues, presItem.Cues)
-					break
-				} else if err == nil && r.MatchString(playItem.Visual.Name()) {
-					maps.Copy(playItem.Cues, presItem.Cues)
-				}
+		for _, playItem := range items {
+			// If the regex can't compile, use the file name, otherwise use the regex.
+			if err != nil && presItem.Visual == playItem.Visual.Name() {
+				maps.Copy(playItem.Cues, presItem.Cues)
+				break
+			} else if err == nil && r.MatchString(playItem.Visual.Name()) {
+				maps.Copy(playItem.Cues, presItem.Cues)
 			}
 		}
 	}
-
 	return items, nil
 }
 

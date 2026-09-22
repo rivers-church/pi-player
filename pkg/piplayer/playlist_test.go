@@ -7,8 +7,10 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 // byVisual indexes a playlist's items by their visual filename (with extension).
@@ -396,5 +398,128 @@ func TestSetCurrentOutOfRangeTellsNobody(t *testing.T) {
 	}
 	if got := control.messages(); len(got) != 0 {
 		t.Errorf("the control page was told about a rejected index: %v", got)
+	}
+}
+
+// writePresentation writes a cue file into dir.
+func writePresentation(t *testing.T, dir string, items []itemString) {
+	t.Helper()
+
+	data, err := json.Marshal(presentation{Items: items})
+	if err != nil {
+		t.Fatalf("encoding the presentation file failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "presentation.json"), data, 0o644); err != nil {
+		t.Fatalf("writing presentation.json failed: %v", err)
+	}
+}
+
+// TestPresentationSizeLimit covers a cue file too big to be worth reading. The
+// media directory is a share anyone can write to, and the file is re-read on
+// every page load, so an oversized one would be pulled into memory each time
+// somebody opens the controls.
+func TestPresentationSizeLimit(t *testing.T) {
+	dir := t.TempDir()
+	writeFiles(t, dir, "clip.mp4")
+
+	// One entry per kilobyte until the file is over the limit.
+	var items []itemString
+	filler := strings.Repeat("x", 1000)
+	for len(items) < (maxPresentationSize/1000)+10 {
+		items = append(items, itemString{Visual: "clip", Cues: map[string]string{"pad": filler}})
+	}
+	writePresentation(t, dir, items)
+
+	info, err := os.Stat(filepath.Join(dir, "presentation.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Size() <= maxPresentationSize {
+		t.Fatalf("the fixture is %d bytes, which is under the limit it is meant to exceed", info.Size())
+	}
+
+	scanned, err := scanFolder(dir)
+	if err != nil {
+		t.Fatalf("scanning a directory with an oversized cue file failed: %v", err)
+	}
+	if len(scanned) != 1 {
+		t.Fatalf("got %d items, want the media to still be listed", len(scanned))
+	}
+	if len(scanned[0].Cues) != 0 {
+		t.Errorf("cues from the oversized file were applied: %v", scanned[0].Cues)
+	}
+}
+
+func TestPresentationEntryLimit(t *testing.T) {
+	dir := t.TempDir()
+	writeFiles(t, dir, "clip.mp4")
+
+	var items []itemString
+	for i := range maxPresentationItems + 50 {
+		// Only the entries past the limit set a cue, so the test can tell
+		// whether they were reached.
+		cues := map[string]string{}
+		if i >= maxPresentationItems {
+			cues["beyond"] = "limit"
+		}
+		items = append(items, itemString{Visual: "clip", Cues: cues})
+	}
+	writePresentation(t, dir, items)
+
+	scanned, err := scanFolder(dir)
+	if err != nil {
+		t.Fatalf("scan failed: %v", err)
+	}
+	if _, ok := scanned[0].Cues["beyond"]; ok {
+		t.Error("entries past the limit were applied")
+	}
+}
+
+func TestPresentationPatternLengthLimit(t *testing.T) {
+	dir := t.TempDir()
+	writeFiles(t, dir, "clip.mp4")
+
+	writePresentation(t, dir, []itemString{
+		{Visual: strings.Repeat("clip|", maxPresentationPattern), Cues: map[string]string{"long": "yes"}},
+		{Visual: "clip", Cues: map[string]string{"short": "yes"}},
+	})
+
+	scanned, err := scanFolder(dir)
+	if err != nil {
+		t.Fatalf("scan failed: %v", err)
+	}
+	if _, ok := scanned[0].Cues["long"]; ok {
+		t.Error("an over-long pattern was used")
+	}
+	if scanned[0].Cues["short"] != "yes" {
+		t.Errorf("the entries around it were dropped too: %v", scanned[0].Cues)
+	}
+}
+
+// TestPresentationRegexIsLinear is a guard rather than a fix: Go's regexp is
+// RE2, so the patterns that ruin a backtracking engine match in linear time
+// here. If this ever gets slow, the engine changed underneath us.
+func TestPresentationRegexIsLinear(t *testing.T) {
+	dir := t.TempDir()
+	writeFiles(t, dir, strings.Repeat("a", 60)+".mp4")
+
+	writePresentation(t, dir, []itemString{
+		{Visual: "(a+)+$", Cues: map[string]string{"evil": "yes"}},
+		{Visual: "(a|a)*$", Cues: map[string]string{"evil2": "yes"}},
+		{Visual: "(x+x+)+y", Cues: map[string]string{"evil3": "yes"}},
+	})
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		if _, err := scanFolder(dir); err != nil {
+			t.Errorf("scan failed: %v", err)
+		}
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("scanning with backtracking-style patterns took over five seconds")
 	}
 }
