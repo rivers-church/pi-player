@@ -2,9 +2,12 @@ package piplayer
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -315,5 +318,88 @@ func TestFFmpegFrameRejectsRubbish(t *testing.T) {
 
 	if err := ffmpegFrame(t.Context(), src, dst, thumbWidth); err == nil {
 		t.Error("a zero-byte file produced a thumbnail")
+	}
+}
+
+// TestThumbRouteServesAndGuards drives the handler through the real mux, so
+// the route pattern, the auth guard and the path handling are all covered.
+func TestThumbRouteServesAndGuards(t *testing.T) {
+	mediaDir := t.TempDir()
+	p := newTestPlayer(t, withMediaDir(mediaDir))
+	p.thumbs = newTestThumbnailer(t, &fakeExtractor{})
+	mux := setupRoutes(p)
+
+	_, info := mediaFile(t, mediaDir, "clip.mp4", "video")
+	token := thumbToken("clip.mp4", info)
+
+	get := func(path, remoteAddr string) *httptest.ResponseRecorder {
+		t.Helper()
+		request := httptest.NewRequest(http.MethodGet, path, nil)
+		request.RemoteAddr = remoteAddr
+		recorder := httptest.NewRecorder()
+		mux.ServeHTTP(recorder, request)
+		return recorder
+	}
+
+	const kiosk = "127.0.0.1:41000"
+
+	// The kiosk fetches thumbnails with no session, like the rest of its
+	// assets.
+	rec := get("/thumb/clip.mp4?v="+token, kiosk)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("the kiosk got %d for a thumbnail, want 200", rec.Code)
+	}
+	if got := rec.Header().Get("Content-Type"); got != "image/jpeg" {
+		t.Errorf("Content-Type is %q", got)
+	}
+	if got := rec.Header().Get("Cache-Control"); !strings.Contains(got, "immutable") {
+		t.Errorf("Cache-Control is %q, want it cacheable when the token matches", got)
+	}
+
+	// A stale token still serves, but must not be cached under that URL.
+	rec = get("/thumb/clip.mp4?v=stale", kiosk)
+	if rec.Code != http.StatusOK {
+		t.Errorf("a stale token got %d, want the current thumbnail", rec.Code)
+	}
+	if got := rec.Header().Get("Cache-Control"); got != "no-store" {
+		t.Errorf("Cache-Control for a stale token is %q, want no-store", got)
+	}
+
+	// Nothing that is not a plain name in the media directory. Some of these
+	// never reach the handler at all - the mux path-cleans them into a
+	// redirect - so the assertion is only that no file comes back.
+	for _, path := range []string{
+		"/thumb/missing.mp4",
+		"/thumb/..",
+		"/thumb/%2e%2e%2f%2e%2e%2fetc%2fpasswd",
+		"/thumb/%2fetc%2fpasswd",
+	} {
+		if rec := get(path, kiosk); rec.Code == http.StatusOK {
+			t.Errorf("%s was served, body %d bytes", path, rec.Body.Len())
+		}
+	}
+
+	// And the same guard as the rest of the media routes off the network.
+	rec = get("/thumb/clip.mp4?v="+token, "192.168.1.50:41000")
+	if rec.Code != http.StatusFound {
+		t.Errorf("a network request without a session got %d, want a redirect to the login page", rec.Code)
+	}
+}
+
+// TestThumbRouteWithoutThumbnailer: a player that could not build a cache
+// still answers, so the pages fall back to icons instead of hanging.
+func TestThumbRouteWithoutThumbnailer(t *testing.T) {
+	mediaDir := t.TempDir()
+	p := newTestPlayer(t, withMediaDir(mediaDir))
+	p.thumbs = nil
+	mediaFile(t, mediaDir, "clip.mp4", "video")
+
+	request := httptest.NewRequest(http.MethodGet, "/thumb/clip.mp4", nil)
+	request.RemoteAddr = "127.0.0.1:41000"
+	recorder := httptest.NewRecorder()
+	setupRoutes(p).ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusNotFound {
+		t.Errorf("got %d with thumbnails disabled, want 404", recorder.Code)
 	}
 }

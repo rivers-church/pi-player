@@ -7,11 +7,13 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -35,6 +37,10 @@ const (
 	// thumbGenerate caps one generation, so a share that stops answering ends
 	// as a failed thumbnail instead of a stuck goroutine.
 	thumbGenerate = 20 * time.Second
+
+	// thumbSweepEvery bounds how often the cache is swept, since a scan runs
+	// on every page load.
+	thumbSweepEvery = 10 * time.Minute
 
 	// thumbFailTTL is how long a file that failed is left alone. Long enough
 	// not to retry a corrupt file on every page load, short enough that a
@@ -60,8 +66,9 @@ type thumbnailer struct {
 	extract frameExtractor
 	sem     chan struct{}
 
-	mu      sync.Mutex
-	pending map[string]chan struct{}
+	mu        sync.Mutex
+	pending   map[string]chan struct{}
+	lastSweep time.Time
 }
 
 // newThumbnailer returns a thumbnailer writing into dir, or nil if the cache
@@ -306,4 +313,89 @@ func runFFmpeg(ctx context.Context, seek, src, dst, scale string) error {
 		return fmt.Errorf("ffmpeg: %w: %s", err, out)
 	}
 	return nil
+}
+
+// handleThumb serves a media file's thumbnail, making it on first request.
+//
+// The name comes from the URL path and is never used to build a cache path -
+// only the hex token derived from it is - so nothing an operator can name
+// reaches the filesystem beyond the media directory itself.
+func (p *Player) handleThumb(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	if name == "" || name != filepath.Base(name) || name == "." || name == ".." {
+		http.Error(w, "Not found.", http.StatusNotFound)
+		return
+	}
+
+	src := filepath.Join(p.conf.mediaDir(), name)
+	info, err := os.Stat(src)
+	if err != nil || info.IsDir() {
+		http.Error(w, "Not found.", http.StatusNotFound)
+		return
+	}
+
+	cached, err := p.thumbs.get(r.Context(), src, info)
+	switch {
+	case errors.Is(err, context.DeadlineExceeded):
+		// Still being made. Say so rather than holding the request open; the
+		// page will have it next time.
+		w.Header().Set("Retry-After", "5")
+		http.Error(w, "Thumbnail is being generated.", http.StatusServiceUnavailable)
+		return
+	case err != nil:
+		http.Error(w, "No thumbnail.", http.StatusNotFound)
+		return
+	}
+
+	// The URL carries a token that changes with the file, so this can be
+	// cached hard. The kiosk browser has no cache at all; this is for the
+	// control page on a laptop or a phone.
+	if r.URL.Query().Get("v") == thumbToken(name, info) {
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	} else {
+		// The file moved on since the page was rendered. Serve what we have,
+		// but do not let the stale URL stick.
+		w.Header().Set("Cache-Control", "no-store")
+	}
+	w.Header().Set("Content-Type", "image/jpeg")
+	http.ServeFile(w, r, cached)
+}
+
+// sweepAfterScan drops cache entries that the current playlist no longer
+// refers to. Media here is replaced often, so every swap orphans an entry.
+//
+// Rate limited because a scan happens on every control and viewer page load,
+// and guarded on a non-empty scan so a share that briefly went away does not
+// take the whole cache with it.
+func (t *thumbnailer) sweepAfterScan(items []Item) {
+	if t == nil || len(items) == 0 {
+		return
+	}
+
+	t.mu.Lock()
+	if time.Since(t.lastSweep) < thumbSweepEvery {
+		t.mu.Unlock()
+		return
+	}
+	t.lastSweep = time.Now()
+	t.mu.Unlock()
+
+	keep := make(map[string]bool, len(items))
+	for _, item := range items {
+		if token := tokenFromURL(item.thumb); token != "" {
+			keep[token] = true
+		}
+	}
+
+	go t.sweep(keep)
+}
+
+// tokenFromURL pulls the token back out of a thumbnail URL, which is where it
+// was already computed during the scan.
+func tokenFromURL(thumb string) string {
+	_, token, found := strings.Cut(thumb, "?v=")
+	if !found {
+		return ""
+	}
+	return token
 }

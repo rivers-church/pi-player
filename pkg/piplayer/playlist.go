@@ -81,7 +81,16 @@ func (p *Playlist) setCurrent(index int) bool {
 
 // presentation is used to read the presentation.json file for added cues.
 type presentation struct {
-	Items []itemString
+	Items []presentationItem
+}
+
+// presentationItem is one entry of presentation.json. That file lives in the
+// media directory, which is a share anyone can drop a file on, so this type
+// carries only the two fields the player is willing to take from it: a pattern
+// to match file names against, and the cues to attach.
+type presentationItem struct {
+	Visual string
+	Cues   map[string]string
 }
 
 // Limits on the presentation file. It lives in the media directory, so anyone
@@ -102,7 +111,7 @@ const (
 // readPresentation reads the cue file from dir, if it has one. It returns the
 // entries it is willing to act on and never fails the scan: a media directory
 // with an unreadable cue file should still play its media.
-func readPresentation(dir string) []itemString {
+func readPresentation(dir string) []presentationItem {
 	file := path.Join(dir, "presentation.json")
 
 	info, err := os.Stat(file)
@@ -137,7 +146,7 @@ func readPresentation(dir string) []itemString {
 		pres.Items = pres.Items[:maxPresentationItems]
 	}
 
-	items := make([]itemString, 0, len(pres.Items))
+	items := make([]presentationItem, 0, len(pres.Items))
 	for _, item := range pres.Items {
 		if len(item.Visual) > maxPresentationPattern {
 			logger.Warn("presentation pattern is too long, skipping it",
@@ -173,7 +182,7 @@ func newPlaylist(dir string, control notifier) (*Playlist, error) {
 }
 
 // Handles requests to the playlist api
-func (p *Playlist) handleAPI(msg reqMessage, w http.ResponseWriter, dir string, control notifier) {
+func (p *Playlist) handleAPI(msg reqMessage, w http.ResponseWriter, dir string, control notifier, thumbs *thumbnailer) {
 	var m resMessage
 	status := http.StatusOK
 
@@ -233,7 +242,7 @@ func (p *Playlist) handleAPI(msg reqMessage, w http.ResponseWriter, dir string, 
 		// Rescan the directory the config points at, not the one this playlist
 		// happens to hold: after a settings change they differ until some page
 		// load resyncs them, and the viewer would be handed the old directory.
-		if err := p.fromFolder(dir); err != nil {
+		if err := p.fromFolder(dir, thumbs); err != nil {
 			logger.Error("could not read items from the media directory", "dir", dir, "error", err)
 		}
 
@@ -258,11 +267,12 @@ func (p *Playlist) handleAPI(msg reqMessage, w http.ResponseWriter, dir string, 
 // fromFolder rescans dir and replaces the playlist's items with what it finds.
 // The scan happens outside the lock, so readers only ever see the old items or
 // the new ones. The current item is carried over by name where it still exists.
-func (p *Playlist) fromFolder(dir string) error {
+func (p *Playlist) fromFolder(dir string, thumbs *thumbnailer) error {
 	items, err := scanFolder(dir)
 	if err != nil {
 		return err
 	}
+	thumbs.sweepAfterScan(items)
 
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -285,6 +295,18 @@ func (p *Playlist) fromFolder(dir string) error {
 	return nil
 }
 
+// thumbFor returns the thumbnail URL for a scanned file, or "" if its details
+// cannot be read. The URL carries a token derived from the file's size and
+// modification time, so it changes when the file behind it does.
+func thumbFor(file fs.DirEntry) string {
+	info, err := file.Info()
+	if err != nil {
+		logger.Debug("could not read file details for a thumbnail", "file", file.Name(), "error", err)
+		return ""
+	}
+	return thumbURL(file.Name(), info)
+}
+
 // scanFolder reads dir and returns the playable items it contains.
 func scanFolder(dir string) ([]Item, error) {
 	items := []Item{}
@@ -304,10 +326,11 @@ func scanFolder(dir string) ([]Item, error) {
 		e := strings.ToLower(path.Ext(file.Name()))
 		switch e {
 		case ".mp4", ".webm":
-			items = append(items, Item{Visual: file, Type: "video", Cues: c})
+			items = append(items, Item{Visual: file, Type: "video", Cues: c, thumb: thumbFor(file)})
 		case ".jpg", ".jpeg", ".png":
-			items = append(items, Item{Visual: file, Type: "image", Cues: c})
+			items = append(items, Item{Visual: file, Type: "image", Cues: c, thumb: thumbFor(file)})
 		case ".html":
+			// A page has no frame to show; these keep their type icon.
 			items = append(items, Item{Visual: file, Type: "browser", Cues: c})
 		}
 	}

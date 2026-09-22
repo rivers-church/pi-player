@@ -4,6 +4,7 @@ import {
   cueTimeoutMs,
   remoteAction,
   step,
+  thumbFor,
   trimExtension,
   visualFor,
 } from "./playback.ts";
@@ -100,4 +101,13 @@ Deno.test("the remote keymap covers every key the player sends", () => {
   assertEquals(remoteAction("KEY_BACK"), "reload");
   assertEquals(remoteAction("KEY_STOP"), "ignore");
   assertEquals(remoteAction("KEY_WHATEVER"), undefined);
+});
+
+Deno.test("thumbFor copes with items that have no thumbnail", () => {
+  assertEquals(thumbFor(item({ Thumb: "/thumb/clip.mp4?v=abc" })), "/thumb/clip.mp4?v=abc");
+  // A page is not something a frame can be pulled out of, so the server sends
+  // nothing and the row keeps its type icon.
+  assertEquals(thumbFor(item({ Thumb: "" })), undefined);
+  // A player older than thumbnails does not send the field at all.
+  assertEquals(thumbFor(item()), undefined);
 });

@@ -13,6 +13,7 @@ import {
   remoteAction,
   seekSeconds,
   step,
+  thumbFor,
   trimExtension,
   visualFor,
   type RemoteAction,
@@ -271,6 +272,22 @@ class Viewer {
       const tr = row.querySelector("tr")!;
       tr.dataset.index = index.toString();
 
+      // The thumbnail URL is parked in a data attribute rather than src. The
+      // control page pushes newItems on every one of its own page loads, and
+      // this browser runs with its cache disabled, so an eager src would pull
+      // the whole set down again every time an operator hits refresh - while
+      // the display is playing. #showPlaylist promotes them when the overlay
+      // is actually opened.
+      const thumb = row.querySelector<HTMLImageElement>("td.thumb img")!;
+      const thumbURL = thumbFor(item);
+      if (thumbURL) {
+        thumb.dataset.src = thumbURL;
+        // A thumbnail that fails leaves the type icon beside it showing.
+        thumb.addEventListener("error", () => thumb.remove(), { once: true });
+      } else {
+        thumb.remove();
+      }
+
       // The icons are CSS masks rather than a library: the display carries no
       // component framework, and an <img> of a currentColor SVG would render
       // black on black.
@@ -314,7 +331,18 @@ class Viewer {
     const hidden = this.#playlistPanel.style.visibility === "hidden" ||
       this.#playlistPanel.style.visibility === "";
     this.#playlistPanel.style.visibility = hidden ? "visible" : "hidden";
-    if (hidden) this.#rows[this.#current]?.focus();
+    if (hidden) {
+      this.#loadThumbnails();
+      this.#rows[this.#current]?.focus();
+    }
+  }
+
+  /** Fetch the thumbnails, now that someone is actually looking at them. */
+  #loadThumbnails(): void {
+    for (const img of this.#table.querySelectorAll<HTMLImageElement>("td.thumb img[data-src]")) {
+      img.src = img.dataset.src!;
+      delete img.dataset.src;
+    }
   }
 
   #hidePlaylist(): void {

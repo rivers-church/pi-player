@@ -177,6 +177,7 @@ func setupRoutes(p *Player) *http.ServeMux {
 	mux.HandleFunc("POST /api", requireLoginOrLocal(p, p.api.handle(p)))
 	mux.HandleFunc("GET /api/dircheck", requireLoginOrLocal(p, p.handleDirCheck))
 	mux.HandleFunc("GET /content/", requireLoginOrLocal(p, contentHandler(p)))
+	mux.HandleFunc("GET /thumb/{name}", requireLoginOrLocal(p, p.handleThumb))
 	mux.HandleFunc("GET /viewer", requireLoginOrLocal(p, p.handleViewer))
 	mux.HandleFunc("GET /ws/viewer", requireLoginOrLocal(p, p.ConnViewer.websocketHandler()))
 

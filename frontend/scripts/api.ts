@@ -22,6 +22,8 @@ export interface Item {
   Visual: string;
   Type: string;
   Cues: Record<string, string>;
+  /** Absent on a player older than thumbnails, and on items that cannot have one. */
+  Thumb?: string;
 }
 
 /**

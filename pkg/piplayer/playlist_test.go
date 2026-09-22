@@ -26,7 +26,7 @@ func byVisual(p *Playlist) map[string]Item {
 
 func TestFromFolderEmptyDir(t *testing.T) {
 	p := &Playlist{}
-	if err := p.fromFolder(t.TempDir()); err != nil {
+	if err := p.fromFolder(t.TempDir(), nil); err != nil {
 		t.Fatalf("fromFolder() on empty dir returned error: %v", err)
 	}
 	if len(p.Items) != 0 {
@@ -36,7 +36,7 @@ func TestFromFolderEmptyDir(t *testing.T) {
 
 func TestFromFolderNonExistentDir(t *testing.T) {
 	p := &Playlist{}
-	err := p.fromFolder(filepath.Join(t.TempDir(), "does-not-exist"))
+	err := p.fromFolder(filepath.Join(t.TempDir(), "does-not-exist"), nil)
 	if err == nil {
 		t.Fatal("fromFolder() on missing dir returned nil error, want error")
 	}
@@ -57,7 +57,7 @@ func TestFromFolderClassification(t *testing.T) {
 	)
 
 	p := &Playlist{}
-	if err := p.fromFolder(dir); err != nil {
+	if err := p.fromFolder(dir, nil); err != nil {
 		t.Fatalf("fromFolder() returned error: %v", err)
 	}
 
@@ -105,7 +105,7 @@ func TestFromFolderAudioPairing(t *testing.T) {
 	)
 
 	p := &Playlist{}
-	if err := p.fromFolder(dir); err != nil {
+	if err := p.fromFolder(dir, nil); err != nil {
 		t.Fatalf("fromFolder() returned error: %v", err)
 	}
 
@@ -149,7 +149,7 @@ func TestFromFolderPresentationCues(t *testing.T) {
 	}
 
 	p := &Playlist{}
-	if err := p.fromFolder(dir); err != nil {
+	if err := p.fromFolder(dir, nil); err != nil {
 		t.Fatalf("fromFolder() returned error: %v", err)
 	}
 
@@ -205,7 +205,7 @@ func TestFromFolderConcurrentWithReaders(t *testing.T) {
 	}
 
 	p := &Playlist{}
-	if err := p.fromFolder(dir); err != nil {
+	if err := p.fromFolder(dir, nil); err != nil {
 		t.Fatalf("initial scan failed: %v", err)
 	}
 	p.setCurrent(0)
@@ -216,7 +216,7 @@ func TestFromFolderConcurrentWithReaders(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for range 50 {
-				if err := p.fromFolder(dir); err != nil {
+				if err := p.fromFolder(dir, nil); err != nil {
 					t.Errorf("rescan failed: %v", err)
 					return
 				}
@@ -251,7 +251,7 @@ func TestFromFolderKeepsCurrentAcrossRescan(t *testing.T) {
 	}
 
 	p := &Playlist{}
-	if err := p.fromFolder(dir); err != nil {
+	if err := p.fromFolder(dir, nil); err != nil {
 		t.Fatalf("initial scan failed: %v", err)
 	}
 	if !p.setCurrent(1) {
@@ -259,7 +259,7 @@ func TestFromFolderKeepsCurrentAcrossRescan(t *testing.T) {
 	}
 	want, _ := p.currentName()
 
-	if err := p.fromFolder(dir); err != nil {
+	if err := p.fromFolder(dir, nil); err != nil {
 		t.Fatalf("rescan failed: %v", err)
 	}
 
@@ -297,7 +297,7 @@ func TestGetItemsFollowsConfiguredDir(t *testing.T) {
 	writeFiles(t, newDir, "new.mp4")
 
 	p := newTestPlayer(t, withMediaDir(oldDir))
-	if err := p.playlist.fromFolder(oldDir); err != nil {
+	if err := p.playlist.fromFolder(oldDir, nil); err != nil {
 		t.Fatalf("initial scan failed: %v", err)
 	}
 
@@ -306,7 +306,7 @@ func TestGetItemsFollowsConfiguredDir(t *testing.T) {
 	p.conf.setMediaDir(newDir)
 
 	recorder := httptest.NewRecorder()
-	p.playlist.handleAPI(reqMessage{Component: "playlist", Method: "getItems"}, recorder, p.conf.mediaDir(), p.ConnControl)
+	p.playlist.handleAPI(reqMessage{Component: "playlist", Method: "getItems"}, recorder, p.conf.mediaDir(), p.ConnControl, p.thumbs)
 
 	var res resMessage
 	if err := json.NewDecoder(recorder.Body).Decode(&res); err != nil {
@@ -352,14 +352,14 @@ func TestSetCurrentNotifiesControlPage(t *testing.T) {
 	writeFiles(t, dir, "one.mp4", "two.mp4")
 
 	pl := &Playlist{}
-	if err := pl.fromFolder(dir); err != nil {
+	if err := pl.fromFolder(dir, nil); err != nil {
 		t.Fatalf("scan failed: %v", err)
 	}
 	control := &fakeNotifier{}
 
 	recorder := httptest.NewRecorder()
 	msg := reqMessage{Component: "playlist", Method: "setCurrent", Arguments: map[string]string{"index": "1"}}
-	pl.handleAPI(msg, recorder, dir, control)
+	pl.handleAPI(msg, recorder, dir, control, nil)
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("setCurrent returned status %d", recorder.Code)
@@ -384,14 +384,14 @@ func TestSetCurrentOutOfRangeTellsNobody(t *testing.T) {
 	writeFiles(t, dir, "one.mp4")
 
 	pl := &Playlist{}
-	if err := pl.fromFolder(dir); err != nil {
+	if err := pl.fromFolder(dir, nil); err != nil {
 		t.Fatalf("scan failed: %v", err)
 	}
 	control := &fakeNotifier{}
 
 	recorder := httptest.NewRecorder()
 	msg := reqMessage{Component: "playlist", Method: "setCurrent", Arguments: map[string]string{"index": "7"}}
-	pl.handleAPI(msg, recorder, dir, control)
+	pl.handleAPI(msg, recorder, dir, control, nil)
 
 	if recorder.Code != http.StatusBadRequest {
 		t.Errorf("an out-of-range index returned status %d, want %d", recorder.Code, http.StatusBadRequest)
@@ -402,7 +402,7 @@ func TestSetCurrentOutOfRangeTellsNobody(t *testing.T) {
 }
 
 // writePresentation writes a cue file into dir.
-func writePresentation(t *testing.T, dir string, items []itemString) {
+func writePresentation(t *testing.T, dir string, items []presentationItem) {
 	t.Helper()
 
 	data, err := json.Marshal(presentation{Items: items})
@@ -423,10 +423,10 @@ func TestPresentationSizeLimit(t *testing.T) {
 	writeFiles(t, dir, "clip.mp4")
 
 	// One entry per kilobyte until the file is over the limit.
-	var items []itemString
+	var items []presentationItem
 	filler := strings.Repeat("x", 1000)
 	for len(items) < (maxPresentationSize/1000)+10 {
-		items = append(items, itemString{Visual: "clip", Cues: map[string]string{"pad": filler}})
+		items = append(items, presentationItem{Visual: "clip", Cues: map[string]string{"pad": filler}})
 	}
 	writePresentation(t, dir, items)
 
@@ -454,7 +454,7 @@ func TestPresentationEntryLimit(t *testing.T) {
 	dir := t.TempDir()
 	writeFiles(t, dir, "clip.mp4")
 
-	var items []itemString
+	var items []presentationItem
 	for i := range maxPresentationItems + 50 {
 		// Only the entries past the limit set a cue, so the test can tell
 		// whether they were reached.
@@ -462,7 +462,7 @@ func TestPresentationEntryLimit(t *testing.T) {
 		if i >= maxPresentationItems {
 			cues["beyond"] = "limit"
 		}
-		items = append(items, itemString{Visual: "clip", Cues: cues})
+		items = append(items, presentationItem{Visual: "clip", Cues: cues})
 	}
 	writePresentation(t, dir, items)
 
@@ -479,7 +479,7 @@ func TestPresentationPatternLengthLimit(t *testing.T) {
 	dir := t.TempDir()
 	writeFiles(t, dir, "clip.mp4")
 
-	writePresentation(t, dir, []itemString{
+	writePresentation(t, dir, []presentationItem{
 		{Visual: strings.Repeat("clip|", maxPresentationPattern), Cues: map[string]string{"long": "yes"}},
 		{Visual: "clip", Cues: map[string]string{"short": "yes"}},
 	})
@@ -503,7 +503,7 @@ func TestPresentationRegexIsLinear(t *testing.T) {
 	dir := t.TempDir()
 	writeFiles(t, dir, strings.Repeat("a", 60)+".mp4")
 
-	writePresentation(t, dir, []itemString{
+	writePresentation(t, dir, []presentationItem{
 		{Visual: "(a+)+$", Cues: map[string]string{"evil": "yes"}},
 		{Visual: "(a|a)*$", Cues: map[string]string{"evil2": "yes"}},
 		{Visual: "(x+x+)+y", Cues: map[string]string{"evil3": "yes"}},
@@ -521,5 +521,42 @@ func TestPresentationRegexIsLinear(t *testing.T) {
 	case <-done:
 	case <-time.After(5 * time.Second):
 		t.Fatal("scanning with backtracking-style patterns took over five seconds")
+	}
+}
+
+// TestPresentationCannotSetThumb is why the cue file has its own type. It is
+// read from the media share, so if it were still parsed into the struct the
+// API returns, anyone who can drop a file there could point the control page's
+// thumbnails wherever they liked.
+func TestPresentationCannotSetThumb(t *testing.T) {
+	dir := t.TempDir()
+	writeFiles(t, dir, "clip.mp4")
+
+	hostile := `{"Items":[{"Visual":"clip","Thumb":"http://evil.example.com/x.jpg",` +
+		`"Cues":{"timeout":"5"}}]}`
+	if err := os.WriteFile(filepath.Join(dir, "presentation.json"), []byte(hostile), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	items, err := scanFolder(dir)
+	if err != nil {
+		t.Fatalf("scan failed: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("got %d items, want 1", len(items))
+	}
+
+	// The cue it is allowed to set still lands.
+	if items[0].Cues["timeout"] != "5" {
+		t.Errorf("the presentation file's cues were ignored: %v", items[0].Cues)
+	}
+	// The one it is not, does not: the thumbnail is the URL the player worked
+	// out from the file it scanned.
+	got := items[0].String().Thumb
+	if strings.Contains(got, "evil.example.com") {
+		t.Errorf("the presentation file set Thumb to %q", got)
+	}
+	if !strings.HasPrefix(got, "/thumb/clip.mp4?v=") {
+		t.Errorf("Thumb is %q, want the URL computed from the scanned file", got)
 	}
 }

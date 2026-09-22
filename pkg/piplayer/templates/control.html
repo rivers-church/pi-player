@@ -21,6 +21,11 @@
       <table id="tblPlaylist" class="playlist">
         {{- range $i, $e := .playlist.Items}}
         <tr data-index="{{$i}}">
+          <td class="thumb">
+            {{- if .ThumbURL}}
+            <img src="{{.ThumbURL}}" alt="" width="96" height="54" loading="lazy" decoding="async">
+            {{- end}}
+          </td>
           <td class="icon"><wa-icon name="{{if eq .Type "browser"}}window-maximize{{else}}{{.Type}}{{end}}"></wa-icon></td>
           <td class="icon">
             {{- if .Audio}}

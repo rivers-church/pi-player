@@ -104,7 +104,7 @@ func (a *APIHandler) handleMessage(p *Player, msg reqMessage, w http.ResponseWri
 		p.handleAPI(msg, w)
 		return
 	case "playlist":
-		p.playlist.handleAPI(msg, w, p.conf.mediaDir(), p.ConnControl)
+		p.playlist.handleAPI(msg, w, p.conf.mediaDir(), p.ConnControl, p.thumbs)
 		return
 	}
 

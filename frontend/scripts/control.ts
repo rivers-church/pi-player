@@ -35,12 +35,26 @@ export class Control {
   start(): void {
     this.loadItems();
     this.connect();
+    this.#watchThumbnails();
 
     this.#tblPlaylist.addEventListener("click", (event) => this.select(event));
     this.#btnStart.addEventListener("click", () => this.startSelected());
     for (const button of this.#transport) {
       button.addEventListener("click", () => this.sendCommand(button));
     }
+  }
+
+  /**
+   * A thumbnail that fails to load is removed, leaving the type icon in the
+   * next column. Listened for in capture phase because an <img> error does
+   * not bubble, and attached here rather than inline because the content
+   * security policy forbids inline handlers.
+   */
+  #watchThumbnails(): void {
+    this.#tblPlaylist.addEventListener("error", (event) => {
+      const target = event.target as HTMLElement;
+      if (target instanceof HTMLImageElement) target.remove();
+    }, true);
   }
 
   async loadItems(): Promise<void> {

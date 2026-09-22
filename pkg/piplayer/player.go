@@ -10,9 +10,11 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 
+	"github.com/17xande/configdir"
 	"github.com/gorilla/sessions"
 )
 
@@ -25,6 +27,7 @@ type Player struct {
 	playlist    *Playlist
 	conf        *Config
 	store       *sessions.CookieStore
+	thumbs      *thumbnailer
 	loginLimit  *loginLimiter
 	browser     browser
 }
@@ -110,6 +113,7 @@ func NewPlayer(ctx context.Context, api *APIHandler, conf *Config) *Player {
 		api:         api,
 		conf:        conf,
 		store:       newSessionStore(conf.sessionKey()),
+		thumbs:      newThumbnailer(filepath.Join(configdir.LocalCache("pi-player"), "thumbs")),
 		loginLimit:  newLoginLimiter(),
 		ConnViewer:  newConnWS(),
 		ConnControl: newConnWS(),
@@ -313,7 +317,7 @@ func (p *Player) handleAPI(msg reqMessage, w http.ResponseWriter) {
 
 // handleControl Scan the folder for new files every time the page reloads and display contents
 func (p *Player) handleControl(w http.ResponseWriter, r *http.Request) {
-	if err := p.playlist.fromFolder(p.conf.mediaDir()); err != nil {
+	if err := p.playlist.fromFolder(p.conf.mediaDir(), p.thumbs); err != nil {
 		logger.Error("could not read the media directory for the control page", "error", err)
 		p.renderErrorPage(w, err, "/control")
 		return
@@ -386,7 +390,7 @@ func (p *Player) handleViewer(w http.ResponseWriter, r *http.Request) {
 	// viewer.html renders no data - the page fetches its items over the API
 	// once it loads. The scan still happens here so a missing media directory
 	// shows the error page instead of an empty display.
-	if err := p.playlist.fromFolder(p.conf.mediaDir()); err != nil {
+	if err := p.playlist.fromFolder(p.conf.mediaDir(), p.thumbs); err != nil {
 		logger.Error("could not read the media directory for the viewer page", "error", err)
 		p.renderErrorPage(w, err, "/viewer")
 		return

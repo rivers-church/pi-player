@@ -68,6 +68,17 @@ export function cueTimeoutMs(item: Item): number | undefined {
   return seconds * 1000;
 }
 
+/**
+ * thumbFor is the item's thumbnail URL, or undefined when it has none - a
+ * page with no thumbnail falls back to the item's type icon.
+ *
+ * Older servers do not send the field at all, so this must cope with it being
+ * missing rather than merely empty.
+ */
+export function thumbFor(item: Item): string | undefined {
+  return item.Thumb ? item.Thumb : undefined;
+}
+
 /** trimExtension drops the file extension, the way the server's Name does. */
 export function trimExtension(fileName: string): string {
   const dot = fileName.lastIndexOf(".");
