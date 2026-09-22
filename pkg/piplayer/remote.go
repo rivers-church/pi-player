@@ -23,10 +23,10 @@ const remoteRetryDelay = 3 * time.Second
 
 // remoteRead listens to the remote control until ctx is cancelled, retrying
 // whenever the device goes away.
-func remoteRead(ctx context.Context, p *Player) {
+func remoteRead(ctx context.Context, devices []string, viewer notifier) {
 	for {
 		logger.Debug("starting remote read for this device")
-		if err := Listen(ctx, p.conf.Remote.Names, p); err != nil {
+		if err := Listen(ctx, devices, viewer); err != nil {
 			logger.Error("listening to remote failed, retrying", "retryIn", remoteRetryDelay, "error", err)
 		}
 
@@ -40,7 +40,7 @@ func remoteRead(ctx context.Context, p *Player) {
 
 // Listen to all the Input Devices supplied.
 // Return an error if there is a problem, or if one of the devices disconnects.
-func Listen(ctx context.Context, devs []string, p *Player) error {
+func Listen(ctx context.Context, devs []string, viewer notifier) error {
 	kl := keylogger.NewKeyLogger(devs)
 	if len(kl.GetDevices()) <= 0 {
 		return fmt.Errorf("device '%s' not found", devs)
@@ -84,7 +84,7 @@ func Listen(ctx context.Context, devs []string, p *Player) error {
 				Event:     "keyDown",
 			}
 
-			p.ConnViewer.trySend(msg)
+			viewer.trySend(msg)
 
 		case err, open := <-cer:
 			if !open {

@@ -89,7 +89,7 @@ type Presentation struct {
 // created: the player works without one, it just won't notice files appearing
 // on its own. Callers dereference the playlist on every page load, so handing
 // back nil here would panic inside a handler later.
-func NewPlaylist(p *Player, dir string) (*Playlist, error) {
+func NewPlaylist(dir string, control notifier) (*Playlist, error) {
 	pl := &Playlist{Name: dir}
 
 	watcher, err := fsnotify.NewWatcher()
@@ -98,7 +98,7 @@ func NewPlaylist(p *Player, dir string) (*Playlist, error) {
 	}
 	pl.watcher = watcher
 
-	go pl.watch(p)
+	go pl.watch(control)
 
 	logger.Debug("starting directory watcher", "dir", dir)
 	if exists(dir) {
@@ -108,7 +108,7 @@ func NewPlaylist(p *Player, dir string) (*Playlist, error) {
 }
 
 // Handles requests to the playlist api
-func (p *Playlist) handleAPI(plr *Player, msg reqMessage, w http.ResponseWriter) {
+func (p *Playlist) handleAPI(msg reqMessage, w http.ResponseWriter, dir string, control notifier) {
 	var m resMessage
 	status := http.StatusOK
 
@@ -157,7 +157,7 @@ func (p *Playlist) handleAPI(plr *Player, msg reqMessage, w http.ResponseWriter)
 		}
 
 		// send update to the control page, if open.
-		plr.ConnControl.trySend(wsMessage{
+		control.trySend(wsMessage{
 			Success: true,
 			Event:   "setCurrent",
 			Message: index,
@@ -165,10 +165,9 @@ func (p *Playlist) handleAPI(plr *Player, msg reqMessage, w http.ResponseWriter)
 
 		logger.Debug("set current item", "index", index)
 	case "getItems":
-		// Rescan the configured directory, not the one this playlist happens
-		// to hold: after a settings change they differ until some page load
-		// resyncs them, and the viewer would be handed the old directory.
-		dir := plr.conf.MediaDir()
+		// Rescan the directory the config points at, not the one this playlist
+		// happens to hold: after a settings change they differ until some page
+		// load resyncs them, and the viewer would be handed the old directory.
 		if err := p.fromFolder(dir); err != nil {
 			logger.Error("could not read items from the media directory", "dir", dir, "error", err)
 		}
@@ -311,7 +310,7 @@ func scanFolder(dir string) ([]Item, error) {
 }
 
 // watch for changes in the supplied directory
-func (p *Playlist) watch(plr *Player) {
+func (p *Playlist) watch(control notifier) {
 	if p.watcher == nil {
 		return
 	}
@@ -331,7 +330,7 @@ func (p *Playlist) watch(plr *Player) {
 				Event:     "newItems",
 				Message:   "detected file change. Get new items.",
 			}
-			plr.ConnControl.trySend(msg)
+			control.trySend(msg)
 		case err, ok := <-p.watcher.Errors:
 			if !ok {
 				logger.Info("watcher error channel closed, stopping the directory watcher")

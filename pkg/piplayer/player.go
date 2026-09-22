@@ -114,13 +114,13 @@ func NewPlayer(ctx context.Context, api *APIHandler, conf *Config) *Player {
 	}
 
 	var err error
-	p.playlist, err = NewPlaylist(&p, conf.MediaDir())
+	p.playlist, err = NewPlaylist(conf.MediaDir(), p.ConnControl)
 	if err != nil {
 		logger.Error("could not create the playlist", "error", err)
 	}
 
 	logger.Debug("initializing the remote control")
-	go remoteRead(ctx, &p)
+	go remoteRead(ctx, conf.Remote.Names, p.ConnViewer)
 
 	return &p
 }

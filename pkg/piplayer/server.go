@@ -146,7 +146,7 @@ func setupRoutes(p *Player) *http.ServeMux {
 	mux.HandleFunc("POST /settings", requireLogin(p, settings))
 
 	mux.HandleFunc("GET /control", requireLogin(p, p.HandleControl))
-	mux.HandleFunc("GET /ws/control", requireLogin(p, p.ConnControl.HandlerWebsocket(p)))
+	mux.HandleFunc("GET /ws/control", requireLogin(p, p.ConnControl.HandlerWebsocket()))
 
 	// The kiosk browser reaches these from localhost without a session. That
 	// includes the API: the viewer page fetches its items over /api, and the
@@ -157,7 +157,7 @@ func setupRoutes(p *Player) *http.ServeMux {
 	mux.HandleFunc("GET /api/dircheck", requireLoginOrLocal(p, p.HandleDirCheck))
 	mux.HandleFunc("GET /content/", requireLoginOrLocal(p, contentHandler(p)))
 	mux.HandleFunc("GET /viewer", requireLoginOrLocal(p, p.HandleViewer))
-	mux.HandleFunc("GET /ws/viewer", requireLoginOrLocal(p, p.ConnViewer.HandlerWebsocket(p)))
+	mux.HandleFunc("GET /ws/viewer", requireLoginOrLocal(p, p.ConnViewer.HandlerWebsocket()))
 
 	return mux
 }

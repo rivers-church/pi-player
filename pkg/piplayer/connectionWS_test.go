@@ -13,8 +13,7 @@ import (
 // wsTestServer starts a server whose only route is the websocket handler for c.
 func wsTestServer(t *testing.T, c ConnectionWS) (*httptest.Server, string) {
 	t.Helper()
-	p := newTestPlayer(t)
-	server := httptest.NewServer(c.HandlerWebsocket(p))
+	server := httptest.NewServer(c.HandlerWebsocket())
 	t.Cleanup(server.Close)
 	return server, "ws" + strings.TrimPrefix(server.URL, "http")
 }
@@ -138,10 +137,9 @@ func TestRepeatedTakeoversAreRaceFree(t *testing.T) {
 
 func TestHandlerRejectsNonWebsocketRequest(t *testing.T) {
 	c := NewConnWS()
-	p := newTestPlayer(t)
 	recorder := httptest.NewRecorder()
 
-	c.HandlerWebsocket(p).ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/ws/viewer", nil))
+	c.HandlerWebsocket().ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/ws/viewer", nil))
 
 	if recorder.Code == http.StatusOK {
 		t.Error("a plain GET was accepted as a websocket upgrade")
@@ -155,9 +153,8 @@ func TestHandlerRejectsNonWebsocketRequest(t *testing.T) {
 // the server's ReadTimeout must not close an idle viewer socket.
 func TestWebsocketOutlivesReadTimeout(t *testing.T) {
 	c := NewConnWS()
-	p := newTestPlayer(t)
 
-	server := httptest.NewUnstartedServer(c.HandlerWebsocket(p))
+	server := httptest.NewUnstartedServer(c.HandlerWebsocket())
 	// Deliberately tiny, so the test doesn't have to wait 30 seconds.
 	const readTimeout = 100 * time.Millisecond
 	server.Config.ReadTimeout = readTimeout

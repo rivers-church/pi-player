@@ -54,10 +54,17 @@ func sameOrigin(r *http.Request) bool {
 // browser and never consumes structured messages back over the socket; the
 // browser talks back over the JSON API instead.
 type ConnectionWS interface {
-	HandlerWebsocket(p *Player) http.HandlerFunc
+	HandlerWebsocket() http.HandlerFunc
 	trySend(msg wsMessage) bool
 	isActive() bool
 	closeCurrent(farewell wsMessage)
+}
+
+// notifier is the part of a websocket connection the rest of the player
+// needs: somewhere to push a message, with no obligation to care whether a
+// browser is listening.
+type notifier interface {
+	trySend(msg wsMessage) bool
 }
 
 // wsWriter is one browser connection and the goroutine that writes to it.
@@ -133,7 +140,7 @@ func (c *connWS) closeCurrent(farewell wsMessage) {
 }
 
 // HandlerWebsocket handles websocket connections for the browser viewer and controller.
-func (c *connWS) HandlerWebsocket(p *Player) http.HandlerFunc {
+func (c *connWS) HandlerWebsocket() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// If a connection is already active, close it gracefully before
 		// taking over. The previous writer sends the farewell itself; writing

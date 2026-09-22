@@ -2,9 +2,11 @@ package piplayer
 
 import (
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"testing"
 )
@@ -302,7 +304,7 @@ func TestGetItemsFollowsConfiguredDir(t *testing.T) {
 	p.conf.SetMount(mount{Dir: newDir})
 
 	recorder := httptest.NewRecorder()
-	p.playlist.handleAPI(p, reqMessage{Component: "playlist", Method: "getItems"}, recorder)
+	p.playlist.handleAPI(reqMessage{Component: "playlist", Method: "getItems"}, recorder, p.conf.MediaDir(), p.ConnControl)
 
 	var res resMessage
 	if err := json.NewDecoder(recorder.Body).Decode(&res); err != nil {
@@ -318,5 +320,81 @@ func TestGetItemsFollowsConfiguredDir(t *testing.T) {
 	}
 	if item["Visual"] != "new.mp4" {
 		t.Errorf("getItems returned %v, want the item from the newly configured directory", item["Visual"])
+	}
+}
+
+// fakeNotifier records what the playlist pushes to the control page.
+type fakeNotifier struct {
+	mu   sync.Mutex
+	sent []wsMessage
+}
+
+func (f *fakeNotifier) trySend(msg wsMessage) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.sent = append(f.sent, msg)
+	return true
+}
+
+func (f *fakeNotifier) messages() []wsMessage {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.sent)
+}
+
+// TestSetCurrentNotifiesControlPage exercises the playlist API with a stand-in
+// for the websocket, which is the point of the handler taking a notifier
+// rather than the whole player.
+func TestSetCurrentNotifiesControlPage(t *testing.T) {
+	dir := t.TempDir()
+	writeFiles(t, dir, "one.mp4", "two.mp4")
+
+	pl := &Playlist{}
+	if err := pl.fromFolder(dir); err != nil {
+		t.Fatalf("scan failed: %v", err)
+	}
+	control := &fakeNotifier{}
+
+	recorder := httptest.NewRecorder()
+	msg := reqMessage{Component: "playlist", Method: "setCurrent", Arguments: map[string]string{"index": "1"}}
+	pl.handleAPI(msg, recorder, dir, control)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("setCurrent returned status %d", recorder.Code)
+	}
+	sent := control.messages()
+	if len(sent) != 1 {
+		t.Fatalf("the control page got %d messages, want 1", len(sent))
+	}
+	if sent[0].Event != "setCurrent" {
+		t.Errorf("control page got event %q, want %q", sent[0].Event, "setCurrent")
+	}
+
+	name, ok := pl.currentName()
+	if !ok || name != "two" {
+		t.Errorf("current item is %q (set: %v), want %q", name, ok, "two")
+	}
+}
+
+// TestSetCurrentOutOfRangeTellsNobody checks a bad index doesn't reach the page.
+func TestSetCurrentOutOfRangeTellsNobody(t *testing.T) {
+	dir := t.TempDir()
+	writeFiles(t, dir, "one.mp4")
+
+	pl := &Playlist{}
+	if err := pl.fromFolder(dir); err != nil {
+		t.Fatalf("scan failed: %v", err)
+	}
+	control := &fakeNotifier{}
+
+	recorder := httptest.NewRecorder()
+	msg := reqMessage{Component: "playlist", Method: "setCurrent", Arguments: map[string]string{"index": "7"}}
+	pl.handleAPI(msg, recorder, dir, control)
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Errorf("an out-of-range index returned status %d, want %d", recorder.Code, http.StatusBadRequest)
+	}
+	if got := control.messages(); len(got) != 0 {
+		t.Errorf("the control page was told about a rejected index: %v", got)
 	}
 }
