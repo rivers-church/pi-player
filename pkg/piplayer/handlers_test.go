@@ -167,9 +167,10 @@ func TestNewAPIHandlerParsesEmbedded(t *testing.T) {
 			t.Errorf("template %q is missing from the parsed set", name)
 		}
 	}
-	// The bundled entry points and the viewer's own script, which is still
-	// hand-written JavaScript.
-	for _, asset := range []string{"dist/ui.js", "dist/ui.css", "js/viewer.js"} {
+	// Both bundle entry points, the stylesheet the chrome pages link, and one
+	// of the icons - which is the whole reason the icons are copied in rather
+	// than fetched from a CDN.
+	for _, asset := range []string{"dist/ui.js", "dist/ui.css", "dist/viewer.js", "dist/icons/play.svg"} {
 		if _, err := api.statAssets.Open(asset); err != nil {
 			t.Errorf("the assets filesystem does not serve %s: %v", asset, err)
 		}
