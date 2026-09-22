@@ -132,19 +132,17 @@
         group: "{{ target_user }}"
         mode: '0600'
         force: false
+        # MediaDir is a plain path. It used to be a nested {"Mount": {"URL": ...}},
+        # and a config still written that way leaves MediaDir empty - the player
+        # then falls back to ~/Documents/pi-player and ignores the share.
         content: |
           {
             "Location": "PiPlayer",
-            "Mount": {
-              "URL": "{{ ansible_local.pi_player.piplayer_dir | default(ansible_local.pi_player.mount_where) | default('/home/' + target_user + '/Documents/pi-player') }}"
-            },
-            "Streamer": "",
+            "MediaDir": "{{ ansible_local.pi_player.piplayer_dir | default(ansible_local.pi_player.mount_where) | default('/home/' + target_user + '/Documents/pi-player') }}",
             "Debug": true,
             "Login": {},
             "Remote": {
-              "Names": ["keyboard"],
-              "Vendor": 0,
-              "Product": 0
+              "Names": ["keyboard"]
             }
           }
 
