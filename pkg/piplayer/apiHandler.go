@@ -1,7 +1,6 @@
 package piplayer
 
 import (
-	"embed"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -19,7 +18,7 @@ type APIHandler struct {
 // NewAPIHandler creates a new APIHandler. An error here means the embedded
 // assets or templates are missing, which every page would then fail on, so it
 // is reported rather than logged and worked around.
-func NewAPIHandler(test *string, statAssets, statTemplates embed.FS) (APIHandler, error) {
+func NewAPIHandler(test *string, statAssets, statTemplates fs.FS) (APIHandler, error) {
 	subAssets, err := fs.Sub(statAssets, "pkg/piplayer/assets")
 	if err != nil {
 		return APIHandler{}, fmt.Errorf("error loading embedded assets: %w", err)

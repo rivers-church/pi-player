@@ -178,6 +178,11 @@ func (p *Player) handleLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Empty the session before expiring it. The store signs whatever the
+	// session holds into the replacement cookie, so leaving the values in
+	// place hands the browser a cookie that still says "authenticated" and
+	// relies on it to throw the cookie away.
+	session.Values = map[any]any{}
 	session.Options.MaxAge = -1
 	if err := session.Save(r, w); err != nil {
 		logger.Error("could not expire the session on logout", "error", err)
