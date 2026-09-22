@@ -16,7 +16,7 @@ import (
 // caller can answer with another's arguments.
 func TestAPIHandlerConcurrentRequests(t *testing.T) {
 	p := newTestPlayer(t)
-	handler := p.api.Handle(p)
+	handler := p.api.handle(p)
 
 	const callers = 50
 	var wg sync.WaitGroup
@@ -55,7 +55,7 @@ func TestAPIHandlerRejectsNonJSON(t *testing.T) {
 	request.Header.Set("Content-Type", "text/plain")
 	recorder := httptest.NewRecorder()
 
-	p.api.Handle(p).ServeHTTP(recorder, request)
+	p.api.handle(p).ServeHTTP(recorder, request)
 
 	var res resMessage
 	if err := json.NewDecoder(recorder.Body).Decode(&res); err != nil {
@@ -71,7 +71,7 @@ func TestAPIHandlerRejectsNonJSON(t *testing.T) {
 
 func TestAPIHandlerStatusCodes(t *testing.T) {
 	p := newTestPlayer(t)
-	handler := p.api.Handle(p)
+	handler := p.api.handle(p)
 
 	cases := []struct {
 		name       string

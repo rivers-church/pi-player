@@ -15,7 +15,7 @@ func TestTemplateHandlerReportsRenderFailure(t *testing.T) {
 		"broken.html": "<p>{{len .number}}</p>",
 	})
 
-	th := TemplateHandler{
+	th := templateHandler{
 		filename:  "broken.html",
 		templates: api.templates,
 		// len of an int is an execution error, so the render fails after the
@@ -39,7 +39,7 @@ func TestTemplateHandlerReportsRenderFailure(t *testing.T) {
 func TestTemplateHandlerMissingTemplate(t *testing.T) {
 	api := testAPIHandler(t, map[string]string{"control.html": "ok"})
 
-	th := TemplateHandler{filename: "nosuch.html", templates: api.templates}
+	th := templateHandler{filename: "nosuch.html", templates: api.templates}
 	recorder := httptest.NewRecorder()
 
 	th.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/control", nil))

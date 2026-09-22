@@ -53,7 +53,7 @@ func TestHashIsSalted(t *testing.T) {
 }
 
 func TestLoginWorksOnFirstAttemptOverHTTP(t *testing.T) {
-	// The installer creates an empty Login object. The first submission must
+	// The installer creates an empty login object. The first submission must
 	// initialize the default credentials and authenticate in the same request.
 	p := newTestPlayer(t)
 	form := url.Values{
@@ -82,7 +82,7 @@ func TestLoginWorksOnFirstAttemptOverHTTP(t *testing.T) {
 
 	controlRequest := httptest.NewRequest(http.MethodGet, "http://piplayer.local/control", nil)
 	controlRequest.AddCookie(cookies[0])
-	_, authenticated, err := p.CheckLogin(httptest.NewRecorder(), controlRequest)
+	_, authenticated, err := p.checkLogin(httptest.NewRecorder(), controlRequest)
 	if err != nil {
 		t.Fatalf("reading the first login session failed: %v", err)
 	}
@@ -113,7 +113,7 @@ func TestControlPageLoadsWithoutViewerConnection(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	done := make(chan struct{})
 	go func() {
-		p.HandleControl(recorder, request)
+		p.handleControl(recorder, request)
 		close(done)
 	}()
 
@@ -156,7 +156,7 @@ func TestLoginPageRecoversFromUndecodableCookie(t *testing.T) {
 
 	controlRequest := httptest.NewRequest(http.MethodGet, "http://piplayer.local/control", nil)
 	controlRequest.AddCookie(cookies[0])
-	_, authenticated, err := p.CheckLogin(httptest.NewRecorder(), controlRequest)
+	_, authenticated, err := p.checkLogin(httptest.NewRecorder(), controlRequest)
 	if err != nil {
 		t.Fatalf("reading the replacement session failed: %v", err)
 	}
@@ -204,10 +204,10 @@ func TestSessionKeyIsPerDevice(t *testing.T) {
 		return request
 	}
 
-	if _, authenticated, _ := mint.CheckLogin(httptest.NewRecorder(), withCookie()); !authenticated {
+	if _, authenticated, _ := mint.checkLogin(httptest.NewRecorder(), withCookie()); !authenticated {
 		t.Error("the player that signed the cookie did not accept it")
 	}
-	if _, authenticated, _ := other.CheckLogin(httptest.NewRecorder(), withCookie()); authenticated {
+	if _, authenticated, _ := other.checkLogin(httptest.NewRecorder(), withCookie()); authenticated {
 		t.Error("a player with a different key accepted the forged cookie")
 	}
 }
@@ -238,7 +238,7 @@ func TestLoginClearsPreviousSessionValues(t *testing.T) {
 
 	check := httptest.NewRequest(http.MethodGet, "http://piplayer.local/control", nil)
 	check.AddCookie(recorder.Result().Cookies()[0])
-	session, authenticated, err := p.CheckLogin(httptest.NewRecorder(), check)
+	session, authenticated, err := p.checkLogin(httptest.NewRecorder(), check)
 	if err != nil {
 		t.Fatalf("reading the new session failed: %v", err)
 	}

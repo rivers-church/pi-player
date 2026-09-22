@@ -56,7 +56,7 @@ func writeAPIResponse(w http.ResponseWriter, status int, m *resMessage) {
 }
 
 // Handle handles all calls to the API
-func (a *APIHandler) Handle(p *Player) http.HandlerFunc {
+func (a *APIHandler) handle(p *Player) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// ignore anything that's not a application/json request
 		ct := r.Header.Get("Content-Type")

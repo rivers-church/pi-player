@@ -183,10 +183,10 @@ func TestItemsString(t *testing.T) {
 		t.Fatalf("expected 2 ItemStrings, got %d", len(got))
 	}
 	if got[0].Visual != "clip.mp4" || got[0].Audio != "clip.mp3" || got[0].Type != "video" {
-		t.Errorf("unexpected first ItemString: %+v", got[0])
+		t.Errorf("unexpected first itemString: %+v", got[0])
 	}
 	if got[1].Visual != "photo.jpg" || got[1].Audio != "" || got[1].Type != "image" {
-		t.Errorf("unexpected second ItemString: %+v", got[1])
+		t.Errorf("unexpected second itemString: %+v", got[1])
 	}
 }
 

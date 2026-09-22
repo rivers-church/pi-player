@@ -30,20 +30,20 @@ type Playlist struct {
 	watcher *fsnotify.Watcher
 }
 
-// PlaylistView is a snapshot of a playlist, safe to hand to a template while
+// playlistView is a snapshot of a playlist, safe to hand to a template while
 // the playlist itself is being rescanned.
-type PlaylistView struct {
+type playlistView struct {
 	Items   []Item
 	Current *Item
 }
 
 // snapshot copies the playlist so a template can range over it without
 // holding a lock.
-func (p *Playlist) snapshot() PlaylistView {
+func (p *Playlist) snapshot() playlistView {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
-	view := PlaylistView{Items: slices.Clone(p.Items)}
+	view := playlistView{Items: slices.Clone(p.Items)}
 	if p.Current != nil {
 		// Point Current into the copy, not the original backing array.
 		for i := range view.Items {
@@ -78,17 +78,17 @@ func (p *Playlist) setCurrent(index int) bool {
 	return true
 }
 
-// Presentation is used to read the presentation.json file for added cues.
-type Presentation struct {
-	Items []ItemString
+// presentation is used to read the presentation.json file for added cues.
+type presentation struct {
+	Items []itemString
 }
 
-// NewPlaylist creates a new playlist with media in the designated folder.
+// newPlaylist creates a new playlist with media in the designated folder.
 // A playlist is always returned, even when the directory watcher can't be
 // created: the player works without one, it just won't notice files appearing
 // on its own. Callers dereference the playlist on every page load, so handing
 // back nil here would panic inside a handler later.
-func NewPlaylist(dir string, control notifier) (*Playlist, error) {
+func newPlaylist(dir string, control notifier) (*Playlist, error) {
 	pl := &Playlist{Name: dir}
 
 	watcher, err := fsnotify.NewWatcher()
@@ -279,7 +279,7 @@ func scanFolder(dir string) ([]Item, error) {
 			return items, nil
 		}
 
-		var presentation Presentation
+		var presentation presentation
 
 		if err := json.Unmarshal(data, &presentation); err != nil {
 			logger.Error("could not parse the presentation file, ignoring its cues", "file", file, "error", err)
@@ -340,11 +340,11 @@ func (p *Playlist) watch(control notifier) {
 	}
 }
 
-func (p *Playlist) itemsString() []ItemString {
+func (p *Playlist) itemsString() []itemString {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
-	var res []ItemString
+	var res []itemString
 
 	for _, item := range p.Items {
 		res = append(res, item.String())

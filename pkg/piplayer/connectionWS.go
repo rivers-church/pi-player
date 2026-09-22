@@ -48,13 +48,13 @@ func sameOrigin(r *http.Request) bool {
 	return strings.EqualFold(u.Host, r.Host)
 }
 
-// ConnectionWS represents a WebSocket connection to one browser page.
+// connectionWS represents a WebSocket connection to one browser page.
 //
 // NOTE: this is an outbound-only path. The server pushes messages to the
 // browser and never consumes structured messages back over the socket; the
 // browser talks back over the JSON API instead.
-type ConnectionWS interface {
-	HandlerWebsocket() http.HandlerFunc
+type connectionWS interface {
+	websocketHandler() http.HandlerFunc
 	trySend(msg wsMessage) bool
 	isActive() bool
 	closeCurrent(farewell wsMessage)
@@ -83,8 +83,8 @@ type connWS struct {
 	send chan wsMessage
 }
 
-// NewConnWS returns a new websocket connection struct.
-func NewConnWS() ConnectionWS {
+// newConnWS returns a new websocket connection struct.
+func newConnWS() connectionWS {
 	return &connWS{
 		send: make(chan wsMessage, sendBuffer),
 	}
@@ -139,8 +139,8 @@ func (c *connWS) closeCurrent(farewell wsMessage) {
 	}
 }
 
-// HandlerWebsocket handles websocket connections for the browser viewer and controller.
-func (c *connWS) HandlerWebsocket() http.HandlerFunc {
+// websocketHandler handles websocket connections for the browser viewer and controller.
+func (c *connWS) websocketHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// If a connection is already active, close it gracefully before
 		// taking over. The previous writer sends the farewell itself; writing
@@ -152,7 +152,7 @@ func (c *connWS) HandlerWebsocket() http.HandlerFunc {
 				Component: "connection",
 				Event:     "disconnect",
 				Success:   true,
-				Message:   "Another device has taken over the connection. Login again to take it back.",
+				Message:   "Another device has taken over the connection. login again to take it back.",
 			})
 		}
 

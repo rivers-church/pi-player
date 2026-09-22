@@ -26,8 +26,9 @@ type Config struct {
 	// MediaDir is where the player reads its media from.
 	MediaDir string
 	Debug    bool
-	Login    Login
-	Remote   remote
+	// Login must stay exported: it is marshalled to config.json.
+	Login  login
+	Remote remote
 	// SessionKey signs the session cookies. It is generated per device on
 	// first run, so a cookie minted on one player is worthless on another.
 	SessionKey []byte
@@ -69,15 +70,15 @@ func (conf *Config) setMediaDir(dir string) string {
 	return old
 }
 
-// LocationName returns the name this player is known by.
-func (conf *Config) LocationName() string {
+// locationName returns the name this player is known by.
+func (conf *Config) locationName() string {
 	conf.mu.RLock()
 	defer conf.mu.RUnlock()
 	return conf.Location
 }
 
-// SetLocation renames the player.
-func (conf *Config) SetLocation(location string) {
+// setLocation renames the player.
+func (conf *Config) setLocation(location string) {
 	conf.mu.Lock()
 	defer conf.mu.Unlock()
 	conf.Location = location
@@ -97,15 +98,15 @@ func (conf *Config) SetDebug(debug bool) {
 	conf.Debug = debug
 }
 
-// Credentials returns the login details of the single user in the system.
-func (conf *Config) Credentials() Login {
+// credentials returns the login details of the single user in the system.
+func (conf *Config) credentials() login {
 	conf.mu.RLock()
 	defer conf.mu.RUnlock()
 	return conf.Login
 }
 
-// SetCredentials replaces the login details.
-func (conf *Config) SetCredentials(l Login) {
+// setCredentials replaces the login details.
+func (conf *Config) setCredentials(l login) {
 	conf.mu.Lock()
 	defer conf.mu.Unlock()
 	conf.Login = l
@@ -216,8 +217,8 @@ func configLoadFromPath(configPath, mediaDir string, assets fs.FS) (*Config, err
 	return conf, nil
 }
 
-// Save marshalls the config struct and writes it to the real config file.
-func (conf *Config) Save() error {
+// save marshalls the config struct and writes it to the real config file.
+func (conf *Config) save() error {
 	configPath := configdir.LocalConfig("pi-player")
 	return conf.saveToPath(configPath)
 }

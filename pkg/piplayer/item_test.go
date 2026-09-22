@@ -56,7 +56,7 @@ func TestName(t *testing.T) {
 		Type:   "video",
 	}
 
-	want := ItemString{
+	want := itemString{
 		Audio:  "testAudio.mp3",
 		Visual: "testVideo.mp4",
 		Type:   "video",
@@ -122,27 +122,27 @@ func TestItemString(t *testing.T) {
 	tests := []struct {
 		name string
 		item Item
-		want ItemString
+		want itemString
 	}{
 		{
 			name: "audio and visual",
 			item: Item{Audio: fi{"song.mp3"}, Visual: fi{"clip.mp4"}, Type: "video"},
-			want: ItemString{Audio: "song.mp3", Visual: "clip.mp4", Type: "video"},
+			want: itemString{Audio: "song.mp3", Visual: "clip.mp4", Type: "video"},
 		},
 		{
 			name: "nil audio",
 			item: Item{Visual: fi{"photo.jpg"}, Type: "image"},
-			want: ItemString{Audio: "", Visual: "photo.jpg", Type: "image"},
+			want: itemString{Audio: "", Visual: "photo.jpg", Type: "image"},
 		},
 		{
 			name: "nil visual",
 			item: Item{Audio: fi{"song.mp3"}, Type: "video"},
-			want: ItemString{Audio: "song.mp3", Visual: "", Type: "video"},
+			want: itemString{Audio: "song.mp3", Visual: "", Type: "video"},
 		},
 		{
 			name: "cues propagated",
 			item: Item{Visual: fi{"photo.jpg"}, Type: "image", Cues: cues},
-			want: ItemString{Visual: "photo.jpg", Type: "image", Cues: cues},
+			want: itemString{Visual: "photo.jpg", Type: "image", Cues: cues},
 		},
 	}
 

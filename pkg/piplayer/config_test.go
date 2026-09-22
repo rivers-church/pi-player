@@ -34,7 +34,7 @@ func TestConfigLoadFirstRun(t *testing.T) {
 		t.Errorf("Location = %q, want PiPlayer", conf.Location)
 	}
 	if conf.Login.Username != "admin" {
-		t.Errorf("Login.Username = %q, want admin", conf.Login.Username)
+		t.Errorf("login.Username = %q, want admin", conf.Login.Username)
 	}
 	if conf.MediaDir != mediaDir {
 		t.Errorf("MediaDir = %q, want %q", conf.MediaDir, mediaDir)
@@ -58,7 +58,7 @@ func TestConfigLoadExisting(t *testing.T) {
 	existing := `{
 		"Location": "Lobby",
 		"Debug": false,
-		"Login": {"Username": "operator", "Password": "hashed"},
+		"login": {"Username": "operator", "Password": "hashed"},
 		"MediaDir": "/srv/media"
 	}`
 	if err := os.WriteFile(filepath.Join(configPath, "config.json"), []byte(existing), 0o600); err != nil {
@@ -77,7 +77,7 @@ func TestConfigLoadExisting(t *testing.T) {
 		t.Error("Debug = true, want false")
 	}
 	if conf.Login.Username != "operator" {
-		t.Errorf("Login.Username = %q, want operator", conf.Login.Username)
+		t.Errorf("login.Username = %q, want operator", conf.Login.Username)
 	}
 }
 
@@ -88,7 +88,7 @@ func TestConfigSaveRoundTrip(t *testing.T) {
 	conf := &Config{
 		Location: "Auditorium",
 		Debug:    true,
-		Login:    Login{Username: "alex", Password: "secret-hash"},
+		Login:    login{Username: "alex", Password: "secret-hash"},
 		MediaDir: "/srv/media",
 	}
 
@@ -108,7 +108,7 @@ func TestConfigSaveRoundTrip(t *testing.T) {
 		t.Errorf("Debug round-trip: got %v, want %v", loaded.Debug, conf.Debug)
 	}
 	if loaded.Login != conf.Login {
-		t.Errorf("Login round-trip: got %+v, want %+v", loaded.Login, conf.Login)
+		t.Errorf("login round-trip: got %+v, want %+v", loaded.Login, conf.Login)
 	}
 }
 
@@ -136,7 +136,7 @@ func TestConfigSaveIsValidJSON(t *testing.T) {
 }
 
 func TestSettingsHandlerSavesNewCredentials(t *testing.T) {
-	// Point configdir at a temp dir so conf.Save() writes there instead of the
+	// Point configdir at a temp dir so conf.save() writes there instead of the
 	// real user config, then check the new password survives a reload.
 	configHome := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", configHome)
@@ -248,8 +248,8 @@ func TestSettingsHandlerConcurrentWithReaders(t *testing.T) {
 			defer wg.Done()
 			for range 20 {
 				content.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/content/a.txt", nil))
-				_ = conf.LocationName()
-				_ = conf.Credentials()
+				_ = conf.locationName()
+				_ = conf.credentials()
 				_ = conf.DebugEnabled()
 			}
 		}()
@@ -285,7 +285,7 @@ func TestConfigLoadAddsSessionKeyToOlderConfig(t *testing.T) {
 	mediaDir := filepath.Join(t.TempDir(), "media")
 
 	// A config from before session keys were stored.
-	older := `{"Location":"PiPlayer","MediaDir":"/tmp/media","Debug":false,"Login":{"Username":"admin","Password":"x"}}`
+	older := `{"Location":"PiPlayer","MediaDir":"/tmp/media","Debug":false,"login":{"Username":"admin","Password":"x"}}`
 	if err := os.WriteFile(filepath.Join(configPath, "config.json"), []byte(older), 0o600); err != nil {
 		t.Fatalf("writing the old config failed: %v", err)
 	}
@@ -354,7 +354,7 @@ func TestSettingsChangesPasswordOnly(t *testing.T) {
 	}
 	mediaDir := t.TempDir()
 	p := newTestPlayer(t, withMediaDir(mediaDir))
-	p.conf.SetCredentials(login)
+	p.conf.setCredentials(login)
 
 	form := url.Values{"password": {"only the password"}}.Encode()
 	request := httptest.NewRequest(http.MethodPost, "http://piplayer.local/settings", strings.NewReader(form))
@@ -367,7 +367,7 @@ func TestSettingsChangesPasswordOnly(t *testing.T) {
 		t.Fatalf("settings post returned status %d; want %d", recorder.Code, http.StatusSeeOther)
 	}
 
-	creds := p.conf.Credentials()
+	creds := p.conf.credentials()
 	if creds.Username != "admin" {
 		t.Errorf("username changed to %q; want it left alone", creds.Username)
 	}
@@ -383,7 +383,7 @@ func TestConfigLoadFallsBackForOldMediaDir(t *testing.T) {
 	configPath := t.TempDir()
 	mediaDir := filepath.Join(t.TempDir(), "media")
 
-	old := `{"Location":"PiPlayer","Mount":{"URL":"/srv/old-media"},"Debug":false,"Login":{"Username":"admin","Password":"x"}}`
+	old := `{"Location":"PiPlayer","Mount":{"URL":"/srv/old-media"},"Debug":false,"login":{"Username":"admin","Password":"x"}}`
 	if err := os.WriteFile(filepath.Join(configPath, "config.json"), []byte(old), 0o600); err != nil {
 		t.Fatalf("writing the old config failed: %v", err)
 	}

@@ -27,8 +27,8 @@ func newTestPlayer(t *testing.T, opts ...playerOpt) *Player {
 		conf:        &Config{},
 		playlist:    &Playlist{},
 		store:       newSessionStore(testSessionKey),
-		ConnViewer:  NewConnWS(),
-		ConnControl: NewConnWS(),
+		ConnViewer:  newConnWS(),
+		ConnControl: newConnWS(),
 	}
 	for _, opt := range opts {
 		opt(t, p)

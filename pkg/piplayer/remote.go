@@ -24,7 +24,7 @@ const remoteRetryDelay = 3 * time.Second
 func remoteRead(ctx context.Context, devices []string, viewer notifier) {
 	for {
 		logger.Debug("starting remote read for this device")
-		if err := Listen(ctx, devices, viewer); err != nil {
+		if err := listen(ctx, devices, viewer); err != nil {
 			logger.Error("listening to remote failed, retrying", "retryIn", remoteRetryDelay, "error", err)
 		}
 
@@ -36,9 +36,9 @@ func remoteRead(ctx context.Context, devices []string, viewer notifier) {
 	}
 }
 
-// Listen to all the Input Devices supplied.
+// listen to all the Input Devices supplied.
 // Return an error if there is a problem, or if one of the devices disconnects.
-func Listen(ctx context.Context, devs []string, viewer notifier) error {
+func listen(ctx context.Context, devs []string, viewer notifier) error {
 	kl := keylogger.NewKeyLogger(devs)
 	if len(kl.GetDevices()) <= 0 {
 		return fmt.Errorf("device '%s' not found", devs)

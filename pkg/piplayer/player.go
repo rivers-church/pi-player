@@ -18,8 +18,8 @@ import (
 
 // Player is the object that renders images to the screen through chromium.
 type Player struct {
-	ConnViewer  ConnectionWS
-	ConnControl ConnectionWS
+	ConnViewer  connectionWS
+	ConnControl connectionWS
 	Server      *http.Server
 	api         *APIHandler
 	playlist    *Playlist
@@ -109,12 +109,12 @@ func NewPlayer(ctx context.Context, api *APIHandler, conf *Config) *Player {
 		api:         api,
 		conf:        conf,
 		store:       newSessionStore(conf.sessionKey()),
-		ConnViewer:  NewConnWS(),
-		ConnControl: NewConnWS(),
+		ConnViewer:  newConnWS(),
+		ConnControl: newConnWS(),
 	}
 
 	var err error
-	p.playlist, err = NewPlaylist(conf.mediaDir(), p.ConnControl)
+	p.playlist, err = newPlaylist(conf.mediaDir(), p.ConnControl)
 	if err != nil {
 		logger.Error("could not create the playlist", "error", err)
 	}
@@ -309,8 +309,8 @@ func (p *Player) handleAPI(msg reqMessage, w http.ResponseWriter) {
 	})
 }
 
-// HandleControl Scan the folder for new files every time the page reloads and display contents
-func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
+// handleControl Scan the folder for new files every time the page reloads and display contents
+func (p *Player) handleControl(w http.ResponseWriter, r *http.Request) {
 	if err := p.playlist.fromFolder(p.conf.mediaDir()); err != nil {
 		logger.Error("could not read the media directory for the control page", "error", err)
 		p.renderErrorPage(w, err, "/control")
@@ -319,11 +319,11 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 
 	view := p.playlist.snapshot()
 
-	tempControl := TemplateHandler{
+	tempControl := templateHandler{
 		filename:  "control.html",
 		templates: p.api.templates,
 		data: map[string]any{
-			"location": p.conf.LocationName(),
+			"location": p.conf.locationName(),
 			"playlist": view,
 		},
 	}
@@ -345,10 +345,10 @@ func (p *Player) HandleControl(w http.ResponseWriter, r *http.Request) {
 	tempControl.ServeHTTP(w, r)
 }
 
-// handlerHome sends the browser to the control page or the login page,
+// handleHome sends the browser to the control page or the login page,
 // depending on whether it is logged in.
-func (p *Player) handlerHome(w http.ResponseWriter, r *http.Request) {
-	_, loggedIn, err := p.CheckLogin(w, r)
+func (p *Player) handleHome(w http.ResponseWriter, r *http.Request) {
+	_, loggedIn, err := p.checkLogin(w, r)
 	if err != nil {
 		logger.Error("could not read the session on the home page", "error", err)
 		http.Error(w, "Could not read the session.", http.StatusInternalServerError)
@@ -363,8 +363,8 @@ func (p *Player) handlerHome(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// HandleDirCheck returns whether the configured media directory currently exists.
-func (p *Player) HandleDirCheck(w http.ResponseWriter, r *http.Request) {
+// handleDirCheck returns whether the configured media directory currently exists.
+func (p *Player) handleDirCheck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	dir := p.conf.mediaDir()
 	ok := exists(dir)
@@ -378,9 +378,9 @@ func (p *Player) HandleDirCheck(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// HandleViewer handles requests to the image viewer page
+// handleViewer handles requests to the image viewer page
 // This handler has a dependency on Playlist.
-func (p *Player) HandleViewer(w http.ResponseWriter, r *http.Request) {
+func (p *Player) handleViewer(w http.ResponseWriter, r *http.Request) {
 	// viewer.html renders no data - the page fetches its items over the API
 	// once it loads. The scan still happens here so a missing media directory
 	// shows the error page instead of an empty display.
@@ -390,7 +390,7 @@ func (p *Player) HandleViewer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	th := TemplateHandler{
+	th := templateHandler{
 		filename:  "viewer.html",
 		templates: p.api.templates,
 	}

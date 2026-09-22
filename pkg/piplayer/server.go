@@ -83,7 +83,7 @@ func sameOriginPost(next http.Handler) http.Handler {
 // Browsers are sent to the login page; the API gets a 401 it can act on.
 func requireLogin(p *Player, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if _, loggedIn, _ := p.CheckLogin(w, r); !loggedIn {
+		if _, loggedIn, _ := p.checkLogin(w, r); !loggedIn {
 			logger.Debug("refusing a request from a client that is not logged in", "method", r.Method, "path", r.URL.Path, "remoteAddr", r.RemoteAddr)
 			if strings.HasPrefix(r.URL.Path, "/api") {
 				writeAPIResponse(w, http.StatusUnauthorized, &resMessage{
@@ -135,29 +135,29 @@ func setupRoutes(p *Player) *http.ServeMux {
 	// its stylesheet before anyone can log in.
 	mux.Handle("GET /assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(p.api.statAssets))))
 
-	login := LoginHandler(p)
+	login := loginHandler(p, p.conf.save)
 	mux.HandleFunc("GET /login", login)
 	mux.HandleFunc("POST /login", login)
-	mux.HandleFunc("POST /logout", p.LogoutHandler)
-	mux.HandleFunc("GET /{$}", p.handlerHome)
+	mux.HandleFunc("POST /logout", p.handleLogout)
+	mux.HandleFunc("GET /{$}", p.handleHome)
 
 	settings := p.handleSettings()
 	mux.HandleFunc("GET /settings", requireLogin(p, settings))
 	mux.HandleFunc("POST /settings", requireLogin(p, settings))
 
-	mux.HandleFunc("GET /control", requireLogin(p, p.HandleControl))
-	mux.HandleFunc("GET /ws/control", requireLogin(p, p.ConnControl.HandlerWebsocket()))
+	mux.HandleFunc("GET /control", requireLogin(p, p.handleControl))
+	mux.HandleFunc("GET /ws/control", requireLogin(p, p.ConnControl.websocketHandler()))
 
 	// The kiosk browser reaches these from localhost without a session. That
 	// includes the API: the viewer page fetches its items over /api, and the
 	// error page polls /api/dircheck to find out when the media directory is
 	// back. Anything already running on the device could drive the display
 	// directly anyway.
-	mux.HandleFunc("POST /api", requireLoginOrLocal(p, p.api.Handle(p)))
-	mux.HandleFunc("GET /api/dircheck", requireLoginOrLocal(p, p.HandleDirCheck))
+	mux.HandleFunc("POST /api", requireLoginOrLocal(p, p.api.handle(p)))
+	mux.HandleFunc("GET /api/dircheck", requireLoginOrLocal(p, p.handleDirCheck))
 	mux.HandleFunc("GET /content/", requireLoginOrLocal(p, contentHandler(p)))
-	mux.HandleFunc("GET /viewer", requireLoginOrLocal(p, p.HandleViewer))
-	mux.HandleFunc("GET /ws/viewer", requireLoginOrLocal(p, p.ConnViewer.HandlerWebsocket()))
+	mux.HandleFunc("GET /viewer", requireLoginOrLocal(p, p.handleViewer))
+	mux.HandleFunc("GET /ws/viewer", requireLoginOrLocal(p, p.ConnViewer.websocketHandler()))
 
 	return mux
 }

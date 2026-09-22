@@ -10,13 +10,13 @@ func (p *Player) handleSettings() http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
-			tempControl := TemplateHandler{
+			tempControl := templateHandler{
 				filename:  "settings.html",
 				templates: p.api.templates,
 				data: map[string]any{
-					"location": conf.LocationName(),
+					"location": conf.locationName(),
 					"debug":    conf.DebugEnabled(),
-					"username": conf.Credentials().Username,
+					"username": conf.credentials().Username,
 					"mountURL": conf.mediaDir(),
 				},
 			}
@@ -42,14 +42,14 @@ func (p *Player) handleSettings() http.HandlerFunc {
 		logger.Debug("settings submitted", "location", location, "mountURL", mountURL)
 
 		if location != "" {
-			conf.SetLocation(location)
+			conf.setLocation(location)
 		}
 
 		// The form only submits a password when one was typed, and leaving the
 		// username alone is the common case - so take whichever of the two was
 		// given and keep the other.
 		if username != "" || password != "" {
-			creds := conf.Credentials()
+			creds := conf.credentials()
 			if username != "" {
 				creds.Username = username
 			}
@@ -63,17 +63,17 @@ func (p *Player) handleSettings() http.HandlerFunc {
 				creds.Password = hashed
 			}
 
-			conf.SetCredentials(creds)
+			conf.setCredentials(creds)
 		}
 
 		// Persist the settings that don't need the media directory to change.
-		if err := conf.Save(); err != nil {
+		if err := conf.save(); err != nil {
 			logger.Error("could not save the config file", "error", err)
 		}
 
 		if mountURL != "" && mountURL != conf.mediaDir() {
 			oldDir := conf.setMediaDir(mountURL)
-			if err := conf.Save(); err != nil {
+			if err := conf.save(); err != nil {
 				logger.Error("could not save the config file", "error", err)
 			}
 

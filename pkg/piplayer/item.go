@@ -15,9 +15,9 @@ type Item struct {
 	Cues   map[string]string
 }
 
-// ItemString is a simpler representation of an Item,
+// itemString is a simpler representation of an Item,
 // where only the file name for the Audio and Visual elements are stored.
-type ItemString struct {
+type itemString struct {
 	Audio  string
 	Visual string
 	Type   string
@@ -29,9 +29,9 @@ func (i *Item) Name() string {
 	return removeExtension(i.Visual.Name())
 }
 
-// String returns an newly created ItemString version of the Item.
-func (i *Item) String() ItemString {
-	is := ItemString{}
+// String returns an newly created itemString version of the Item.
+func (i *Item) String() itemString {
+	is := itemString{}
 	if i.Audio != nil {
 		is.Audio = i.Audio.Name()
 	}

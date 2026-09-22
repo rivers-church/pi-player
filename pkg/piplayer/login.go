@@ -7,8 +7,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// Login holds the credentials to the single user in the system.
-type Login struct {
+// login holds the credentials to the single user in the system.
+type login struct {
 	Username string
 	Password string
 }
@@ -32,12 +32,12 @@ func newSessionStore(key []byte) *sessions.CookieStore {
 }
 
 // newLogin creates the default login credentials if none are found
-func newLogin() (Login, error) {
+func newLogin() (login, error) {
 	p, err := hash("admin")
 	if err != nil {
-		return Login{}, err
+		return login{}, err
 	}
-	return Login{Username: "admin", Password: p}, nil
+	return login{Username: "admin", Password: p}, nil
 }
 
 // productionHashCost is the bcrypt work factor the player runs with. It is
@@ -59,8 +59,8 @@ func checkHash(password, hash string) bool {
 	return err == nil
 }
 
-// CheckLogin checks if the user is logged in
-func (p *Player) CheckLogin(w http.ResponseWriter, r *http.Request) (*sessions.Session, bool, error) {
+// checkLogin checks if the user is logged in
+func (p *Player) checkLogin(w http.ResponseWriter, r *http.Request) (*sessions.Session, bool, error) {
 	session, err := p.store.Get(r, "piplayer-session")
 	if err != nil {
 		if session == nil {
@@ -80,16 +80,12 @@ func (p *Player) CheckLogin(w http.ResponseWriter, r *http.Request) (*sessions.S
 	return session, authenticated, nil
 }
 
-// LoginHandler handles login requests
-func LoginHandler(p *Player) http.HandlerFunc {
-	return loginHandler(p, p.conf.Save)
-}
-
-// loginHandler accepts the config save operation separately so first-run login
-// behavior can be tested without writing to the user's real config directory.
+// loginHandler handles login requests. It accepts the config save operation
+// separately so first-run login behaviour can be tested without writing to the
+// user's real config directory.
 func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		session, loggedIn, err := p.CheckLogin(w, r)
+		session, loggedIn, err := p.checkLogin(w, r)
 		if err != nil {
 			logger.Error("could not read the session on the login page", "error", err)
 			http.Error(w, "Could not read the session.", http.StatusInternalServerError)
@@ -104,11 +100,11 @@ func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 		}
 
 		if r.Method == http.MethodGet {
-			tempControl := TemplateHandler{
+			tempControl := templateHandler{
 				filename:  "login.html",
 				templates: p.api.templates,
 				data: map[string]interface{}{
-					"location": p.conf.LocationName(),
+					"location": p.conf.locationName(),
 				},
 			}
 			tempControl.ServeHTTP(w, r)
@@ -125,7 +121,7 @@ func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 		password := r.PostFormValue("password")
 
 		// if there's no login entry in the config file, add the default login details
-		creds := p.conf.Credentials()
+		creds := p.conf.credentials()
 		if creds.Username == "" {
 			logger.Info("no login details in the config file, creating the default ones")
 			var err error
@@ -134,7 +130,7 @@ func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 				http.Error(w, "Could not create the default login.", http.StatusInternalServerError)
 				return
 			}
-			p.conf.SetCredentials(creds)
+			p.conf.setCredentials(creds)
 			if err := saveConfig(); err != nil {
 				logger.Error("could not save the config file", "error", err)
 			}
@@ -157,11 +153,11 @@ func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 			return
 		}
 
-		tempControl := TemplateHandler{
+		tempControl := templateHandler{
 			templates: p.api.templates,
 			filename:  "login.html",
 			data: map[string]interface{}{
-				"location":     p.conf.LocationName(),
+				"location":     p.conf.locationName(),
 				"flashMessage": "Incorrect username or password",
 			},
 		}
@@ -169,8 +165,8 @@ func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 	}
 }
 
-// LogoutHandler logs a user out and redirects them to the login page
-func (p *Player) LogoutHandler(w http.ResponseWriter, r *http.Request) {
+// handleLogout logs a user out and redirects them to the login page
+func (p *Player) handleLogout(w http.ResponseWriter, r *http.Request) {
 	// A cookie that can't be decoded still yields a usable session here, and
 	// expiring it is exactly what logging out wants to do anyway.
 	session, err := p.store.Get(r, "piplayer-session")

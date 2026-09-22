@@ -6,15 +6,15 @@ import (
 	"net/http"
 )
 
-// TemplateHandler renders one of the parsed html templates.
-type TemplateHandler struct {
+// templateHandler renders one of the parsed html templates.
+type templateHandler struct {
 	filename  string
 	data      map[string]any
 	templates *template.Template
 }
 
 // ServeHTTP handles HTTP requests for the templates
-func (t *TemplateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (t *templateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if t.templates == nil {
 		logger.Error("no templates available to render", "page", t.filename)
 		http.Error(w, "Could not render the page.", http.StatusInternalServerError)

@@ -11,9 +11,9 @@ import (
 )
 
 // wsTestServer starts a server whose only route is the websocket handler for c.
-func wsTestServer(t *testing.T, c ConnectionWS) (*httptest.Server, string) {
+func wsTestServer(t *testing.T, c connectionWS) (*httptest.Server, string) {
 	t.Helper()
-	server := httptest.NewServer(c.HandlerWebsocket())
+	server := httptest.NewServer(c.websocketHandler())
 	t.Cleanup(server.Close)
 	return server, "ws" + strings.TrimPrefix(server.URL, "http")
 }
@@ -32,7 +32,7 @@ func dial(t *testing.T, url string) *websocket.Conn {
 // parking forever on an unbuffered channel with no websocket reader. Against
 // the old code this hangs until the test binary times out.
 func TestTrySendWithNoConnectionDoesNotBlock(t *testing.T) {
-	c := NewConnWS()
+	c := newConnWS()
 
 	done := make(chan bool, 1)
 	go func() {
@@ -50,7 +50,7 @@ func TestTrySendWithNoConnectionDoesNotBlock(t *testing.T) {
 }
 
 func TestTrySendDeliversToConnectedBrowser(t *testing.T) {
-	c := NewConnWS()
+	c := newConnWS()
 	_, url := wsTestServer(t, c)
 	conn := dial(t, url)
 
@@ -73,7 +73,7 @@ func TestTrySendDeliversToConnectedBrowser(t *testing.T) {
 // must get the farewell message and a close frame, and messages sent afterwards
 // must go to the second browser only.
 func TestTakeoverClosesOldConnection(t *testing.T) {
-	c := NewConnWS()
+	c := newConnWS()
 	_, url := wsTestServer(t, c)
 
 	first := dial(t, url)
@@ -110,7 +110,7 @@ func TestTakeoverClosesOldConnection(t *testing.T) {
 // connects and pushes used to write to the same socket from two goroutines,
 // which makes gorilla panic.
 func TestRepeatedTakeoversAreRaceFree(t *testing.T) {
-	c := NewConnWS()
+	c := newConnWS()
 	_, url := wsTestServer(t, c)
 
 	stop := make(chan struct{})
@@ -136,10 +136,10 @@ func TestRepeatedTakeoversAreRaceFree(t *testing.T) {
 }
 
 func TestHandlerRejectsNonWebsocketRequest(t *testing.T) {
-	c := NewConnWS()
+	c := newConnWS()
 	recorder := httptest.NewRecorder()
 
-	c.HandlerWebsocket().ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/ws/viewer", nil))
+	c.websocketHandler().ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/ws/viewer", nil))
 
 	if recorder.Code == http.StatusOK {
 		t.Error("a plain GET was accepted as a websocket upgrade")
@@ -152,9 +152,9 @@ func TestHandlerRejectsNonWebsocketRequest(t *testing.T) {
 // TestWebsocketOutlivesReadTimeout pins the behaviour the kiosk depends on:
 // the server's ReadTimeout must not close an idle viewer socket.
 func TestWebsocketOutlivesReadTimeout(t *testing.T) {
-	c := NewConnWS()
+	c := newConnWS()
 
-	server := httptest.NewUnstartedServer(c.HandlerWebsocket())
+	server := httptest.NewUnstartedServer(c.websocketHandler())
 	// Deliberately tiny, so the test doesn't have to wait 30 seconds.
 	const readTimeout = 100 * time.Millisecond
 	server.Config.ReadTimeout = readTimeout
@@ -185,7 +185,7 @@ func TestWebsocketOutlivesReadTimeout(t *testing.T) {
 
 // waitActive waits for the handler goroutine to finish registering the
 // connection, which happens just after the upgrade completes.
-func waitActive(t *testing.T, c ConnectionWS) {
+func waitActive(t *testing.T, c connectionWS) {
 	t.Helper()
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
