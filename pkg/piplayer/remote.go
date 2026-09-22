@@ -10,9 +10,7 @@ import (
 )
 
 type remote struct {
-	Names   []string
-	Vendor  uint16
-	Product uint16
+	Names []string
 }
 
 var directions = []string{"UP", "DOWN", "HOLD"}

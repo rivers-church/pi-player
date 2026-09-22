@@ -11,10 +11,9 @@ import (
 
 // APIHandler handles requests to the API
 type APIHandler struct {
-	test          string
-	statAssets    fs.FS
-	statTemplates fs.FS
-	templates     *template.Template
+	test       string
+	statAssets fs.FS
+	templates  *template.Template
 }
 
 // NewAPIHandler creates a new APIHandler. An error here means the embedded
@@ -39,10 +38,9 @@ func NewAPIHandler(test *string, statAssets, statTemplates embed.FS) (APIHandler
 	}
 
 	return APIHandler{
-		test:          *test,
-		statAssets:    subAssets,
-		statTemplates: subTemplates,
-		templates:     templates,
+		test:       *test,
+		statAssets: subAssets,
+		templates:  templates,
 	}, nil
 }
 

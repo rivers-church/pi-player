@@ -25,19 +25,19 @@ type Player struct {
 	playlist    *Playlist
 	conf        *Config
 	store       *sessions.CookieStore
-	browser     Browser
+	browser     browser
 }
 
-// Browser represents the chromium process that is used to display web pages
+// browser represents the chromium process that is used to display web pages
 // and still images to the screen.
-type Browser struct {
+type browser struct {
 	mu      sync.Mutex
 	command *exec.Cmd
 	running bool
 }
 
 // isRunning reports whether the browser process is still up.
-func (b *Browser) isRunning() bool {
+func (b *browser) isRunning() bool {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.running
@@ -381,6 +381,9 @@ func (p *Player) HandleDirCheck(w http.ResponseWriter, r *http.Request) {
 // HandleViewer handles requests to the image viewer page
 // This handler has a dependency on Playlist.
 func (p *Player) HandleViewer(w http.ResponseWriter, r *http.Request) {
+	// viewer.html renders no data - the page fetches its items over the API
+	// once it loads. The scan still happens here so a missing media directory
+	// shows the error page instead of an empty display.
 	if err := p.playlist.fromFolder(p.conf.mediaDir()); err != nil {
 		logger.Error("could not read the media directory for the viewer page", "error", err)
 		p.renderErrorPage(w, err, "/viewer")
@@ -390,9 +393,6 @@ func (p *Player) HandleViewer(w http.ResponseWriter, r *http.Request) {
 	th := TemplateHandler{
 		filename:  "viewer.html",
 		templates: p.api.templates,
-		data: map[string]any{
-			"playlist": p.playlist.snapshot(),
-		},
 	}
 
 	th.ServeHTTP(w, r)

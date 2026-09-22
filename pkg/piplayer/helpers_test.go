@@ -81,7 +81,7 @@ func testAPIHandler(t *testing.T, files map[string]string) *APIHandler {
 	}
 	// statAssets is the same stub filesystem: the asset route needs something
 	// non-nil to serve from.
-	return &APIHandler{statAssets: fsys, statTemplates: fsys, templates: templates}
+	return &APIHandler{statAssets: fsys, templates: templates}
 }
 
 // authenticatedCookie returns a cookie for a logged-in session on p.

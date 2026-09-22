@@ -33,7 +33,6 @@ type Playlist struct {
 // PlaylistView is a snapshot of a playlist, safe to hand to a template while
 // the playlist itself is being rescanned.
 type PlaylistView struct {
-	Name    string
 	Items   []Item
 	Current *Item
 }
@@ -44,7 +43,7 @@ func (p *Playlist) snapshot() PlaylistView {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
-	view := PlaylistView{Name: p.Name, Items: slices.Clone(p.Items)}
+	view := PlaylistView{Items: slices.Clone(p.Items)}
 	if p.Current != nil {
 		// Point Current into the copy, not the original backing array.
 		for i := range view.Items {
