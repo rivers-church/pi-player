@@ -41,8 +41,17 @@ func newLogin() (Login, error) {
 	return Login{Username: "admin", Password: p}, nil
 }
 
+// productionHashCost is the bcrypt work factor the player runs with. It is
+// deliberately slow: about a second per hash on a low-powered device.
+const productionHashCost = 14
+
+// hashCost is what hash() actually uses. Tests lower it - a suite that hashes
+// a dozen passwords at the production cost spends all its time in bcrypt, and
+// an order of magnitude more than that under the race detector.
+var hashCost = productionHashCost
+
 func hash(password string) (string, error) {
-	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), hashCost)
 	return string(bytes), err
 }
 
