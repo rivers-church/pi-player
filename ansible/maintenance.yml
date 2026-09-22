@@ -23,6 +23,17 @@
       when: update_packages | default(true) | bool
       become: true
       block:
+        # Packages added to setup.yml after a device was provisioned never
+        # reach it: the first-boot unit deletes itself once it has run. This
+        # is the only play that does, so anything the player needs has to be
+        # listed here as well.
+        - name: Ensure the packages pi-player needs are installed.
+          community.general.pacman:
+            name:
+              - ffmpeg  # Generates the playlist thumbnails
+            state: present
+            update_cache: true
+
         - name: Update all packages via yay.
           become_user: aur_builder
           kewlfft.aur.aur:

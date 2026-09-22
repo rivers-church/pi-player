@@ -20,6 +20,7 @@
               - hyprland
               - nodejs # required by neovim plugins
               - cifs-utils  # Required for SMB mounts
+              - ffmpeg  # Generates the playlist thumbnails
               - swayosd  # OSD for volume/brightness
               - fwupd  # Firmware update tool (provides fwupdmgr)
               - udisks2  # Disk management daemon
