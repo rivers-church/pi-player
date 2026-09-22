@@ -14,7 +14,10 @@ import (
 	piplayer "github.com/17xande/pi-player/pkg/piplayer"
 )
 
-//go:embed pkg/piplayer/assets
+// all: so the tracked dist/.gitkeep is included - without it, a checkout that
+// has not been bundled yet has an empty dist/ and the embed fails outright.
+//
+//go:embed all:pkg/piplayer/assets
 var statAssets embed.FS
 
 //go:embed pkg/piplayer/templates

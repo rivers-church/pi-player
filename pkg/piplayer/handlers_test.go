@@ -197,3 +197,15 @@ func rerootEmbedded(t *testing.T) fstest.MapFS {
 
 	return rerooted
 }
+
+// TestBundledFrontendIsPresent fails when the binary was built without running
+// `deno task build` first. go:embed resolves at compile time, so the pages
+// would otherwise load an empty script and the failure would only show up on a
+// device.
+func TestBundledFrontendIsPresent(t *testing.T) {
+	for _, name := range []string{"dist/ui.js", "dist/viewer.js"} {
+		if _, err := fs.Stat(rerootEmbedded(t), "pkg/piplayer/assets/"+name); err != nil {
+			t.Errorf("%s is missing; run `deno task build`: %v", name, err)
+		}
+	}
+}

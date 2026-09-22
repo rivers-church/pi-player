@@ -1,0 +1,6 @@
+[tools]
+# Pinned as a project tool so `deno task build` works on a fresh checkout
+# rather than failing on a binary the developer happens not to have. The Go
+# frontend is bundled by Deno and go:embed bakes the result in at compile
+# time, so this is a build dependency, not a convenience.
+deno = "latest"

@@ -1,8 +1,19 @@
-.PHONY: build test test-race run debug-tunnel debug-remote-start debug-local help
+.PHONY: frontend build test test-race check run debug-tunnel debug-remote-start debug-local help
+
+# Bundle the frontend. go:embed bakes the result into the binary at compile
+# time, so this has to happen before `go build` or the pages load nothing.
+frontend:
+	deno task build
 
 # Build the pi-player binary
-build:
+build: frontend
 	go build -v -o pi-player main.go
+
+# Frontend gates: types, lint and unit tests.
+check:
+	deno task check
+	deno task lint
+	deno task test
 
 # Run tests
 test:
@@ -19,7 +30,7 @@ run:
 	go run main.go
 
 
-dev:
+dev: frontend
 	go run main.go --debug --test web
 # Set up SSH tunnel for remote debugging
 # Usage: make debug-tunnel HOST=user@host
@@ -51,7 +62,9 @@ debug-local:
 help:
 	@echo "Pi-Player Makefile Commands:"
 	@echo ""
-	@echo "  make build               - Build the pi-player binary"
+	@echo "  make build               - Bundle the frontend, then build the binary"
+	@echo "  make frontend            - Bundle the frontend only"
+	@echo "  make check               - Frontend type-check, lint and tests"
 	@echo "  make test                - Run tests"
 	@echo "  make test-race           - Run tests with the race detector"
 	@echo "  make run                 - Run locally"

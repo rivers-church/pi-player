@@ -1,0 +1,37 @@
+{
+  "version": "0.0.1",
+  "compilerOptions": {
+    "lib": ["dom", "dom.asynciterable", "dom.iterable", "esnext", "deno.ns"]
+  },
+  // The bundler's own output is not source; type-checking and linting it is
+  // noise, and `deno fmt` would rewrite it on the next run.
+  "exclude": ["pkg/piplayer/assets/dist"],
+  "include": ["frontend"],
+  "tasks": {
+    // Cleans first, deliberately. The bundler content-hashes some of its
+    // output and leaves every previous copy behind; go:embed takes the whole
+    // directory, so stale bundles would be baked into the binary.
+    "build": "deno task clean && deno task bundle && deno task copy-assets",
+    // The glob skips dotfiles, so dist/.gitkeep - tracked so a fresh checkout
+    // has something for go:embed to find - survives this.
+    "clean": "rm -rf pkg/piplayer/assets/dist/*",
+    // Standalone .ts entries, and no --code-splitting: both emit a plain
+    // <name>.js that the Go templates can name in a <script src>. An HTML
+    // entry point is not an option here - the pages are Go templates, and the
+    // bundler would have to parse {{.location}}.
+    "bundle": "deno bundle frontend/scripts/ui.ts frontend/scripts/viewer.ts --platform browser --sourcemap=linked --outdir pkg/piplayer/assets/dist",
+    // The bundler emits JS and CSS only, so stylesheets and icons that no
+    // module imports need their own step.
+    "copy-assets": "deno run --allow-read --allow-write frontend/tools/copy-assets.ts",
+    "dev": "deno task build && deno bundle --watch frontend/scripts/ui.ts frontend/scripts/viewer.ts --platform browser --sourcemap=linked --outdir pkg/piplayer/assets/dist",
+    "check": "deno check frontend/scripts",
+    "lint": "deno lint frontend",
+    "test": "deno test --no-check frontend/scripts/*_test.ts"
+  },
+  "imports": {
+    // Declared here rather than as a bare jsr: specifier in each test file,
+    // which no-import-prefix and no-unversioned-import both complain about.
+    "@std/assert": "jsr:@std/assert@^1.0.19",
+    "@std/path": "jsr:@std/path@^1.0.0"
+  }
+}

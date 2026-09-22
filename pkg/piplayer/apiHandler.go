@@ -36,6 +36,15 @@ func NewAPIHandler(test *string, statAssets, statTemplates fs.FS) (APIHandler, e
 		return APIHandler{}, fmt.Errorf("error parsing templates: %w", err)
 	}
 
+	// go:embed resolves at compile time, so a `go build` that ran before
+	// `deno task build` produces a binary whose pages load nothing. That is
+	// invisible until someone opens the control page on a device, so say so
+	// here instead.
+	if _, err := fs.Stat(subAssets, "dist/ui.js"); err != nil {
+		logger.Error("the bundled frontend is missing from this binary; run `deno task build` before `go build`",
+			"error", err)
+	}
+
 	return APIHandler{
 		test:       *test,
 		statAssets: subAssets,

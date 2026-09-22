@@ -20,6 +20,21 @@ jobs:
       with:
         go-version-file: go.mod
 
+    - uses: denoland/setup-deno@v2
+      with:
+        deno-version: v2.x
+
+    # go:embed bakes the bundle in at compile time, so this must run before the
+    # Go build - otherwise the released binary serves pages that load nothing.
+    - name: Bundle the frontend
+      run: deno task build
+
+    - name: Check the frontend
+      run: |
+        deno task check
+        deno task lint
+        deno task test
+
     - name: Build
       run: go build -ldflags "-X main.version=${{ github.ref_name }}" -o pi-player
 
