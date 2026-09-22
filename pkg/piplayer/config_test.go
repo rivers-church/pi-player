@@ -179,7 +179,7 @@ func TestSettingsHandlerSavesNewCredentials(t *testing.T) {
 	request.AddCookie(sessionRecorder.Result().Cookies()[0])
 
 	recorder := httptest.NewRecorder()
-	conf.SettingsHandler(p).ServeHTTP(recorder, request)
+	p.handleSettings().ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusSeeOther {
 		t.Fatalf("settings post returned status %d; want %d", recorder.Code, http.StatusSeeOther)
 	}
@@ -220,7 +220,7 @@ func TestSettingsHandlerConcurrentWithReaders(t *testing.T) {
 	}
 	p := newTestPlayer(t)
 	p.conf = conf
-	settings := conf.SettingsHandler(p)
+	settings := p.handleSettings()
 	content := http.HandlerFunc(contentHandler(p))
 
 	cookie := authenticatedCookie(t, p)
@@ -332,5 +332,46 @@ func TestSaveConfigWithoutMount(t *testing.T) {
 	}
 	if saved.Location != "PiPlayer" {
 		t.Errorf("saved location is %q, want %q", saved.Location, "PiPlayer")
+	}
+}
+
+// TestSettingsChangesPasswordOnly checks the password can be changed without
+// retyping the username. The form only submits a password when one is typed,
+// and the handler used to require both, so a password-only save silently did
+// nothing.
+func TestSettingsChangesPasswordOnly(t *testing.T) {
+	configHome := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", configHome)
+	configdir.Refresh()
+	t.Cleanup(configdir.Refresh)
+	if err := os.MkdirAll(filepath.Join(configHome, "pi-player"), 0o755); err != nil {
+		t.Fatalf("creating temp config dir failed: %v", err)
+	}
+
+	login, err := newLogin()
+	if err != nil {
+		t.Fatalf("creating default login failed: %v", err)
+	}
+	mediaDir := t.TempDir()
+	p := newTestPlayer(t, withMediaDir(mediaDir))
+	p.conf.SetCredentials(login)
+
+	form := url.Values{"password": {"only the password"}}.Encode()
+	request := httptest.NewRequest(http.MethodPost, "http://piplayer.local/settings", strings.NewReader(form))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+
+	p.handleSettings().ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("settings post returned status %d; want %d", recorder.Code, http.StatusSeeOther)
+	}
+
+	creds := p.conf.Credentials()
+	if creds.Username != "admin" {
+		t.Errorf("username changed to %q; want it left alone", creds.Username)
+	}
+	if !checkHash("only the password", creds.Password) {
+		t.Error("the new password was not applied")
 	}
 }

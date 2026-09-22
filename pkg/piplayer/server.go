@@ -141,7 +141,7 @@ func setupRoutes(p *Player) *http.ServeMux {
 	mux.HandleFunc("POST /logout", p.LogoutHandler)
 	mux.HandleFunc("GET /{$}", p.handlerHome)
 
-	settings := p.conf.SettingsHandler(p)
+	settings := p.handleSettings()
 	mux.HandleFunc("GET /settings", requireLogin(p, settings))
 	mux.HandleFunc("POST /settings", requireLogin(p, settings))
 
