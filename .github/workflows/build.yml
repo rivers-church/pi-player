@@ -16,7 +16,7 @@ jobs:
     steps:
     - uses: actions/checkout@v7
 
-    - uses: actions/setup-go@v6
+    - uses: actions/setup-go@v7
       with:
         go-version-file: go.mod
 
@@ -59,6 +59,12 @@ jobs:
     # down, so there is no reason not to run it.
     - name: Test with the race detector
       run: go test -race -count=2 ./...
+
+    # Pinned: govulncheck v1.1.x crashes on Go 1.27.
+    - name: Check for known vulnerabilities
+      run: |
+        go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+        govulncheck ./...
 
     - name: Release
       uses: softprops/action-gh-release@v3

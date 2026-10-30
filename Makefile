@@ -1,4 +1,4 @@
-.PHONY: frontend build test test-race check run debug-tunnel debug-remote-start debug-local help
+.PHONY: frontend build test test-race vulncheck check run debug-tunnel debug-remote-start debug-local help
 
 # Bundle the frontend. go:embed bakes the result into the binary at compile
 # time, so this has to happen before `go build` or the pages load nothing.
@@ -24,6 +24,13 @@ test:
 # under -race, so run this before shipping.
 test-race:
 	go test -race -count=2 ./...
+
+# Fail if a reachable known vulnerability affects the build (CI runs the same).
+# Pinned: govulncheck v1.1.x crashes on Go 1.27.
+GOVULNCHECK_VERSION ?= v1.9.0
+vulncheck:
+	go install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)
+	govulncheck ./...
 
 # Run locally
 run:
