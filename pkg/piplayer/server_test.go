@@ -137,6 +137,33 @@ func TestServerHasTimeouts(t *testing.T) {
 	}
 }
 
+// TestServerRefusesOversizedHeaders: the default is a megabyte per request,
+// which nothing the player serves needs.
+func TestServerRefusesOversizedHeaders(t *testing.T) {
+	p := newTestPlayer(t, withTemplates(map[string]string{"login.html": "login page"}))
+	cfg := NewServer(p, ":8080")
+	ts := httptest.NewUnstartedServer(cfg.Handler)
+	ts.Config.MaxHeaderBytes = cfg.MaxHeaderBytes
+	ts.Start()
+	defer ts.Close()
+
+	for _, tc := range []struct{ size, want int }{
+		{1 << 10, http.StatusOK},
+		{128 << 10, http.StatusRequestHeaderFieldsTooLarge},
+	} {
+		req, _ := http.NewRequest(http.MethodGet, ts.URL+"/login", nil)
+		req.Header.Set("X-Big", strings.Repeat("a", tc.size))
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		if res.StatusCode != tc.want {
+			t.Errorf("%d byte header: status %d, want %d", tc.size, res.StatusCode, tc.want)
+		}
+	}
+}
+
 // TestViewerURLFollowsServerPort: the kiosk browser used to be pointed at a
 // hardcoded :8080 regardless of the -addr the server was given.
 func TestViewerURLFollowsServerPort(t *testing.T) {

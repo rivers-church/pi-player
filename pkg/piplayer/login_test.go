@@ -379,3 +379,55 @@ func TestLoginRefusesAfterRepeatedFailures(t *testing.T) {
 		t.Errorf("another client got %d, want a successful login", recorder.Code)
 	}
 }
+
+func TestLimiterKey(t *testing.T) {
+	for _, tc := range []struct{ in, want string }{
+		{"192.168.1.50", "192.168.1.50"},
+		{"::ffff:192.168.1.50", "192.168.1.50"},
+		{"2001:db8:1:2:aaaa:bbbb:cccc:dddd", "2001:db8:1:2::/64"},
+		{"2001:db8:1:2::1", "2001:db8:1:2::/64"},
+		{"2001:db8:1:3::1", "2001:db8:1:3::/64"},
+		{"fe80::1%eth0", "fe80::/64"},
+		{"fe80::1%eth1", "fe80::/64"},
+		{"not an address", "not an address"},
+	} {
+		if got := limiterKey(tc.in); got != tc.want {
+			t.Errorf("limiterKey(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+// A client with an IPv6 prefix can change the low 64 bits of its address at
+// will, so failures from one /64 have to count together or the lockout is
+// worth nothing.
+func TestLoginLockoutCoversTheWholeIPv6Prefix(t *testing.T) {
+	p := newTestPlayer(t, withTemplates(map[string]string{"login.html": "login page"}))
+	creds, err := newLogin()
+	if err != nil {
+		t.Fatalf("creating the default login failed: %v", err)
+	}
+	p.conf.setCredentials(creds)
+	handler := loginHandler(p, func() error { return nil })
+	attempt := func(remoteAddr string) int {
+		t.Helper()
+		form := url.Values{"username": {"admin"}, "password": {"wrong"}}.Encode()
+		request := httptest.NewRequest(http.MethodPost, "http://piplayer.local/login", strings.NewReader(form))
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		request.RemoteAddr = remoteAddr
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, request)
+		return recorder.Code
+	}
+
+	for i := range loginMaxFailures {
+		if got := attempt(fmt.Sprintf("[2001:db8:1:2::%x]:41000", i+1)); got != http.StatusOK {
+			t.Fatalf("attempt %d returned %d, want the login page back", i+1, got)
+		}
+	}
+	if got := attempt("[2001:db8:1:2:dead:beef:0:1]:41000"); got != http.StatusTooManyRequests {
+		t.Errorf("a new address in the same /64 returned %d, want %d", got, http.StatusTooManyRequests)
+	}
+	if got := attempt("[2001:db8:1:3::1]:41000"); got != http.StatusOK {
+		t.Errorf("another /64 returned %d, want it unaffected", got)
+	}
+}

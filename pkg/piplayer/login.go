@@ -2,6 +2,7 @@ package piplayer
 
 import (
 	"net/http"
+	"net/netip"
 	"strconv"
 	"sync"
 	"time"
@@ -120,7 +121,7 @@ func loginHandler(p *Player, saveConfig func() error) http.HandlerFunc {
 
 		// Turn away a client that keeps failing before doing any bcrypt work,
 		// which is the expensive part and the reason this is worth having.
-		client := clientIP(r.RemoteAddr)
+		client := limiterKey(clientIP(r.RemoteAddr))
 		if ok, retryAfter := p.loginLimit.allow(client); !ok {
 			logger.Warn("too many failed logins, refusing for now",
 				"remoteAddr", r.RemoteAddr, "retryAfter", retryAfter.Round(time.Second))
@@ -217,6 +218,27 @@ const (
 	loginMaxFailures   = 5
 	loginFailureWindow = time.Minute
 )
+
+// limiterKey is the identity a client is locked out under.
+//
+// IPv4 is keyed by the full address. IPv6 is keyed by its /64, the smallest
+// block an ISP hands one subscriber: a client with one prefix holds 2^64
+// addresses, and keying on the full address gives each of them a fresh set of
+// attempts, so the lockout could be walked around by changing the low bits. An
+// IPv4-mapped address (::ffff:a.b.c.d) is unmapped so it shares its entry with
+// the plain IPv4 form, and a zone (fe80::1%eth0) is dropped. Anything that is
+// not an address keeps its raw string.
+func limiterKey(ip string) string {
+	addr, err := netip.ParseAddr(ip)
+	if err != nil {
+		return ip
+	}
+	addr = addr.Unmap()
+	if addr.Is4() {
+		return addr.String()
+	}
+	return netip.PrefixFrom(addr.WithZone(""), 64).Masked().String()
+}
 
 // loginLimiter refuses logins from a client that keeps getting them wrong.
 type loginLimiter struct {

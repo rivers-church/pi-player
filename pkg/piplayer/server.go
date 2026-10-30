@@ -15,7 +15,7 @@ const (
 	readTimeout       = 30 * time.Second
 	idleTimeout       = 120 * time.Second
 	shutdownTimeout   = 5 * time.Second
-	maxHeaderBytes    = 1 << 20
+	maxHeaderBytes    = 64 << 10
 )
 
 // NewServer returns a new http.Server for the piplayer interface.
