@@ -1,4 +1,4 @@
-.PHONY: frontend build test test-race vulncheck check release-check run debug-tunnel debug-remote-start debug-local help
+.PHONY: frontend build test test-race vulncheck check release-check release-build release-version run debug-tunnel debug-remote-start debug-local help
 
 # Bundle the frontend. go:embed bakes the result into the binary at compile
 # time, so this has to happen before `go build` or the pages load nothing.
@@ -45,6 +45,27 @@ release-check:
 	$(MAKE) test
 	$(MAKE) test-race
 	$(MAKE) vulncheck
+
+export VERSION
+
+release-version:
+	@if [ -z "$$VERSION" ]; then \
+		echo 'Error: VERSION is required (for example VERSION=v0.4.1).'; \
+		exit 1; \
+	fi; \
+	case "$$VERSION" in \
+		*[!v0-9.rc-]*) valid=no ;; \
+		*) if printf '%s\n' "$$VERSION" | LC_ALL=C grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?$$'; then valid=yes; else valid=no; fi ;; \
+	esac; \
+	if [ "$$valid" != yes ]; then \
+		echo 'Error: VERSION must be vX.Y.Z or vX.Y.Z-rcN (numeric X, Y, Z and N).'; \
+		exit 1; \
+	fi
+
+# Match the former Ubuntu runner's Linux x86-64 artifact for provisioning.
+release-build: release-version
+	$(MAKE) frontend
+	GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=$$VERSION" -o pi-player
 
 # Run locally
 run:
