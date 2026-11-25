@@ -1,4 +1,4 @@
-.PHONY: frontend build test test-race vulncheck check release-check release-build release-version run debug-tunnel debug-remote-start debug-local help
+.PHONY: frontend build test test-race vulncheck check release-check release-build release-version release run debug-tunnel debug-remote-start debug-local help
 
 # Bundle the frontend. go:embed bakes the result into the binary at compile
 # time, so this has to happen before `go build` or the pages load nothing.
@@ -46,7 +46,7 @@ release-check:
 	$(MAKE) test-race
 	$(MAKE) vulncheck
 
-export VERSION
+export VERSION CONFIRM DRY_RUN
 
 release-version:
 	@if [ -z "$$VERSION" ]; then \
@@ -66,6 +66,41 @@ release-version:
 release-build: release-version
 	$(MAKE) frontend
 	GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=$$VERSION" -o pi-player
+
+# Use MAKE_COMMAND so GNU Make's -n never executes this publishing recipe.
+release: release-version
+	@set -eu; \
+	fail() { printf 'Error: %s\n' "$$1" >&2; exit 1; }; \
+	if [ "$$CONFIRM" != 1 ]; then \
+		fail "CONFIRM=1 is required: this publishes the binary that every provisioned device downloads as 'latest' (except for prereleases)."; \
+	fi; \
+	status=$$(git status --porcelain --untracked-files=all); \
+	[ -z "$$status" ] || fail 'The working tree must be clean.'; \
+	branch=$$(git symbolic-ref --quiet --short HEAD) || fail 'Releases must be run from master.'; \
+	[ "$$branch" = master ] || fail 'Releases must be run from master.'; \
+	head=$$(git rev-parse --verify refs/heads/master); \
+	upstream=$$(git rev-parse --verify refs/remotes/origin/master 2>/dev/null) || fail 'origin/master is missing; fetch origin first.'; \
+	[ "$$head" = "$$upstream" ] || fail 'master must match origin/master.'; \
+	tag="refs/tags/$$VERSION"; \
+	if git show-ref --verify --quiet "$$tag"; then fail "Tag $$VERSION already exists locally."; fi; \
+	remote=$$(git ls-remote --refs origin refs/heads/master "$$tag") || fail 'Could not verify origin/master and the tag on origin.'; \
+	remote_head=$$(printf '%s\n' "$$remote" | awk '$$2 == "refs/heads/master" { print $$1 }'); \
+	[ "$$head" = "$$remote_head" ] || fail 'master must match the current master on origin; fetch origin first.'; \
+	remote_tag=$$(printf '%s\n' "$$remote" | awk -v tag="$$tag" '$$2 == tag { print $$1 }'); \
+	[ -z "$$remote_tag" ] || fail "Tag $$VERSION already exists on origin."; \
+	run() { \
+		if [ "$$DRY_RUN" = 1 ]; then \
+			printf '%s' "$$1"; shift; printf ' %s' "$$@"; printf '\n'; \
+		else "$$@"; fi; \
+	}; \
+	case "$$VERSION" in *-rc*) set -- --prerelease ;; *) set -- ;; esac; \
+	run $(MAKE_COMMAND) release-check; \
+	run $(MAKE_COMMAND) release-build "VERSION=$$VERSION"; \
+	status=$$(git status --porcelain --untracked-files=all); \
+	[ -z "$$status" ] && [ "$$(git rev-parse HEAD)" = "$$head" ] || fail 'The checkout changed while preparing the release.'; \
+	run git tag -a "$$VERSION" -m "$$VERSION" "$$head"; \
+	run git push --no-follow-tags origin "$$tag"; \
+	run gh release create "$$VERSION" ./pi-player --title "$$VERSION" --generate-notes --verify-tag --repo rivers-church/pi-player "$$@"
 
 # Run locally
 run:
