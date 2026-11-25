@@ -25,7 +25,7 @@ test:
 test-race:
 	go test -race -count=2 ./...
 
-# Fail if a reachable known vulnerability affects the build (CI runs the same).
+# Fail if a reachable known vulnerability affects the build.
 # Pinned: govulncheck v1.1.x crashes on Go 1.27.
 GOVULNCHECK_VERSION ?= v1.9.0
 vulncheck:

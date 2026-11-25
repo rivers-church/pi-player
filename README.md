@@ -1,7 +1,5 @@
 # Pi-Player
 
-[![Go](https://github.com/rivers-church/pi-player/actions/workflows/build.yml/badge.svg)](https://github.com/rivers-church/pi-player/actions/workflows/build.yml)
-
 A remotely controlled video and image player for Linux kiosk deployments. Runs on Arch Linux with Hyprland and exposes a web interface at `:8080` for control, playback, and settings.
 
 ---
@@ -57,10 +55,10 @@ deno task lint
 deno task test     # the DOM-free half of the frontend
 ```
 
-`make build` and `make dev` run the bundle for you, and CI does it before the
-Go build. **`go:embed` resolves at compile time**, so a `go build` run on its
-own produces a binary whose pages load nothing — the server logs an error at
-startup when that has happened.
+`make build` and `make dev` bundle the frontend for you, and `make release-check`
+bundles it before running the release checks. **`go:embed` resolves at compile
+time**, so a `go build` run on its own produces a binary whose pages load
+nothing — the server logs an error at startup when that has happened.
 
 The control, settings, login and error pages use [Web
 Awesome](https://webawesome.com); its icons are copied into the bundle at build
@@ -266,3 +264,10 @@ See [`ansible/secrets.example.yml`](ansible/secrets.example.yml) for the full fo
 - [`docs/INSTALL.md`](docs/INSTALL.md) — Detailed installation and troubleshooting guide
 - [`docs/REMOTE_ADMIN.md`](docs/REMOTE_ADMIN.md) — SSH-based remote administration commands
 - [`docs/DEBUG.md`](docs/DEBUG.md) — Local and remote debugging with Neovim/VSCode
+
+## Releasing locally
+
+GitHub Actions are off; run `make release-check` locally.
+From a clean `master` matching `origin/master`, run `make release VERSION=vX.Y.Z CONFIRM=1` with an authenticated `gh` CLI.
+It checks and builds `pi-player`, then pushes an annotated tag and publishes the binary; add `DRY_RUN=1` to preview the commands.
+Provisioning and maintenance download the stable release as `latest`; `-rcN` builds are published as prereleases and do not replace it.
