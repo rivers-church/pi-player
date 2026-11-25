@@ -1,4 +1,4 @@
-.PHONY: frontend build test test-race vulncheck check run debug-tunnel debug-remote-start debug-local help
+.PHONY: frontend build test test-race vulncheck check release-check run debug-tunnel debug-remote-start debug-local help
 
 # Bundle the frontend. go:embed bakes the result into the binary at compile
 # time, so this has to happen before `go build` or the pages load nothing.
@@ -31,6 +31,20 @@ GOVULNCHECK_VERSION ?= v1.9.0
 vulncheck:
 	go install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)
 	govulncheck ./...
+
+# Run the release gates in order, even when make is invoked with -j.
+release-check:
+	$(MAKE) frontend
+	$(MAKE) check
+	@unformatted=$$(gofmt -l .) || exit 1; \
+	if [ -n "$$unformatted" ]; then \
+		printf 'These files need gofmt:\n%s\n' "$$unformatted"; \
+		exit 1; \
+	fi
+	go vet ./...
+	$(MAKE) test
+	$(MAKE) test-race
+	$(MAKE) vulncheck
 
 # Run locally
 run:
