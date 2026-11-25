@@ -5,12 +5,13 @@ require (
 	github.com/17xande/keylogger v1.2.0
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/gorilla/sessions v1.4.0
-	github.com/gorilla/websocket v1.5.3
+	github.com/gorilla/websocket v1.5.4-0.20240701034025-d67f41855da4
 	golang.org/x/crypto v0.58.0
 )
 
 require (
 	github.com/gorilla/securecookie v1.1.2 // indirect
+	golang.org/x/net v0.60.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
 )
 
